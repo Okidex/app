@@ -1,0 +1,169 @@
+'use client';
+
+import * as React from 'react';
+import {
+  Briefcase,
+  Calendar,
+  Contact,
+  Home,
+  LineChart,
+  MessageSquare,
+  Search,
+  User,
+} from 'lucide-react';
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import Logo from '@/components/logo';
+import UserNav from '@/components/user-nav';
+import DashboardView from '@/components/views/dashboard-view';
+import ProfileView from '@/components/views/profile-view';
+import ConnectionsView from '@/components/views/connections-view';
+import MessagesView from '@/components/views/messages-view';
+import SearchView from '@/components/views/search-view';
+import DirectoryView from '@/components/views/directory-view';
+import CalendarView from '@/components/views/calendar-view';
+
+type View =
+  | 'dashboard'
+  | 'profile'
+  | 'connections'
+  | 'messages'
+  | 'search'
+  | 'directory'
+  | 'calendar';
+
+export default function OkidexApp() {
+  const [activeView, setActiveView] = React.useState<View>('dashboard');
+
+  const renderView = () => {
+    switch (activeView) {
+      case 'dashboard':
+        return <DashboardView />;
+      case 'profile':
+        return <ProfileView />;
+      case 'connections':
+        return <ConnectionsView />;
+      case 'messages':
+        return <MessagesView />;
+      case 'search':
+        return <SearchView />;
+      case 'directory':
+        return <DirectoryView />;
+      case 'calendar':
+        return <CalendarView />;
+      default:
+        return <DashboardView />;
+    }
+  };
+
+  return (
+    <SidebarProvider>
+      <Sidebar side="left" collapsible="icon" variant="sidebar">
+        <SidebarHeader>
+          <div className="flex w-full items-center justify-between p-2">
+            <Logo />
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('dashboard')}
+                isActive={activeView === 'dashboard'}
+                tooltip={{ children: 'Dashboard' }}
+              >
+                <Home />
+                <span>Dashboard</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('search')}
+                isActive={activeView === 'search'}
+                tooltip={{ children: 'Search' }}
+              >
+                <Search />
+                <span>Search</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('connections')}
+                isActive={activeView === 'connections'}
+                tooltip={{ children: 'Connections' }}
+              >
+                <Contact />
+                <span>Connections</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('messages')}
+                isActive={activeView === 'messages'}
+                tooltip={{ children: 'Messages' }}
+              >
+                <MessageSquare />
+                <span>Messages</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('calendar')}
+                isActive={activeView === 'calendar'}
+                tooltip={{ children: 'Calendar' }}
+              >
+                <Calendar />
+                <span>Calendar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <Separator className="my-2" />
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('directory')}
+                isActive={activeView === 'directory'}
+                tooltip={{ children: 'Success Directory' }}
+              >
+                <LineChart />
+                <span>Success Directory</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveView('profile')}
+                isActive={activeView === 'profile'}
+                tooltip={{ children: 'My Profile' }}
+              >
+                <User />
+                <span>My Profile</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarContent>
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="flex h-14 items-center justify-between border-b bg-background px-4 lg:px-6">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="md:hidden" />
+            <h1 className="text-lg font-semibold capitalize">{activeView.replace('-', ' ')}</h1>
+          </div>
+          <UserNav />
+        </header>
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          {renderView()}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
