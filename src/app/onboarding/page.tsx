@@ -7,7 +7,8 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User as UserData, FounderProfile, InvestorProfile, TalentProfile } from '@/lib/types';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile as updateAuthProfile } from 'firebase/auth';
+import * as z from 'zod';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -17,6 +18,91 @@ import FounderForm from '@/components/forms/founder-form';
 import TalentForm from '@/components/forms/talent-form';
 import InvestorForm from '@/components/forms/investor-form';
 import Logo from '@/components/logo';
+
+// --- Zod Schemas ---
+const founderEntrySchema = z.object({
+  founderName: z.string().min(1, 'Founder name is required.'),
+  founderTitle: z.string().min(1, 'Founder title is required.'),
+});
+
+const capTableEntrySchema = z.object({
+    investorName: z.string().min(1, "Investor name is required."),
+    holdingPercentage: z.coerce.number().min(0).max(100),
+    shareCount: z.coerce.number().min(0),
+});
+
+const founderSchema = z.object({
+  avatarUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  businessLogoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  businessName: z.string().min(1, 'Startup name is required.'),
+  websiteUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  linkedinUrl: z.string().url().optional().or(z.literal('')),
+  bio: z.string().optional(),
+  businessDescription: z.string().min(50, 'Business description must be at least 50 characters.'),
+  isIncorporated: z.boolean().default(false),
+  taxNumber: z.string().optional(),
+  uniqueEntityNumber: z.string().optional(),
+  entityStructure: z.string().optional(),
+  countryOfIncorporation: z.string().optional(),
+  fundingStage: z.enum(['pre-seed', 'seed', 'series-a', 'series-b']),
+  industry: z.string().min(1, 'Please enter at least one industry.'),
+  founders: z.array(founderEntrySchema).optional(),
+  grossMargins: z.coerce.number().optional(),
+  burnRate: z.coerce.number().optional(),
+  customerAcquisitionCost: z.coerce.number().optional(),
+  customerLifetimeValue: z.coerce.number().optional(),
+  mrr: z.coerce.number().optional(),
+  netProfitMargins: z.coerce.number().optional(),
+  cashBurnRunway: z.coerce.number().optional(),
+  roi: z.coerce.number().optional(),
+  cacPayback: z.coerce.number().optional(),
+  valuation: z.coerce.number().optional(),
+  capTable: z.array(capTableEntrySchema).optional(),
+}).refine(data => {
+    if (data.isIncorporated) {
+        return !!data.taxNumber && !!data.uniqueEntityNumber && !!data.entityStructure && !!data.countryOfIncorporation;
+    }
+    return true;
+}, {
+    message: 'All incorporation details are required if the business is incorporated.',
+    path: ['countryOfIncorporation'],
+});
+
+const investorSchema = z.object({
+  avatarUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  headline: z.string().min(10, 'Headline must be at least 10 characters.'),
+  summary: z.string().min(50, 'Summary must be at least 50 characters.'),
+  linkedinUrl: z.string().url().optional().or(z.literal('')),
+  companyUrl: z.string().url().optional().or(z.literal('')),
+  investmentThesis: z.string().min(50, 'Investment thesis must be at least 50 characters.'),
+  interests: z.string().min(1, 'Please enter at least one industry.'),
+  pastInvestments: z.string().optional(),
+});
+
+const talentSchema = z.object({
+  avatarUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  headline: z.string().min(10, 'Headline must be at least 10 characters.'),
+  summary: z.string().min(50, 'Summary must be at least 50 characters.'),
+  linkedinUrl: z.string().url().optional().or(z.literal('')),
+  skills: z.string().min(1, 'Please enter at least one skill.'),
+  interests: z.string().min(1, 'Please enter at least one industry.'),
+  openToCoFounding: z.boolean().default(false),
+});
+// --- End of Zod Schemas ---
+
+function sanitizeForFirestore<T extends object>(data: T): T {
+    const sanitizedData = { ...data };
+    for (const key in sanitizedData) {
+        if (sanitizedData[key] === undefined) {
+            (sanitizedData as any)[key] = null;
+        } else if (typeof sanitizedData[key] === 'object' && sanitizedData[key] !== null) {
+            // Recursively sanitize nested objects
+            (sanitizedData as any)[key] = sanitizeForFirestore(sanitizedData[key] as object);
+        }
+    }
+    return sanitizedData;
+}
+
 
 export default function OnboardingPage() {
   const [user, loading] = useAuthState(auth);
@@ -68,7 +154,6 @@ export default function OnboardingPage() {
 
   }, [user, loading, router, toast]);
 
-
   const handleFormSubmit = async (data: any) => {
     if (!user || !userData) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
@@ -80,16 +165,14 @@ export default function OnboardingPage() {
         const userDocRef = doc(db, 'users', user.uid);
         
         let profilePayload: Partial<FounderProfile | InvestorProfile | TalentProfile> = {};
-        const finalDoc: Partial<UserData> = {
-            avatarUrl: data.avatarUrl || userData.avatarUrl || '',
+        const updateData: Partial<UserData> = {
+            avatarUrl: data.avatarUrl || userData.avatarUrl || null,
             name: userData.name || data.name,
         };
 
-        // Explicitly construct the payload based on the user's role
-        // This prevents leaking fields like `businessLogoUrl` into other roles
         switch (userData.role) {
             case 'Founder':
-                finalDoc.businessLogoUrl = data.businessLogoUrl || '';
+                updateData.businessLogoUrl = data.businessLogoUrl || null;
                 profilePayload = {
                     headline: data.bio?.substring(0, 100) || `Founder of ${data.businessName}`,
                     summary: data.businessDescription,
@@ -142,17 +225,15 @@ export default function OnboardingPage() {
                 break;
         }
 
-        finalDoc.profile = profilePayload;
+        updateData.profile = profilePayload;
+        
+        const sanitizedData = sanitizeForFirestore(updateData);
+        
+        await setDoc(userDocRef, sanitizedData, { merge: true });
 
-        // Ensure no undefined keys are in the final document
-        if (finalDoc.businessLogoUrl === undefined) {
-          delete finalDoc.businessLogoUrl;
-        }
-
-        await setDoc(userDocRef, finalDoc, { merge: true });
-
-        if ((finalDoc.avatarUrl && user.photoURL !== finalDoc.avatarUrl) || (finalDoc.name && user.displayName !== finalDoc.name)) {
-            await updateProfile(user, { photoURL: finalDoc.avatarUrl, displayName: finalDoc.name });
+        // Update Firebase Auth profile if needed
+        if ((sanitizedData.avatarUrl && user.photoURL !== sanitizedData.avatarUrl) || (sanitizedData.name && user.displayName !== sanitizedData.name)) {
+            await updateAuthProfile(user, { photoURL: sanitizedData.avatarUrl, displayName: sanitizedData.name });
         }
 
         toast({ title: 'Profile Updated', description: 'Your changes have been saved.' });
@@ -184,11 +265,11 @@ export default function OnboardingPage() {
     
     switch (userData.role) {
       case 'Founder':
-        return <FounderForm onSubmit={handleFormSubmit} isSaving={isSaving} currentUserData={userData} />;
+        return <FounderForm onSubmit={handleFormSubmit} isSaving={isSaving} currentUserData={userData} schema={founderSchema} />;
       case 'Talent':
-        return <TalentForm onSubmit={handleFormSubmit} isSaving={isSaving} currentUserData={userData} />;
+        return <TalentForm onSubmit={handleFormSubmit} isSaving={isSaving} currentUserData={userData} schema={talentSchema} />;
       case 'Investor':
-        return <InvestorForm onSubmit={handleFormSubmit} isSaving={isSaving} currentUserData={userData} />;
+        return <InvestorForm onSubmit={handleFormSubmit} isSaving={isSaving} currentUserData={userData} schema={investorSchema} />;
       default:
         return <p className="text-center text-red-500">Invalid user role. Please contact support.</p>;
     }
