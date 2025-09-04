@@ -17,8 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import FounderForm from '@/components/forms/founder-form';
 import TalentForm from '@/components/forms/talent-form';
 import InvestorForm from '@/components/forms/investor-form';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import Logo from '@/components/logo';
 
 // --- Zod Schemas ---
 const founderEntrySchema = z.object({
@@ -91,13 +90,14 @@ const talentSchema = z.object({
 });
 // --- End of Zod Schemas ---
 
-export default function EditProfilePage() {
+export default function OnboardingPage() {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
   const { toast } = useToast();
 
   const [userData, setUserData] = React.useState<UserData | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isNewUser, setIsNewUser] = React.useState(false);
   
   React.useEffect(() => {
     if (loading) return;
@@ -114,9 +114,20 @@ export default function EditProfilePage() {
                 if (userDoc.exists()) {
                     const data = userDoc.data() as UserData;
                     setUserData(data);
+                    const isProfileEmpty = !data.profile || Object.keys(data.profile).length === 0;
+                    setIsNewUser(isProfileEmpty);
                 } else {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not find your profile to edit.' });
-                    router.push('/dashboard?view=profile');
+                    // This case is unlikely if sign-up works, but good to have
+                    const dataFromAuth: UserData = {
+                        id: user.uid,
+                        name: user.displayName || '',
+                        email: user.email || '',
+                        role: 'Talent', // Default role
+                        avatarUrl: user.photoURL || '',
+                        profile: {}
+                    };
+                    setUserData(dataFromAuth);
+                    setIsNewUser(true);
                 }
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
@@ -203,14 +214,14 @@ export default function EditProfilePage() {
         // Clean the payload by removing any keys with undefined values
         Object.keys(profilePayload).forEach(key => profilePayload[key as keyof typeof profilePayload] === undefined && delete profilePayload[key as keyof typeof profilePayload]);
         Object.keys(updateData).forEach(key => updateData[key as keyof typeof updateData] === undefined && delete updateData[key as keyof typeof updateData]);
-
+        
         updateData.profile = profilePayload;
         
         await setDoc(userDocRef, updateData, { merge: true });
 
         // Update Firebase Auth profile if needed
-        if (updateData.avatarUrl && user.photoURL !== updateData.avatarUrl) {
-            await updateAuthProfile(user, { photoURL: updateData.avatarUrl });
+        if ((updateData.avatarUrl && user.photoURL !== updateData.avatarUrl) || (updateData.name && user.displayName !== updateData.name)) {
+            await updateAuthProfile(user, { photoURL: updateData.avatarUrl, displayName: updateData.name });
         }
 
         toast({ title: 'Profile Updated', description: 'Your changes have been saved.' });
@@ -223,6 +234,20 @@ export default function EditProfilePage() {
     }
   };
   
+  const getTitle = () => {
+    if (isNewUser) {
+       return userData?.role === 'Founder' ? 'Tell us about your startup.' : 'Tell us more about yourself'
+    }
+    return 'Edit Your Profile';
+  }
+
+  const getDescription = () => {
+      if (isNewUser) {
+          return userData?.role === 'Founder' ? "Complete your startup's profile to start connecting." : `Complete your ${userData?.role} profile to start connecting.`
+      }
+      return 'Update your profile details below. Your changes will be saved upon submission.';
+  }
+
   const renderFormForRole = () => {
     if (!userData) return null;
     
@@ -247,23 +272,21 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background p-4 md:p-8">
-        <div className="w-full max-w-4xl mx-auto">
-            <div className="mb-4">
-                <Button variant="ghost" onClick={() => router.push('/dashboard?view=profile')}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Back to Profile
-                </Button>
-            </div>
-            <Card>
-            <CardHeader>
-                <CardTitle>Edit Your Profile</CardTitle>
-                <CardDescription>Update your profile details below. Your changes will be saved upon submission.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {renderFormForRole()}
-            </CardContent>
-            </Card>
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-2xl space-y-4">
+        <div className="text-center">
+            <Logo />
         </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>{getTitle()}</CardTitle>
+            <CardDescription>{getDescription()}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {renderFormForRole()}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

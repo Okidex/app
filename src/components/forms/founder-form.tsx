@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useForm, FormProvider, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, FormProvider, useFieldArray, UseFormReturn } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -20,71 +19,22 @@ import { ensureUrlProtocol } from '@/lib/utils';
 import React from 'react';
 import { generateFounderBio } from '@/ai/flows/generate-founder-bio';
 import { useToast } from '@/hooks/use-toast';
-
-
-const founderEntrySchema = z.object({
-  founderName: z.string().min(1, 'Founder name is required.'),
-  founderTitle: z.string().min(1, 'Founder title is required.'),
-});
-
-const capTableEntrySchema = z.object({
-    investorName: z.string().min(1, "Investor name is required."),
-    holdingPercentage: z.coerce.number().min(0).max(100),
-    shareCount: z.coerce.number().min(0),
-});
-
-const founderSchema = z.object({
-  avatarUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  businessLogoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  businessName: z.string().min(1, 'Startup name is required.'),
-  websiteUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  linkedinUrl: z.string().url().optional().or(z.literal('')),
-  bio: z.string().optional(),
-  businessDescription: z.string().min(50, 'Business description must be at least 50 characters.'),
-  isIncorporated: z.boolean().default(false),
-  taxNumber: z.string().optional(),
-  uniqueEntityNumber: z.string().optional(),
-  entityStructure: z.string().optional(),
-  countryOfIncorporation: z.string().optional(),
-  fundingStage: z.enum(['pre-seed', 'seed', 'series-a', 'series-b']),
-  industry: z.string().min(1, 'Please enter at least one industry.'),
-  // Founders
-  founders: z.array(founderEntrySchema).optional(),
-  // Financial Metrics
-  grossMargins: z.coerce.number().optional(),
-  burnRate: z.coerce.number().optional(),
-  customerAcquisitionCost: z.coerce.number().optional(),
-  customerLifetimeValue: z.coerce.number().optional(),
-  mrr: z.coerce.number().optional(),
-  netProfitMargins: z.coerce.number().optional(),
-  cashBurnRunway: z.coerce.number().optional(),
-  roi: z.coerce.number().optional(),
-  cacPayback: z.coerce.number().optional(),
-  valuation: z.coerce.number().optional(),
-  capTable: z.array(capTableEntrySchema).optional(),
-}).refine(data => {
-    if (data.isIncorporated) {
-        return !!data.taxNumber && !!data.uniqueEntityNumber && !!data.entityStructure && !!data.countryOfIncorporation;
-    }
-    return true;
-}, {
-    message: 'All incorporation details are required if the business is incorporated.',
-    path: ['countryOfIncorporation'], // Show error message under the last field in the group
-});
+import { zodResolver } from '@hookform/resolvers/zod';
 
 interface FounderFormProps {
-  onSubmit: (data: z.infer<typeof founderSchema>) => void;
+  onSubmit: (data: any) => void;
   isSaving: boolean;
   currentUserData: User | null;
+  schema: z.ZodObject<any, any, any>;
 }
 
-export default function FounderForm({ onSubmit, isSaving, currentUserData }: FounderFormProps) {
+export default function FounderForm({ onSubmit, isSaving, currentUserData, schema }: FounderFormProps) {
   const [user] = useAuthState(auth);
   const { toast } = useToast();
   const [isGeneratingBio, setIsGeneratingBio] = React.useState(false);
 
-  const form = useForm<z.infer<typeof founderSchema>>({
-    resolver: zodResolver(founderSchema),
+  const form = useForm({
+    resolver: zodResolver(schema),
     defaultValues: {
       avatarUrl: '',
       businessLogoUrl: '',
@@ -182,22 +132,12 @@ export default function FounderForm({ onSubmit, isSaving, currentUserData }: Fou
     }
   };
 
-  const handleFormSubmit = (values: z.infer<typeof founderSchema>) => {
-    const submissionData = {
-      ...values,
-      interests: values.industry.split(',').map(i => i.trim()).filter(Boolean),
-    };
-    // The industry field is just for display in the form. `interests` is the real data.
-    const { industry, ...restOfData } = submissionData;
-    onSubmit(restOfData);
-  };
-
   const isIncorporated = form.watch('isIncorporated');
   const linkedinUrl = form.watch('linkedinUrl');
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         
         <FormField
             control={form.control}
@@ -555,3 +495,7 @@ export default function FounderForm({ onSubmit, isSaving, currentUserData }: Fou
     </FormProvider>
   );
 }
+
+    
+
+    

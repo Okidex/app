@@ -17,26 +17,17 @@ import { auth } from '@/lib/firebase';
 import { ensureUrlProtocol } from '@/lib/utils';
 import React from 'react';
 
-const talentSchema = z.object({
-  avatarUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  headline: z.string().min(10, 'Headline must be at least 10 characters.'),
-  summary: z.string().min(50, 'Summary must be at least 50 characters.'),
-  linkedinUrl: z.string().url().optional().or(z.literal('')),
-  skills: z.string().min(1, 'Please enter at least one skill.'),
-  interests: z.string().min(1, 'Please enter at least one industry.'),
-  openToCoFounding: z.boolean().default(false),
-});
-
 interface TalentFormProps {
-  onSubmit: (data: z.infer<typeof talentSchema>) => void;
+  onSubmit: (data: any) => void;
   isSaving: boolean;
   currentUserData: User | null;
+  schema: z.ZodObject<any, any, any>;
 }
 
-export default function TalentForm({ onSubmit, isSaving, currentUserData }: TalentFormProps) {
+export default function TalentForm({ onSubmit, isSaving, currentUserData, schema }: TalentFormProps) {
   const [user] = useAuthState(auth);
-  const form = useForm<z.infer<typeof talentSchema>>({
-    resolver: zodResolver(talentSchema),
+  const form = useForm({
+    resolver: zodResolver(schema),
     defaultValues: {
       avatarUrl: '',
       headline: '',
@@ -63,18 +54,9 @@ export default function TalentForm({ onSubmit, isSaving, currentUserData }: Tale
     }
   }, [currentUserData, form]);
 
-  const handleFormSubmit = (values: z.infer<typeof talentSchema>) => {
-    const submissionData = {
-      ...values,
-      skills: values.skills.split(',').map(i => i.trim()).filter(Boolean),
-      interests: values.interests.split(',').map(i => i.trim()).filter(Boolean),
-    };
-    onSubmit(submissionData);
-  };
-
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
          <FormField
           control={form.control}
           name="avatarUrl"
@@ -202,3 +184,7 @@ export default function TalentForm({ onSubmit, isSaving, currentUserData }: Tale
     </FormProvider>
   );
 }
+
+    
+
+    

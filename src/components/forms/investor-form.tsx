@@ -1,4 +1,4 @@
-\
+
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -16,27 +16,17 @@ import { auth } from '@/lib/firebase';
 import { ensureUrlProtocol } from '@/lib/utils';
 import React from 'react';
 
-const investorSchema = z.object({
-  avatarUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  headline: z.string().min(10, 'Headline must be at least 10 characters.'),
-  summary: z.string().min(50, 'Summary must be at least 50 characters.'),
-  linkedinUrl: z.string().url().optional().or(z.literal('')),
-  companyUrl: z.string().url().optional().or(z.literal('')),
-  investmentThesis: z.string().min(50, 'Investment thesis must be at least 50 characters.'),
-  interests: z.string().min(1, 'Please enter at least one industry.'),
-  pastInvestments: z.string().optional(),
-});
-
 interface InvestorFormProps {
-  onSubmit: (data: z.infer<typeof investorSchema>) => void;
+  onSubmit: (data: any) => void;
   isSaving: boolean;
   currentUserData: User | null;
+  schema: z.ZodObject<any, any, any>;
 }
 
-export default function InvestorForm({ onSubmit, isSaving, currentUserData }: InvestorFormProps) {
+export default function InvestorForm({ onSubmit, isSaving, currentUserData, schema }: InvestorFormProps) {
   const [user] = useAuthState(auth);
-  const form = useForm<z.infer<typeof investorSchema>>({
-    resolver: zodResolver(investorSchema),
+  const form = useForm({
+    resolver: zodResolver(schema),
     defaultValues: {
       avatarUrl: '',
       headline: '',
@@ -65,18 +55,9 @@ export default function InvestorForm({ onSubmit, isSaving, currentUserData }: In
     }
   }, [currentUserData, form]);
 
-  const handleFormSubmit = (values: z.infer<typeof investorSchema>) => {
-    const submissionData = {
-      ...values,
-      interests: values.interests.split(',').map(i => i.trim()).filter(Boolean),
-      pastInvestments: values.pastInvestments?.split(',').map(i => i.trim()).filter(Boolean) || [],
-    };
-    onSubmit(submissionData);
-  };
-
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
           name="avatarUrl"
@@ -220,3 +201,7 @@ export default function InvestorForm({ onSubmit, isSaving, currentUserData }: In
     </FormProvider>
   );
 }
+
+    
+
+    
