@@ -203,5 +203,3 @@ export default function InvestorForm({ onSubmit, isSaving, currentUserData, sche
 }
 
     
-
-    

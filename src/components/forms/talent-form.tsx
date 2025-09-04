@@ -186,5 +186,3 @@ export default function TalentForm({ onSubmit, isSaving, currentUserData, schema
 }
 
     
-
-    

@@ -150,16 +150,11 @@ export default function OnboardingPage() {
     try {
         const userDocRef = doc(db, 'users', user.uid);
         
-        let updateData: Partial<UserData> = {
-            name: userData.name,
-            avatarUrl: data.avatarUrl || null,
-        };
-        let profilePayload: Partial<FounderProfile | InvestorProfile | TalentProfile> = {};
-
+        let updateData: Partial<UserData> = {};
+        
         switch (userData.role) {
-            case 'Founder':
-                updateData.businessLogoUrl = data.businessLogoUrl || null;
-                profilePayload = {
+            case 'Founder': {
+                const profilePayload: FounderProfile = {
                     headline: data.bio?.substring(0, 100) || `Founder of ${data.businessName}`,
                     summary: data.businessDescription,
                     interests: data.industry?.split(',').map((i: string) => i.trim()).filter(Boolean) || [],
@@ -187,9 +182,16 @@ export default function OnboardingPage() {
                     capTable: data.capTable,
                     linkedinUrl: data.linkedinUrl,
                 };
+                updateData = {
+                    name: userData.name,
+                    avatarUrl: data.avatarUrl || null,
+                    businessLogoUrl: data.businessLogoUrl || null,
+                    profile: profilePayload
+                };
                 break;
-            case 'Investor':
-                profilePayload = {
+            }
+            case 'Investor': {
+                const profilePayload: InvestorProfile = {
                     headline: data.headline,
                     summary: data.summary,
                     interests: data.interests?.split(',').map((i: string) => i.trim()).filter(Boolean) || [],
@@ -198,9 +200,15 @@ export default function OnboardingPage() {
                     investmentThesis: data.investmentThesis,
                     pastInvestments: data.pastInvestments?.split(',').map((i: string) => i.trim()).filter(Boolean) || [],
                 };
+                updateData = {
+                     name: userData.name,
+                     avatarUrl: data.avatarUrl || null,
+                     profile: profilePayload
+                };
                 break;
-            case 'Talent':
-                 profilePayload = {
+            }
+            case 'Talent': {
+                 const profilePayload: TalentProfile = {
                     headline: data.headline,
                     summary: data.summary,
                     interests: data.interests?.split(',').map((i: string) => i.trim()).filter(Boolean) || [],
@@ -208,14 +216,14 @@ export default function OnboardingPage() {
                     skills: data.skills?.split(',').map((i: string) => i.trim()).filter(Boolean) || [],
                     openToCoFounding: data.openToCoFounding,
                 };
+                 updateData = {
+                     name: userData.name,
+                     avatarUrl: data.avatarUrl || null,
+                     profile: profilePayload
+                };
                 break;
+            }
         }
-
-        // Clean the payload by removing any keys with undefined values
-        Object.keys(profilePayload).forEach(key => profilePayload[key as keyof typeof profilePayload] === undefined && delete profilePayload[key as keyof typeof profilePayload]);
-        Object.keys(updateData).forEach(key => updateData[key as keyof typeof updateData] === undefined && delete updateData[key as keyof typeof updateData]);
-        
-        updateData.profile = profilePayload;
         
         await setDoc(userDocRef, updateData, { merge: true });
 
@@ -290,7 +298,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
-    
 
     

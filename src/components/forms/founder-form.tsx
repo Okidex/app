@@ -497,5 +497,3 @@ export default function FounderForm({ onSubmit, isSaving, currentUserData, schem
 }
 
     
-
-    
