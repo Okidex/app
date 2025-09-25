@@ -1,9 +1,6 @@
 {
   "hosting": {
-    "site": "okidex-investment-match",
-    "apphosting": {
-      "backendId": "okidex-app",
-      "region": "us-central1"
-    }
+    "source": ".",
+    "site": "okidex-investment-match"
   }
 }
