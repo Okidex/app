@@ -1,7 +1,7 @@
 {
   "hosting": {
     "source": ".",
-    "backend": {
+    "frameworksBackend": {
       "id": "okidex-app",
       "region": "us-central1"
     }
