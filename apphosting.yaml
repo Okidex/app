@@ -8,3 +8,6 @@ runConfig:
 # Required for Next.js apps
 runtime: nodejs20
 
+# Set a timeout for server actions
+serverActions:
+  timeoutSeconds: 120
