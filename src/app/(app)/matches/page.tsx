@@ -260,7 +260,7 @@
 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  \cf6 \strokec6 handleSwipe\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  (\cf7 \strokec7 direction\cf5 \strokec5 :\cf2 \strokec2  \cf3 \strokec3 'left'\cf2 \strokec2  \cf5 \strokec5 |\cf2 \strokec2  \cf3 \strokec3 'right'\cf2 \strokec2  \cf5 \strokec5 |\cf2 \strokec2  \cf3 \strokec3 'message'\cf2 \strokec2 ) \cf5 \strokec5 =>\cf2 \strokec2  \{\cb1 \
 \cb4         \cf5 \strokec5 if\cf2 \strokec2  (direction \cf5 \strokec5 ===\cf2 \strokec2  \cf3 \strokec3 'message'\cf2 \strokec2 ) \{\cb1 \
-\cb4             \cf9 \cb4 \strokec9 // handle message logic\cf2 \cb1 \strokec2 \
+\cb4             \cf9 \strokec9 // handle message logic\cf2 \cb1 \strokec2 \
 \cb4         \} \cf5 \strokec5 else\cf2 \strokec2  \{\cb1 \
 \cb4             \cf6 \strokec6 setCurrentIndex\cf2 \strokec2 (\cf7 \strokec7 prev\cf2 \strokec2  \cf5 \strokec5 =>\cf2 \strokec2  prev \cf5 \strokec5 +\cf2 \strokec2  \cf8 \strokec8 1\cf2 \strokec2 );\cb1 \
 \cb4         \}\cb1 \
@@ -358,7 +358,7 @@
 \cb4     \}\cb1 \
 \cb4     \cb1 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  \cf6 \strokec6 getCardStyle\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  (\cf7 \strokec7 dragX\cf5 \strokec5 :\cf2 \strokec2  \cf8 \strokec8 number\cf2 \strokec2 ) \cf5 \strokec5 =>\cf2 \strokec2  \{\cb1 \
-\cb4         \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 rotation\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  dragX \cf5 \strokec5 /\cf2 \strokec2  \cf8 \strokec8 20\cf2 \strokec2 ; \cf9 \cb4 \strokec9 // Control rotation angle\cf2 \cb1 \strokec2 \
+\cb4         \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 rotation\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  dragX \cf5 \strokec5 /\cf2 \strokec2  \cf8 \strokec8 20\cf2 \strokec2 ; \cf9 \strokec9 // Control rotation angle\cf2 \cb1 \strokec2 \
 \cb4         \cf5 \strokec5 return\cf2 \strokec2  \{\cb1 \
 \cb4             transform: \cf3 \strokec3 `translateX($\{\cf2 \strokec2 dragX\cf3 \strokec3 \}px) rotate($\{\cf2 \strokec2 rotation\cf3 \strokec3 \}deg)`\cf2 \strokec2 ,\cb1 \
 \cb4             transition: isDragging \cf5 \strokec5 ?\cf2 \strokec2  \cf3 \strokec3 'none'\cf2 \strokec2  \cf5 \strokec5 :\cf2 \strokec2  \cf3 \strokec3 'transform 0.3s ease-out'\cf2 \strokec2 ,\cb1 \

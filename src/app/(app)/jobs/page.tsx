@@ -85,7 +85,7 @@
 \cb4     \}\cb1 \
 \cb4     \cb1 \
 \cb4     \cf5 \strokec5 if\cf2 \strokec2  (\cf5 \strokec5 !\cf2 \strokec2 currentUser) \{\cb1 \
-\cb4         \cf9 \cb4 \strokec9 // Handle non-logged in user case\cf2 \cb1 \strokec2 \
+\cb4         \cf9 \strokec9 // Handle non-logged in user case\cf2 \cb1 \strokec2 \
 \cb4         \cf5 \strokec5 return\cf2 \strokec2  (\cb1 \
 \cb4              <\cf3 \strokec3 div\cf2 \strokec2  \cf6 \strokec6 className\cf5 \strokec5 =\cf3 \strokec3 "space-y-6"\cf2 \strokec2 >\cb1 \
 \cb4                 <\cf3 \strokec3 div\cf2 \strokec2  \cf6 \strokec6 className\cf5 \strokec5 =\cf3 \strokec3 "flex justify-between items-center"\cf2 \strokec2 >\cb1 \
@@ -115,7 +115,7 @@
 \cb4         \cf5 \strokec5 let\cf2 \strokec2  companyLogoUrl \cf5 \strokec5 =\cf2 \strokec2  \cf3 \strokec3 `https://picsum.photos/seed/logo-default/200/200`\cf2 \strokec2 ;\cb1 \
 \
 \cb4         \cf5 \strokec5 if\cf2 \strokec2  (isFounder) \{\cb1 \
-\cb4             \cf9 \cb4 \strokec9 // In a real app, you would fetch the startup details\cf2 \cb1 \strokec2 \
+\cb4             \cf9 \strokec9 // In a real app, you would fetch the startup details\cf2 \cb1 \strokec2 \
 \cb4             companyName \cf5 \strokec5 =\cf2 \strokec2  \cf3 \strokec3 'InnovateAI'\cf2 \strokec2 ;\cb1 \
 \cb4             companyLogoUrl \cf5 \strokec5 =\cf2 \strokec2  \cf3 \strokec3 'https://picsum.photos/seed/logo1/200/200'\cf2 \strokec2 ;\cb1 \
 \cb4         \} \cf5 \strokec5 else\cf2 \strokec2  \cf5 \strokec5 if\cf2 \strokec2  (isInvestor) \{\cb1 \

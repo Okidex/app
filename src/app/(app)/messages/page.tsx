@@ -55,7 +55,7 @@
 \cb4         \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 unsubscribe\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  \cf6 \strokec6 onSnapshot\cf2 \strokec2 (q, \cf5 \strokec5 async\cf2 \strokec2  (\cf7 \strokec7 snapshot\cf2 \strokec2 ) \cf5 \strokec5 =>\cf2 \strokec2  \{\cb1 \
 \cb4             \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 convos\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  snapshot.docs.\cf6 \strokec6 map\cf2 \strokec2 (\cf7 \strokec7 doc\cf2 \strokec2  \cf5 \strokec5 =>\cf2 \strokec2  (\{ id: doc.id, \cf5 \strokec5 ...\cf2 \strokec2 doc.\cf6 \strokec6 data\cf2 \strokec2 () \} \cf5 \strokec5 as\cf2 \strokec2  \cf6 \strokec6 Conversation\cf2 \strokec2 ));\cb1 \
 \cb4             \cb1 \
-\cb4             \cf9 \cb4 \strokec9 // Get all other participant IDs to fetch their user data\cf2 \cb1 \strokec2 \
+\cb4             \cf9 \strokec9 // Get all other participant IDs to fetch their user data\cf2 \cb1 \strokec2 \
 \cb4             \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 otherParticipantIds\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  convos.\cf6 \strokec6 flatMap\cf2 \strokec2 (\cf7 \strokec7 c\cf2 \strokec2  \cf5 \strokec5 =>\cf2 \strokec2  c.participantIds).\cf6 \strokec6 filter\cf2 \strokec2 (\cf7 \strokec7 id\cf2 \strokec2  \cf5 \strokec5 =>\cf2 \strokec2  id \cf5 \strokec5 !==\cf2 \strokec2  currentUser.id);\cb1 \
 \cb4             \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 uniqueParticipantIds\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  [\cf5 \strokec5 ...new\cf2 \strokec2  \cf6 \strokec6 Set\cf2 \strokec2 (otherParticipantIds)];\cb1 \
 \
@@ -186,5 +186,4 @@
 \cb4         </\cf3 \strokec3 div\cf2 \strokec2 >\cb1 \
 \cb4     );\cb1 \
 \cb4 \}\cb1 \
-\
 }

@@ -1,11 +1,10 @@
 {
   "hosting": {
     "source": ".",
-    "rewrites": [
-      {
-        "source": "**",
-        "apphosting": "okidex-app"
-      }
-    ]
+    "frameworksBackend": {
+      "id": "okidex-app",
+      "region": "us-central1"
+    }
   }
 }
+

@@ -101,9 +101,9 @@
 \cb4       investorId: currentUser.id,\cb1 \
 \cb4       title: newThesis.title,\cb1 \
 \cb4       summary: newThesis.summary,\cb1 \
-\cb4       industries: [\cf3 \strokec3 'SaaS'\cf2 \strokec2 , \cf3 \strokec3 'AI'\cf2 \strokec2 ], \cf9 \cb4 \strokec9 // Placeholder\cf2 \cb1 \strokec2 \
-\cb4       stages: [\cf3 \strokec3 'Seed'\cf2 \strokec2 ], \cf9 \cb4 \strokec9 // Placeholder\cf2 \cb1 \strokec2 \
-\cb4       geographies: [\cf3 \strokec3 'Global'\cf2 \strokec2 ], \cf9 \cb4 \strokec9 // Placeholder\cf2 \cb1 \strokec2 \
+\cb4       industries: [\cf3 \strokec3 'SaaS'\cf2 \strokec2 , \cf3 \strokec3 'AI'\cf2 \strokec2 ], \cf9 \strokec9 // Placeholder\cf2 \cb1 \strokec2 \
+\cb4       stages: [\cf3 \strokec3 'Seed'\cf2 \strokec2 ], \cf9 \strokec9 // Placeholder\cf2 \cb1 \strokec2 \
+\cb4       geographies: [\cf3 \strokec3 'Global'\cf2 \strokec2 ], \cf9 \strokec9 // Placeholder\cf2 \cb1 \strokec2 \
 \cb4       postedAt: \cf5 \strokec5 new\cf2 \strokec2  \cf6 \strokec6 Date\cf2 \strokec2 ().\cf6 \strokec6 toISOString\cf2 \strokec2 (),\cb1 \
 \cb4       isAnonymous: newThesis.isAnonymous,\cb1 \
 \cb4     \};\cb1 \
@@ -299,5 +299,4 @@
 \cb4     </\cf3 \strokec3 div\cf2 \strokec2 >\cb1 \
 \cb4   );\cb1 \
 \cb4 \}\cb1 \
-\
 }

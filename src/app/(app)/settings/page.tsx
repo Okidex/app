@@ -47,8 +47,8 @@
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf6 \strokec6 handleDeleteAccount\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf5 \strokec5 async\cf4 \strokec4  () \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
 \cb3     \cf6 \strokec6 setIsDeleting\cf4 \strokec4 (\cf7 \strokec7 true\cf4 \strokec4 );\cb1 \
 \cb3     \cf5 \strokec5 await\cf4 \strokec4  \cf5 \strokec5 new\cf4 \strokec4  \cf7 \strokec7 Promise\cf4 \strokec4 (\cf8 \strokec8 resolve\cf4 \strokec4  \cf5 \strokec5 =>\cf4 \strokec4  \cf6 \strokec6 setTimeout\cf4 \strokec4 (resolve, \cf7 \strokec7 2000\cf4 \strokec4 ));\cb1 \
-\cb3     \cf9 \cb3 \strokec9 // In a real app, you would redirect to a logged-out state.\cf4 \cb1 \strokec4 \
-\cb3     \cf9 \cb3 \strokec9 // For now, we just show a toast.\cf4 \cb1 \strokec4 \
+\cb3     \cf9 \strokec9 // In a real app, you would redirect to a logged-out state.\cf4 \cb1 \strokec4 \
+\cb3     \cf9 \strokec9 // For now, we just show a toast.\cf4 \cb1 \strokec4 \
 \cb3     \cf6 \strokec6 setIsDeleting\cf4 \strokec4 (\cf7 \strokec7 false\cf4 \strokec4 );\cb1 \
 \cb3     \cf6 \strokec6 toast\cf4 \strokec4 (\{\cb1 \
 \cb3         title: \cf2 \strokec2 "Account Deletion Initiated"\cf4 \strokec4 ,\cb1 \

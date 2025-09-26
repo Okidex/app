@@ -256,6 +256,4 @@
 \cb4             \{currentUser.role \cf5 \strokec5 ===\cf2 \strokec2  \cf3 \strokec3 'talent'\cf2 \strokec2  \cf5 \strokec5 &&\cf2 \strokec2  \cf6 \strokec6 renderTalentDashboard\cf2 \strokec2 ()\}\cb1 \
 \cb4         </\cf3 \strokec3 div\cf2 \strokec2 >\cb1 \
 \cb4     );\cb1 \
-\cb4 \}\cb1 \
-\
-}
+\cb4 \}}

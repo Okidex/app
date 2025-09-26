@@ -76,7 +76,7 @@
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  [\cf8 \strokec8 selectedMonth\cf2 \strokec2 , \cf8 \strokec8 setSelectedMonth\cf2 \strokec2 ] \cf5 \strokec5 =\cf2 \strokec2  \cf6 \strokec6 useState\cf2 \strokec2 (\cf8 \strokec8 0\cf2 \strokec2 );\cb1 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  [\cf8 \strokec8 founders\cf2 \strokec2 , \cf8 \strokec8 setFounders\cf2 \strokec2 ] \cf5 \strokec5 =\cf2 \strokec2  \cf6 \strokec6 useState\cf2 \strokec2 <\cf6 \strokec6 FullUserProfile\cf2 \strokec2 []>([]);\cb1 \
 \cb4     \cb1 \
-\cb4     \cf9 \cb4 \strokec9 // Simulate connection status.\cf2 \cb1 \strokec2 \
+\cb4     \cf9 \strokec9 // Simulate connection status.\cf2 \cb1 \strokec2 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 isConnected\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  \cf8 \strokec8 false\cf2 \strokec2 ; \cb1 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 showFinancials\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  currentUser?.role \cf5 \strokec5 ===\cf2 \strokec2  \cf3 \strokec3 'investor'\cf2 \strokec2  \cf5 \strokec5 &&\cf2 \strokec2  (isConnected \cf5 \strokec5 ||\cf2 \strokec2  currentUser?.id \cf5 \strokec5 ===\cf2 \strokec2  user.id);\cb1 \
 \
@@ -479,7 +479,7 @@
 \cb4         );\cb1 \
 \cb4     \}\cb1 \
 \
-\cb4     \cf9 \cb4 \strokec9 // Default for Talent and others\cf2 \cb1 \strokec2 \
+\cb4     \cf9 \strokec9 // Default for Talent and others\cf2 \cb1 \strokec2 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 talentProfile\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  user.profile \cf5 \strokec5 as\cf2 \strokec2  \cf6 \strokec6 TalentProfile\cf2 \strokec2 ;\cb1 \
 \cb4     \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 isSeekingCoFounder\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  user.role \cf5 \strokec5 ===\cf2 \strokec2  \cf3 \strokec3 'talent'\cf2 \strokec2  \cf5 \strokec5 &&\cf2 \strokec2  talentProfile.isSeekingCoFounder;\cb1 \
 \cb4     \cb1 \

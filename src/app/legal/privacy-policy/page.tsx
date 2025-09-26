@@ -10,13 +10,13 @@
 
 \f0\fs26 \cf2 \cb3 \expnd0\expndtw0\kerning0
 \outl0\strokewidth0 \strokec2 import\cf4 \strokec4  \{ Card \} \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 "@/components/ui/card"\cf4 \strokec4 ;\cb1 \
-\cf2 \cb3 \strokec2 import\cf4 \strokec4  UserAgreementContent \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 "@/components/legal/user-agreement-content"\cf4 \strokec4 ;\cb1 \
+\cf2 \cb3 \strokec2 import\cf4 \strokec4  PrivacyPolicyContent \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 "@/components/legal/privacy-policy-content"\cf4 \strokec4 ;\cb1 \
 \
-\cf2 \cb3 \strokec2 export\cf4 \strokec4  \cf2 \strokec2 default\cf4 \strokec4  \cf2 \strokec2 function\cf4 \strokec4  \cf6 \strokec6 UserAgreementPage\cf4 \strokec4 () \{\cb1 \
+\cf2 \cb3 \strokec2 export\cf4 \strokec4  \cf2 \strokec2 default\cf4 \strokec4  \cf2 \strokec2 function\cf4 \strokec4  \cf6 \strokec6 PrivacyPolicyPage\cf4 \strokec4 () \{\cb1 \
 \pard\pardeftab720\partightenfactor0
 \cf4 \cb3     \cf2 \strokec2 return\cf4 \strokec4  (\cb1 \
 \cb3         <\cf7 \strokec7 Card\cf4 \strokec4 >\cb1 \
-\cb3             <\cf7 \strokec7 UserAgreementContent\cf4 \strokec4  />\cb1 \
+\cb3             <\cf7 \strokec7 PrivacyPolicyContent\cf4 \strokec4  />\cb1 \
 \cb3         </\cf7 \strokec7 Card\cf4 \strokec4 >\cb1 \
 \cb3     );\cb1 \
 \cb3 \}\cb1 \

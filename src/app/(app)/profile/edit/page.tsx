@@ -88,7 +88,7 @@
 \cb3       \} \cf5 \strokec5 else\cf4 \strokec4  \cf5 \strokec5 if\cf4 \strokec4  (isFractionalLeader) \{\cb1 \
 \cb3         subRole \cf5 \strokec5 =\cf4 \strokec4  \cf2 \strokec2 'fractional-leader'\cf4 \strokec4 ;\cb1 \
 \cb3       \} \cf5 \strokec5 else\cf4 \strokec4  \cf5 \strokec5 if\cf4 \strokec4  (subRole \cf5 \strokec5 ===\cf4 \strokec4  \cf2 \strokec2 'vendor'\cf4 \strokec4  \cf5 \strokec5 ||\cf4 \strokec4  subRole \cf5 \strokec5 ===\cf4 \strokec4  \cf2 \strokec2 'fractional-leader'\cf4 \strokec4 ) \{\cb1 \
-\cb3         \cf9 \cb3 \strokec9 // If switches are off but current subRole is one of them, revert to default\cf4 \cb1 \strokec4 \
+\cb3         \cf9 \strokec9 // If switches are off but current subRole is one of them, revert to default\cf4 \cb1 \strokec4 \
 \cb3         subRole \cf5 \strokec5 =\cf4 \strokec4  talentProfile?.isSeekingCoFounder \cf5 \strokec5 ?\cf4 \strokec4  \cf2 \strokec2 'co-founder'\cf4 \strokec4  \cf5 \strokec5 :\cf4 \strokec4  \cf2 \strokec2 'employee'\cf4 \strokec4 ;\cb1 \
 \cb3       \}\cb1 \
 \cb3       \cb1 \
