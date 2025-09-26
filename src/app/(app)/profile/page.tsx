@@ -21,4 +21,6 @@
 \cb3   \}\cb1 \
 \
 \cb3   \cf6 \strokec6 redirect\cf4 \strokec4 (\cf5 \strokec5 `/users/$\{\cf4 \strokec4 user\cf5 \strokec5 .\cf4 \strokec4 id\cf5 \strokec5 \}`\cf4 \strokec4 );\cb1 \
-\cb3 \}}
+\cb3 \}\cb1 \
+\
+}
