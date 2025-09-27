@@ -228,7 +228,10 @@ export async function createUserAndProfile(
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
     try {
         const userRef = doc(db, "users", userId);
-        await updateDoc(userRef, { profile: data });
+        const userDoc = await getDoc(userRef);
+        const existingProfile = userDoc.data()?.profile || {};
+        
+        await updateDoc(userRef, { profile: { ...existingProfile, ...data } });
         return { success: true };
     } catch (error) {
         console.error("Error updating user profile:", error);

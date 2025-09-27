@@ -142,6 +142,7 @@ export interface Conversation {
   id:string;
   participantIds: string[];
   messages: Message[];
+  participants?: FullUserProfile[];
 }
 
 export interface Match {
@@ -154,6 +155,7 @@ export type NotificationType = 'message' | 'match' | 'connection' | 'applicant';
 
 export interface Notification {
   id: string;
+  userId: string;
   type: NotificationType;
   text: string;
   isRead: boolean;

@@ -21,7 +21,7 @@
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Separator \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/ui/separator"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  ProfilePictureUploader \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/profile/profile-picture-uploader"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  MonthlyFinancialsForm \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/profile/monthly-financials-form"\cf4 \strokec4 ;\cb1 \
-\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ FounderProfile, InvestorProfile, Startup, InvestmentStage, TalentProfile \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/lib/types"\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ FounderProfile, InvestorProfile, Startup, InvestmentStage, TalentProfile, FullUserProfile, Profile \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/lib/types"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  LinkedInPopulator \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/profile/linkedin-populator"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  BusinessLogoUploader \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/profile/business-logo-uploader"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  CapTableForm \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/profile/cap-table-form"\cf4 \strokec4 ;\cb1 \
@@ -45,7 +45,7 @@
 \
 \cf5 \cb3 \strokec5 export\cf4 \strokec4  \cf5 \strokec5 default\cf4 \strokec4  \cf5 \strokec5 function\cf4 \strokec4  \cf6 \strokec6 ProfileEditPage\cf4 \strokec4 () \{\cb1 \
 \pard\pardeftab720\partightenfactor0
-\cf4 \cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf7 \strokec7 user\cf4 \strokec4 , \cf7 \strokec7 setUser\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useState\cf4 \strokec4 <\cf7 \strokec7 any\cf4 \strokec4 >(\cf7 \strokec7 null\cf4 \strokec4 );\cb1 \
+\cf4 \cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf7 \strokec7 user\cf4 \strokec4 , \cf7 \strokec7 setUser\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useState\cf4 \strokec4 <\cf6 \strokec6 FullUserProfile\cf4 \strokec4  \cf5 \strokec5 |\cf4 \strokec4  \cf7 \strokec7 null\cf4 \strokec4 >(\cf7 \strokec7 null\cf4 \strokec4 );\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf7 \strokec7 loading\cf4 \strokec4 , \cf7 \strokec7 setLoading\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useState\cf4 \strokec4 (\cf7 \strokec7 true\cf4 \strokec4 );\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \{ \cf7 \strokec7 toast\cf4 \strokec4  \} \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useToast\cf4 \strokec4 ();\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 router\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useRouter\cf4 \strokec4 ();\cb1 \
@@ -127,9 +127,14 @@
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf6 \strokec6 handleSaveChanges\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf5 \strokec5 async\cf4 \strokec4  (\cf8 \strokec8 e\cf5 \strokec5 :\cf4 \strokec4  \cf6 \strokec6 React\cf4 \strokec4 .\cf6 \strokec6 FormEvent\cf4 \strokec4 ) \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
 \cb3     e.\cf6 \strokec6 preventDefault\cf4 \strokec4 ();\cb1 \
 \cb3     \cb1 \
-\cb3     \cf5 \strokec5 let\cf4 \strokec4  profileUpdateData\cf5 \strokec5 :\cf4 \strokec4  \cf6 \strokec6 Partial\cf4 \strokec4 <\cf6 \strokec6 FounderProfile\cf4 \strokec4  \cf5 \strokec5 |\cf4 \strokec4  \cf6 \strokec6 TalentProfile\cf4 \strokec4  \cf5 \strokec5 |\cf4 \strokec4  \cf6 \strokec6 InvestorProfile\cf4 \strokec4 > \cf5 \strokec5 =\cf4 \strokec4  \{\};\cb1 \
-\cb3     \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 formData\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf5 \strokec5 new\cf4 \strokec4  \cf6 \strokec6 FormData\cf4 \strokec4 (e.currentTarget \cf5 \strokec5 as\cf4 \strokec4  \cf6 \strokec6 HTMLFormElement\cf4 \strokec4 );\cb1 \
-\cb3     \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 data\cf5 \strokec5 :\cf4 \strokec4  \cf6 \strokec6 Record\cf4 \strokec4 <\cf7 \strokec7 string\cf4 \strokec4 ,\cf7 \strokec7 any\cf4 \strokec4 > \cf5 \strokec5 =\cf4 \strokec4  Object.\cf6 \strokec6 fromEntries\cf4 \strokec4 (formData.\cf6 \strokec6 entries\cf4 \strokec4 ());\cb1 \
+\cb3     \cf5 \strokec5 let\cf4 \strokec4  profileUpdateData\cf5 \strokec5 :\cf4 \strokec4  \cf6 \strokec6 Partial\cf4 \strokec4 <\cf6 \strokec6 Profile\cf4 \strokec4 > \cf5 \strokec5 =\cf4 \strokec4  \{\};\cb1 \
+\cb3     \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 form\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  e.currentTarget \cf5 \strokec5 as\cf4 \strokec4  \cf6 \strokec6 HTMLFormElement\cf4 \strokec4 ;\cb1 \
+\cb3     \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 formData\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf5 \strokec5 new\cf4 \strokec4  \cf6 \strokec6 FormData\cf4 \strokec4 (form);\cb1 \
+\cb3     \cb1 \
+\cb3     \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 data\cf5 \strokec5 :\cf4 \strokec4  \cf6 \strokec6 Record\cf4 \strokec4 <\cf7 \strokec7 string\cf4 \strokec4 ,\cf7 \strokec7 any\cf4 \strokec4 > \cf5 \strokec5 =\cf4 \strokec4  \{\};\cb1 \
+\cb3     formData.\cf6 \strokec6 forEach\cf4 \strokec4 ((\cf8 \strokec8 value\cf4 \strokec4 , \cf8 \strokec8 key\cf4 \strokec4 ) \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
+\cb3       data[key] \cf5 \strokec5 =\cf4 \strokec4  value;\cb1 \
+\cb3     \});\cb1 \
 \
 \cb3     \cf5 \strokec5 if\cf4 \strokec4  (isTalent \cf5 \strokec5 &&\cf4 \strokec4  talentProfile) \{\cb1 \
 \cb3       \cf5 \strokec5 let\cf4 \strokec4  subRole \cf5 \strokec5 =\cf4 \strokec4  talentProfile.subRole;\cb1 \

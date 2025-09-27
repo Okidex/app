@@ -11,8 +11,6 @@
 \f0\fs26 \cf2 \cb3 \expnd0\expndtw0\kerning0
 \outl0\strokewidth0 \strokec2 import\cf4 \strokec4  \{ getCurrentUser \} \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 "@/lib/data"\cf4 \strokec4 ;\cb1 \
 \cf2 \cb3 \strokec2 import\cf4 \strokec4  \{ redirect \} \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 "next/navigation"\cf4 \strokec4 ;\cb1 \
-\cf2 \cb3 \strokec2 import\cf4 \strokec4  \{ doc, getDoc \} \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 'firebase/firestore'\cf4 \strokec4 ;\cb1 \
-\cf2 \cb3 \strokec2 import\cf4 \strokec4  \{ db \} \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 '@/lib/firebase'\cf4 \strokec4 ;\cb1 \
 \cf2 \cb3 \strokec2 import\cf4 \strokec4  \{ auth \} \cf2 \strokec2 from\cf4 \strokec4  \cf5 \strokec5 '@/lib/firebase'\cf4 \strokec4 ;\cb1 \
 \
 \
@@ -21,20 +19,14 @@
 \cf4 \cb3     \cf2 \strokec2 const\cf4 \strokec4  \cf7 \strokec7 firebaseUser\cf4 \strokec4  \cf2 \strokec2 =\cf4 \strokec4  auth.currentUser;\cb1 \
 \
 \cb3     \cf2 \strokec2 if\cf4 \strokec4  (\cf2 \strokec2 !\cf4 \strokec4 firebaseUser) \{\cb1 \
+\cb3         \cf8 \strokec8 // This case handles when the user is not authenticated on the server.\cf4 \cb1 \strokec4 \
+\cb3         \cf8 \strokec8 // It might redirect even if client-side auth is present,\cf4 \cb1 \strokec4 \
+\cb3         \cf8 \strokec8 // so client-side logic in layout.tsx is the primary guard.\cf4 \cb1 \strokec4 \
 \cb3         \cf6 \strokec6 redirect\cf4 \strokec4 (\cf5 \strokec5 '/login'\cf4 \strokec4 );\cb1 \
 \cb3     \}\cb1 \
-\
-\cb3     \cf2 \strokec2 const\cf4 \strokec4  \cf7 \strokec7 userDocRef\cf4 \strokec4  \cf2 \strokec2 =\cf4 \strokec4  \cf6 \strokec6 doc\cf4 \strokec4 (db, \cf5 \strokec5 "users"\cf4 \strokec4 , firebaseUser.uid);\cb1 \
-\cb3     \cf2 \strokec2 const\cf4 \strokec4  \cf7 \strokec7 userDocSnap\cf4 \strokec4  \cf2 \strokec2 =\cf4 \strokec4  \cf2 \strokec2 await\cf4 \strokec4  \cf6 \strokec6 getDoc\cf4 \strokec4 (userDocRef);\cb1 \
-\
-\cb3     \cf2 \strokec2 if\cf4 \strokec4  (userDocSnap.\cf6 \strokec6 exists\cf4 \strokec4 ()) \{\cb1 \
-\cb3         \cf6 \strokec6 redirect\cf4 \strokec4 (\cf5 \strokec5 `/users/$\{\cf4 \strokec4 firebaseUser\cf5 \strokec5 .\cf4 \strokec4 uid\cf5 \strokec5 \}`\cf4 \strokec4 );\cb1 \
-\cb3     \} \cf2 \strokec2 else\cf4 \strokec4  \{\cb1 \
-\cb3         \cf8 \strokec8 // This case might happen if there's a delay or error in profile creation after signup.\cf4 \cb1 \strokec4 \
-\cb3         \cf8 \strokec8 // Or if a user is authenticated but doesn't have a profile document.\cf4 \cb1 \strokec4 \
-\cb3         console.\cf6 \strokec6 error\cf4 \strokec4 (\cf5 \strokec5 "User is authenticated but no profile document found."\cf4 \strokec4 );\cb1 \
-\cb3         \cf6 \strokec6 redirect\cf4 \strokec4 (\cf5 \strokec5 '/login'\cf4 \strokec4 );\cb1 \
-\cb3     \}\cb1 \
+\cb3     \cb1 \
+\cb3     \cf8 \strokec8 // Redirect to the dynamic user profile page.\cf4 \cb1 \strokec4 \
+\cb3     \cf6 \strokec6 redirect\cf4 \strokec4 (\cf5 \strokec5 `/users/$\{\cf4 \strokec4 firebaseUser\cf5 \strokec5 .\cf4 \strokec4 uid\cf5 \strokec5 \}`\cf4 \strokec4 );\cb1 \
 \cb3 \}\cb1 \
 \
 }

@@ -18,9 +18,6 @@ export const investmentStages: InvestmentStage[] = ['Idea', 'Pre-seed', 'Seed', 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) {
-    // This part is tricky because auth state is often not immediately available on server.
-    // A more robust solution involves session cookies or waiting for auth state.
-    // For this prototype, we'll assume client-side auth state is managed correctly.
     return null;
   }
 
