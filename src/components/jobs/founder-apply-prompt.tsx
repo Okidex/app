@@ -14,7 +14,7 @@ export default function FounderApplyPrompt({ open, onOpenChange }: FounderApplyP
     const router = useRouter();
 
     const handleCreateAccount = () => {
-        router.push('/auth/register/talent');
+        router.push('/register/talent');
     }
     
     return (

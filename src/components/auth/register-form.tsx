@@ -39,7 +39,7 @@ export default function RegisterForm() {
       subRole: role === 'talent' ? subRole : undefined,
     }));
     
-    router.push(`/auth/register/${role}`);
+    router.push(`/register/${role}`);
   };
 
   return (
