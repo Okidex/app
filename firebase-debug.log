@@ -1,50 +1,45 @@
-[debug] [2025-09-26T16:02:15.707Z] ----------------------------------------------------------------------
-[debug] [2025-09-26T16:02:15.711Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy
-[debug] [2025-09-26T16:02:15.712Z] CLI Version:   14.17.0
-[debug] [2025-09-26T16:02:15.712Z] Platform:      darwin
-[debug] [2025-09-26T16:02:15.712Z] Node Version:  v22.18.0
-[debug] [2025-09-26T16:02:15.712Z] Time:          Fri Sep 26 2025 21:32:15 GMT+0530 (India Standard Time)
-[debug] [2025-09-26T16:02:15.712Z] ----------------------------------------------------------------------
+[debug] [2025-09-27T10:50:55.988Z] ----------------------------------------------------------------------
+[debug] [2025-09-27T10:50:55.994Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy
+[debug] [2025-09-27T10:50:55.994Z] CLI Version:   14.17.0
+[debug] [2025-09-27T10:50:55.994Z] Platform:      darwin
+[debug] [2025-09-27T10:50:55.994Z] Node Version:  v22.18.0
+[debug] [2025-09-27T10:50:55.994Z] Time:          Sat Sep 27 2025 16:20:55 GMT+0530 (India Standard Time)
+[debug] [2025-09-27T10:50:55.994Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"destination"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"glob"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"dynamicLinks"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"destination"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"run"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"dynamicLinks"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"destination"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"regex"}
-[debug] [2025-09-26T16:02:15.809Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"dynamicLinks"}
-[debug] [2025-09-26T16:02:15.809Z] Field "/hosting/rewrites/0" in "firebase.json" is possibly invalid: must match a schema in anyOf
-[debug] [2025-09-26T16:02:15.809Z] Field "/hosting" in "firebase.json" is possibly invalid: must be array
-[debug] [2025-09-26T16:02:15.809Z] Field "/hosting" in "firebase.json" is possibly invalid: must match a schema in anyOf
-[debug] [2025-09-26T16:02:15.812Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2025-09-26T16:02:15.812Z] > authorizing via signed-in user (wilfred@okidex.com)
-[debug] [2025-09-26T16:02:15.812Z] [iam] checking project okidex-investment-match for permissions ["firebase.projects.get","firebasehosting.sites.update"]
-[debug] [2025-09-26T16:02:15.813Z] Checked if tokens are valid: false, expires at: 1758866453543
-[debug] [2025-09-26T16:02:15.813Z] Checked if tokens are valid: false, expires at: 1758866453543
-[debug] [2025-09-26T16:02:15.813Z] > refreshing access token with scopes: []
-[debug] [2025-09-26T16:02:15.814Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
-[debug] [2025-09-26T16:02:15.814Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2025-09-26T16:02:16.024Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
-[debug] [2025-09-26T16:02:16.024Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2025-09-26T16:02:16.041Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions [none]
-[debug] [2025-09-26T16:02:16.041Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions x-goog-quota-user=projects/okidex-investment-match
-[debug] [2025-09-26T16:02:16.041Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
-[debug] [2025-09-26T16:02:17.468Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions 200
-[debug] [2025-09-26T16:02:17.468Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
-[debug] [2025-09-26T16:02:17.469Z] Checked if tokens are valid: true, expires at: 1758906134024
-[debug] [2025-09-26T16:02:17.469Z] Checked if tokens are valid: true, expires at: 1758906134024
-[debug] [2025-09-26T16:02:17.470Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/okidex-investment-match [none]
-[debug] [2025-09-26T16:02:17.912Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/okidex-investment-match 200
-[debug] [2025-09-26T16:02:17.912Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/okidex-investment-match {"projectId":"okidex-investment-match","projectNumber":"668774575046","displayName":"Okidex Investment Match","name":"projects/okidex-investment-match","resources":{"hostingSite":"okidex-investment-match"},"state":"ACTIVE","etag":"1_367080cc-5a2d-455c-ac0f-e6afcdbf7d79"}
-[debug] [2025-09-26T16:02:18.583Z] SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"destination"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"glob"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"dynamicLinks"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"destination"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"run"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"dynamicLinks"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"destination"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"function"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"regex"}
+[debug] [2025-09-27T10:50:56.089Z] Object "/hosting/rewrites/0" in "firebase.json" is missing required property: {"missingProperty":"dynamicLinks"}
+[debug] [2025-09-27T10:50:56.089Z] Field "/hosting/rewrites/0" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2025-09-27T10:50:56.089Z] Field "/hosting" in "firebase.json" is possibly invalid: must be array
+[debug] [2025-09-27T10:50:56.089Z] Field "/hosting" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2025-09-27T10:50:56.093Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-09-27T10:50:56.093Z] > authorizing via signed-in user (wilfred@okidex.com)
+[debug] [2025-09-27T10:50:56.093Z] [iam] checking project okidex-investment-match for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-09-27T10:50:56.094Z] Checked if tokens are valid: true, expires at: 1758973840317
+[debug] [2025-09-27T10:50:56.094Z] Checked if tokens are valid: true, expires at: 1758973840317
+[debug] [2025-09-27T10:50:56.094Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions [none]
+[debug] [2025-09-27T10:50:56.094Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions x-goog-quota-user=projects/okidex-investment-match
+[debug] [2025-09-27T10:50:56.094Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-09-27T10:50:57.777Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions 200
+[debug] [2025-09-27T10:50:57.777Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/okidex-investment-match:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-09-27T10:50:57.778Z] Checked if tokens are valid: true, expires at: 1758973840317
+[debug] [2025-09-27T10:50:57.778Z] Checked if tokens are valid: true, expires at: 1758973840317
+[debug] [2025-09-27T10:50:57.778Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/okidex-investment-match [none]
+[debug] [2025-09-27T10:50:58.604Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/okidex-investment-match 200
+[debug] [2025-09-27T10:50:58.604Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/okidex-investment-match {"projectId":"okidex-investment-match","projectNumber":"668774575046","displayName":"Okidex Investment Match","name":"projects/okidex-investment-match","resources":{"hostingSite":"okidex-investment-match"},"state":"ACTIVE","etag":"1_367080cc-5a2d-455c-ac0f-e6afcdbf7d79"}
+[debug] [2025-09-27T10:50:58.959Z] SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
     at JSON.parse (<anonymous>)
     at getConfig (/usr/local/lib/node_modules/firebase-tools/lib/frameworks/express/index.js:16:30)
     at async discover (/usr/local/lib/node_modules/firebase-tools/lib/frameworks/express/index.js:24:43)
