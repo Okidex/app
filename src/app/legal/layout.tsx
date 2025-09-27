@@ -24,8 +24,7 @@
 \cb3     <\cf5 \strokec5 div\cf4 \strokec4  \cf6 \strokec6 className\cf2 \strokec2 =\cf5 \strokec5 "flex min-h-screen flex-col bg-secondary/30"\cf4 \strokec4 >\cb1 \
 \cb3        <\cf5 \strokec5 header\cf4 \strokec4  \cf6 \strokec6 className\cf2 \strokec2 =\cf5 \strokec5 "container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center"\cf4 \strokec4 >\cb1 \
 \cb3         <\cf8 \strokec8 Logo\cf4 \strokec4  />\cb1 \
-\cb3       </\cf5 \strokec5 header\cf4 \strokec4 >\cb1 \
-\cb3       <\cf5 \strokec5 main\cf4 \strokec4  \cf6 \strokec6 className\cf2 \strokec2 =\cf5 \strokec5 "flex-1 py-8 sm:py-12"\cf4 \strokec4 >\cb1 \
+\cb3       </\cf5 \strokec5 header\cf4 \strokec4 >      <\cf5 \strokec5 main\cf4 \strokec4  \cf6 \strokec6 className\cf2 \strokec2 =\cf5 \strokec5 "flex-1 py-8 sm:py-12"\cf4 \strokec4 >\cb1 \
 \cb3         <\cf5 \strokec5 div\cf4 \strokec4  \cf6 \strokec6 className\cf2 \strokec2 =\cf5 \strokec5 "container mx-auto max-w-4xl"\cf4 \strokec4 >\cb1 \
 \cb3             <\cf5 \strokec5 div\cf4 \strokec4  \cf6 \strokec6 className\cf2 \strokec2 =\cf5 \strokec5 "mb-6"\cf4 \strokec4 >\cb1 \
 \cb3                 <\cf8 \strokec8 Button\cf4 \strokec4  \cf6 \strokec6 asChild\cf4 \strokec4  \cf6 \strokec6 variant\cf2 \strokec2 =\cf5 \strokec5 "outline"\cf4 \strokec4 >\cb1 \

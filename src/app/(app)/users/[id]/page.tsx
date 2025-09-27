@@ -84,7 +84,7 @@
 \cb4         \cf5 \strokec5 const\cf2 \strokec2  \cf6 \strokec6 fetchFounders\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  \cf5 \strokec5 async\cf2 \strokec2  () \cf5 \strokec5 =>\cf2 \strokec2  \{\cb1 \
 \cb4             \cf5 \strokec5 if\cf2 \strokec2 (startup) \{\cb1 \
 \cb4                 \cf5 \strokec5 const\cf2 \strokec2  \cf8 \strokec8 founderProfiles\cf2 \strokec2  \cf5 \strokec5 =\cf2 \strokec2  \cf5 \strokec5 await\cf2 \strokec2  \cf8 \strokec8 Promise\cf2 \strokec2 .\cf6 \strokec6 all\cf2 \strokec2 (startup.founderIds.\cf6 \strokec6 map\cf2 \strokec2 (\cf7 \strokec7 id\cf2 \strokec2  \cf5 \strokec5 =>\cf2 \strokec2  \cf6 \strokec6 getUserById\cf2 \strokec2 (id)));\cb1 \
-\cb4                 \cf6 \strokec6 setFounders\cf2 \strokec2 (founderProfiles.\cf6 \strokec6 filter\cf2 \strokec2 (Boolean) \cf5 \strokec5 as\cf2 \strokec2  \cf6 \strokec6 FullUserProfile\cf2 \strokec2 []);\cb1 \
+\cb4                 \cf6 \strokec6 setFounders\cf2 \strokec2 (founderProfiles.\cf6 \strokec6 filter\cf2 \strokec2 ((\cf7 \strokec7 p\cf2 \strokec2 )\cf5 \strokec5 :\cf2 \strokec2  \cf7 \strokec7 p\cf2 \strokec2  \cf5 \strokec5 is\cf2 \strokec2  \cf6 \strokec6 FullUserProfile\cf2 \strokec2  \cf5 \strokec5 =>\cf2 \strokec2  p \cf5 \strokec5 !==\cf2 \strokec2  \cf8 \strokec8 null\cf2 \strokec2 ));\cb1 \
 \cb4             \}\cb1 \
 \cb4         \};\cb1 \
 \cb4         \cf6 \strokec6 fetchFounders\cf2 \strokec2 ();\cb1 \

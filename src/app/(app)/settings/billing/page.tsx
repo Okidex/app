@@ -12,7 +12,7 @@
 \outl0\strokewidth0 \strokec2 "use client"\cf4 \strokec4 ;\cb1 \
 \
 \pard\pardeftab720\partightenfactor0
-\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ useState \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 'react'\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ useState, useEffect \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 'react'\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Button \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/components/ui/button'\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/components/ui/card'\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ cn \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/lib/utils'\cf4 \strokec4 ;\cb1 \
@@ -21,7 +21,8 @@
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Badge \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/components/ui/badge'\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  Link \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 'next/link'\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ getCurrentUser \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/lib/data'\cf4 \strokec4 ;\cb1 \
-\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ FounderProfile \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/lib/types'\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ FounderProfile, FullUserProfile \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/lib/types'\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Skeleton \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 '@/components/ui/skeleton'\cf4 \strokec4 ;\cb1 \
 \
 \cf5 \cb3 \strokec5 const\cf4 \strokec4  \cf6 \strokec6 features\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  [\cb1 \
 \pard\pardeftab720\partightenfactor0
@@ -35,8 +36,29 @@
 \cf5 \cb3 \strokec5 export\cf4 \strokec4  \cf5 \strokec5 default\cf4 \strokec4  \cf5 \strokec5 function\cf4 \strokec4  \cf7 \strokec7 BillingPage\cf4 \strokec4 () \{\cb1 \
 \pard\pardeftab720\partightenfactor0
 \cf4 \cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf6 \strokec6 selectedPlan\cf4 \strokec4 , \cf6 \strokec6 setSelectedPlan\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 useState\cf4 \strokec4 <\cf2 \strokec2 'monthly'\cf4 \strokec4  \cf5 \strokec5 |\cf4 \strokec4  \cf2 \strokec2 'yearly'\cf4 \strokec4 >(\cf2 \strokec2 'yearly'\cf4 \strokec4 );\cb1 \
+\cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf6 \strokec6 user\cf4 \strokec4 , \cf6 \strokec6 setUser\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 useState\cf4 \strokec4 <\cf7 \strokec7 FullUserProfile\cf4 \strokec4  \cf5 \strokec5 |\cf4 \strokec4  \cf6 \strokec6 null\cf4 \strokec4 >(\cf6 \strokec6 null\cf4 \strokec4 );\cb1 \
+\cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf6 \strokec6 loading\cf4 \strokec4 , \cf6 \strokec6 setLoading\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 useState\cf4 \strokec4 (\cf6 \strokec6 true\cf4 \strokec4 );\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \{ \cf6 \strokec6 toast\cf4 \strokec4  \} \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 useToast\cf4 \strokec4 ();\cb1 \
-\cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf6 \strokec6 user\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 getCurrentUser\cf4 \strokec4 ()\cf5 \strokec5 !\cf4 \strokec4 ;\cb1 \
+\
+\cb3   \cf7 \strokec7 useEffect\cf4 \strokec4 (() \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
+\cb3     \cf7 \strokec7 getCurrentUser\cf4 \strokec4 ().\cf7 \strokec7 then\cf4 \strokec4 (\cf8 \strokec8 userProfile\cf4 \strokec4  \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
+\cb3         \cf7 \strokec7 setUser\cf4 \strokec4 (userProfile);\cb1 \
+\cb3         \cf7 \strokec7 setLoading\cf4 \strokec4 (\cf6 \strokec6 false\cf4 \strokec4 );\cb1 \
+\cb3     \});\cb1 \
+\cb3   \}, []);\cb1 \
+\cb3   \cb1 \
+\cb3   \cf5 \strokec5 if\cf4 \strokec4  (loading \cf5 \strokec5 ||\cf4 \strokec4  \cf5 \strokec5 !\cf4 \strokec4 user) \{\cb1 \
+\cb3     \cf5 \strokec5 return\cf4 \strokec4  (\cb1 \
+\cb3         <\cf2 \strokec2 div\cf4 \strokec4  \cf7 \strokec7 className\cf5 \strokec5 =\cf2 \strokec2 "space-y-6"\cf4 \strokec4 >\cb1 \
+\cb3             <\cf2 \strokec2 div\cf4 \strokec4 >\cb1 \
+\cb3                 <\cf6 \strokec6 Skeleton\cf4 \strokec4  \cf7 \strokec7 className\cf5 \strokec5 =\cf2 \strokec2 "h-8 w-32 mb-2"\cf4 \strokec4  />\cb1 \
+\cb3                 <\cf6 \strokec6 Skeleton\cf4 \strokec4  \cf7 \strokec7 className\cf5 \strokec5 =\cf2 \strokec2 "h-4 w-72"\cf4 \strokec4  />\cb1 \
+\cb3             </\cf2 \strokec2 div\cf4 \strokec4 >\cb1 \
+\cb3             <\cf6 \strokec6 Skeleton\cf4 \strokec4  \cf7 \strokec7 className\cf5 \strokec5 =\cf2 \strokec2 "h-64 w-full"\cf4 \strokec4  />\cb1 \
+\cb3         </\cf2 \strokec2 div\cf4 \strokec4 >\cb1 \
+\cb3     )\cb1 \
+\cb3   \}\cb1 \
+\
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf6 \strokec6 isFounder\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  user.role \cf5 \strokec5 ===\cf4 \strokec4  \cf2 \strokec2 'founder'\cf4 \strokec4 ;\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf6 \strokec6 isPremiumFounder\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  isFounder \cf5 \strokec5 &&\cf4 \strokec4  (user.profile \cf5 \strokec5 as\cf4 \strokec4  \cf7 \strokec7 FounderProfile\cf4 \strokec4 ).isPremium;\cb1 \
 \

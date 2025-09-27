@@ -14,7 +14,7 @@
 \outl0\strokewidth0 \strokec2 "use client"\cf4 \strokec4 ;\cb1 \
 \
 \pard\pardeftab720\partightenfactor0
-\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ useState \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "react"\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ useState, useEffect \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "react"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/ui/card"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  Link \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "next/link"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Button, buttonVariants \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/ui/button"\cf4 \strokec4 ;\cb1 \
@@ -25,13 +25,35 @@
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ useToast \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/hooks/use-toast"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/ui/alert-dialog"\cf4 \strokec4 ;\cb1 \
 \cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ getCurrentUser \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/lib/data"\cf4 \strokec4 ;\cb1 \
-\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ FounderProfile \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/lib/types"\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ FounderProfile, FullUserProfile \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/lib/types"\cf4 \strokec4 ;\cb1 \
+\cf5 \cb3 \strokec5 import\cf4 \strokec4  \{ Skeleton \} \cf5 \strokec5 from\cf4 \strokec4  \cf2 \strokec2 "@/components/ui/skeleton"\cf4 \strokec4 ;\cb1 \
 \
 \cf5 \cb3 \strokec5 export\cf4 \strokec4  \cf5 \strokec5 default\cf4 \strokec4  \cf5 \strokec5 function\cf4 \strokec4  \cf6 \strokec6 SettingsPage\cf4 \strokec4 () \{\cb1 \
 \pard\pardeftab720\partightenfactor0
 \cf4 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \{ \cf7 \strokec7 toast\cf4 \strokec4  \} \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useToast\cf4 \strokec4 ();\cb1 \
-\cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 user\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 getCurrentUser\cf4 \strokec4 ()\cf5 \strokec5 !\cf4 \strokec4 ;\cb1 \
+\cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf7 \strokec7 user\cf4 \strokec4 , \cf7 \strokec7 setUser\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useState\cf4 \strokec4 <\cf6 \strokec6 FullUserProfile\cf4 \strokec4  \cf5 \strokec5 |\cf4 \strokec4  \cf7 \strokec7 null\cf4 \strokec4 >(\cf7 \strokec7 null\cf4 \strokec4 );\cb1 \
+\cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf7 \strokec7 loading\cf4 \strokec4 , \cf7 \strokec7 setLoading\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useState\cf4 \strokec4 (\cf7 \strokec7 true\cf4 \strokec4 );\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  [\cf7 \strokec7 isDeleting\cf4 \strokec4 , \cf7 \strokec7 setIsDeleting\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 useState\cf4 \strokec4 (\cf7 \strokec7 false\cf4 \strokec4 );\cb1 \
+\
+\cb3   \cf6 \strokec6 useEffect\cf4 \strokec4 (() \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
+\cb3     \cf6 \strokec6 getCurrentUser\cf4 \strokec4 ().\cf6 \strokec6 then\cf4 \strokec4 (\cf8 \strokec8 userProfile\cf4 \strokec4  \cf5 \strokec5 =>\cf4 \strokec4  \{\cb1 \
+\cb3         \cf6 \strokec6 setUser\cf4 \strokec4 (userProfile);\cb1 \
+\cb3         \cf6 \strokec6 setLoading\cf4 \strokec4 (\cf7 \strokec7 false\cf4 \strokec4 );\cb1 \
+\cb3     \});\cb1 \
+\cb3   \}, []);\cb1 \
+\
+\cb3   \cf5 \strokec5 if\cf4 \strokec4  (loading \cf5 \strokec5 ||\cf4 \strokec4  \cf5 \strokec5 !\cf4 \strokec4 user) \{\cb1 \
+\cb3     \cf5 \strokec5 return\cf4 \strokec4  (\cb1 \
+\cb3         <\cf2 \strokec2 div\cf4 \strokec4  \cf6 \strokec6 className\cf5 \strokec5 =\cf2 \strokec2 "space-y-6"\cf4 \strokec4 >\cb1 \
+\cb3             <\cf2 \strokec2 div\cf4 \strokec4 >\cb1 \
+\cb3                 <\cf7 \strokec7 Skeleton\cf4 \strokec4  \cf6 \strokec6 className\cf5 \strokec5 =\cf2 \strokec2 "h-8 w-32 mb-2"\cf4 \strokec4  />\cb1 \
+\cb3                 <\cf7 \strokec7 Skeleton\cf4 \strokec4  \cf6 \strokec6 className\cf5 \strokec5 =\cf2 \strokec2 "h-4 w-72"\cf4 \strokec4  />\cb1 \
+\cb3             </\cf2 \strokec2 div\cf4 \strokec4 >\cb1 \
+\cb3             <\cf7 \strokec7 Skeleton\cf4 \strokec4  \cf6 \strokec6 className\cf5 \strokec5 =\cf2 \strokec2 "h-48 w-full"\cf4 \strokec4  />\cb1 \
+\cb3             <\cf7 \strokec7 Skeleton\cf4 \strokec4  \cf6 \strokec6 className\cf5 \strokec5 =\cf2 \strokec2 "h-64 w-full"\cf4 \strokec4  />\cb1 \
+\cb3         </\cf2 \strokec2 div\cf4 \strokec4 >\cb1 \
+\cb3     )\cb1 \
+\cb3   \}\cb1 \
 \cb3   \cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 isFounder\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  user.role \cf5 \strokec5 ===\cf4 \strokec4  \cf2 \strokec2 'founder'\cf4 \strokec4 ;\cb1 \
 \cb3   \cf5 \strokec5 const\cf4 \strokec4  \cf7 \strokec7 isPremiumFounder\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  isFounder \cf5 \strokec5 &&\cf4 \strokec4  (user.profile \cf5 \strokec5 as\cf4 \strokec4  \cf6 \strokec6 FounderProfile\cf4 \strokec4 ).isPremium;\cb1 \
