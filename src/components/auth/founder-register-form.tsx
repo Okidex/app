@@ -18,6 +18,8 @@ import { Separator } from "@/components/ui/separator";
 import { createUserAndProfile } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { InvestmentStage } from "@/lib/types";
+import ProfilePhotoUploader from "./profile-photo-uploader";
+import LogoUploader from "./logo-uploader";
 
 export default function FounderRegisterForm() {
   const router = useRouter();
@@ -28,8 +30,8 @@ export default function FounderRegisterForm() {
   const [incorporationDate, setIncorporationDate] = useState<Date | undefined>();
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
 
-  const avatarFileRef = useRef<HTMLInputElement>(null);
-  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ export default function FounderRegisterForm() {
         taxId: formData.get('tax-id') as string,
     };
     
-    const getFileAsDataURL = async (file: File | undefined): Promise<string | undefined> => {
+    const getFileAsDataURL = async (file: File | null): Promise<string | undefined> => {
         if (!file) return undefined;
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -63,9 +65,6 @@ export default function FounderRegisterForm() {
             reader.readAsDataURL(file);
         });
     };
-
-    const avatarFile = avatarFileRef.current?.files?.[0];
-    const logoFile = logoFileRef.current?.files?.[0];
 
     const avatarDataUrl = await getFileAsDataURL(avatarFile);
     const logoDataUrl = await getFileAsDataURL(logoFile);
@@ -100,20 +99,11 @@ export default function FounderRegisterForm() {
          <div className="md:col-span-1 space-y-8">
             <div>
                 <Label className="mb-2 block text-center">Profile Photo</Label>
-                <input type="file" ref={avatarFileRef} className="hidden" id="avatar-upload" accept="image/*" />
-                 <div className="flex flex-col items-center space-y-2">
-                    <Button type="button" variant="outline" onClick={() => avatarFileRef.current?.click()}>Choose Photo</Button>
-                    <p className="text-xs text-muted-foreground text-center">Upload your headshot</p>
-                </div>
-
+                <ProfilePhotoUploader onFileChange={setAvatarFile} />
             </div>
              <div>
                 <Label className="mb-2 block text-center">Company Logo</Label>
-                 <input type="file" ref={logoFileRef} className="hidden" id="logo-upload" accept="image/*" />
-                <div className="flex flex-col items-center space-y-2">
-                    <Button type="button" variant="outline" onClick={() => logoFileRef.current?.click()}>Choose Logo</Button>
-                    <p className="text-xs text-muted-foreground text-center">Upload your company logo</p>
-                </div>
+                <LogoUploader onFileChange={setLogoFile} />
             </div>
         </div>
         <div className="md:col-span-2 space-y-6">

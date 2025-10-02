@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Button } from "../ui/button";
-import { Loader2, UploadCloud } from "lucide-react";
+import { UploadCloud } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-export default function LogoUploader() {
-  const [isLoading, setIsLoading] = useState(false);
+interface LogoUploaderProps {
+  onFileChange: (file: File | null) => void;
+}
+
+export default function LogoUploader({ onFileChange }: LogoUploaderProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,6 +21,7 @@ export default function LogoUploader() {
         setLogoUrl(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+      onFileChange(file);
     }
   };
 
@@ -77,7 +80,7 @@ export default function LogoUploader() {
           onChange={onFileInputChange}
         />
       </div>
-       <p className="text-xs text-muted-foreground px-4 text-center">Recommended size: 200x200px. JPG, PNG, GIF.</p>
+       <p className="text-xs text-muted-foreground px-4 text-center">Recommended: 200x200px. JPG, PNG, or GIF.</p>
     </div>
   );
 }

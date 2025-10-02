@@ -9,12 +9,13 @@ import { useRef, useState } from "react";
 import { createUserAndProfile } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import ProfilePhotoUploader from "./profile-photo-uploader";
 
 export default function TalentRegisterForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,7 +35,7 @@ export default function TalentRegisterForm() {
       github: formData.get('github') as string,
     };
     
-     const getFileAsDataURL = async (file: File | undefined): Promise<string | undefined> => {
+     const getFileAsDataURL = async (file: File | null): Promise<string | undefined> => {
         if (!file) return undefined;
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -43,7 +44,6 @@ export default function TalentRegisterForm() {
         });
     };
 
-    const avatarFile = avatarFileRef.current?.files?.[0];
     const avatarDataUrl = await getFileAsDataURL(avatarFile);
 
     const result = await createUserAndProfile(
@@ -74,11 +74,7 @@ export default function TalentRegisterForm() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-1">
                  <Label className="mb-2 block text-center">Profile Photo</Label>
-                <input type="file" ref={avatarFileRef} className="hidden" accept="image/*" />
-                <div className="flex flex-col items-center space-y-2">
-                    <Button type="button" variant="outline" onClick={() => avatarFileRef.current?.click()}>Choose Photo</Button>
-                    <p className="text-xs text-muted-foreground text-center">Upload your headshot</p>
-                </div>
+                <ProfilePhotoUploader onFileChange={setAvatarFile} />
             </div>
             <div className="md:col-span-2 space-y-6">
                  <div className="space-y-2">

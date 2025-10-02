@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Loader2, UploadCloud, User } from "lucide-react";
+import { UploadCloud, User } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-export default function ProfilePhotoUploader() {
+interface ProfilePhotoUploaderProps {
+  onFileChange: (file: File | null) => void;
+}
+
+export default function ProfilePhotoUploader({ onFileChange }: ProfilePhotoUploaderProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,6 +21,7 @@ export default function ProfilePhotoUploader() {
         setPhotoUrl(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+      onFileChange(file);
     }
   };
 
@@ -75,7 +80,7 @@ export default function ProfilePhotoUploader() {
           onChange={onFileInputChange}
         />
       </div>
-      <p className="text-xs text-muted-foreground px-4 text-center">Recommended size: 400x400px. JPG, PNG, GIF.</p>
+      <p className="text-xs text-muted-foreground px-4 text-center">Recommended: 400x400px. JPG, PNG, or GIF.</p>
     </div>
   );
 }

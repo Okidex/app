@@ -15,6 +15,7 @@ import { PlusCircle, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "../ui/card";
 import { createUserAndProfile } from "@/lib/actions";
+import ProfilePhotoUploader from "./profile-photo-uploader";
 
 export default function InvestorRegisterForm() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function InvestorRegisterForm() {
   const [exits, setExits] = useState<Exit[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newExit, setNewExit] = useState<Exit>({ companyName: '', companyUrl: '' });
-  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,7 +46,7 @@ export default function InvestorRegisterForm() {
         exits: exits,
     };
     
-    const getFileAsDataURL = async (file: File | undefined): Promise<string | undefined> => {
+    const getFileAsDataURL = async (file: File | null): Promise<string | undefined> => {
         if (!file) return undefined;
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -54,7 +55,6 @@ export default function InvestorRegisterForm() {
         });
     };
 
-    const avatarFile = avatarFileRef.current?.files?.[0];
     const avatarDataUrl = await getFileAsDataURL(avatarFile);
 
     const result = await createUserAndProfile(
@@ -105,11 +105,7 @@ export default function InvestorRegisterForm() {
          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-1">
                  <Label className="mb-2 block text-center">Profile Photo</Label>
-                <input type="file" ref={avatarFileRef} className="hidden" accept="image/*" />
-                <div className="flex flex-col items-center space-y-2">
-                    <Button type="button" variant="outline" onClick={() => avatarFileRef.current?.click()}>Choose Photo</Button>
-                    <p className="text-xs text-muted-foreground text-center">Upload your headshot</p>
-                </div>
+                 <ProfilePhotoUploader onFileChange={setAvatarFile} />
             </div>
             <div className="md:col-span-2 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
