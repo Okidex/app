@@ -80,7 +80,7 @@ export default function ProfilePhotoUploader({ onFileChange }: ProfilePhotoUploa
           onChange={onFileInputChange}
         />
       </div>
-      <p className="text-xs text-muted-foreground px-4 text-center">Recommended: 400x400px. JPG, PNG, or GIF.</p>
+      <p className="text-xs text-muted-foreground px-4 text-center">Recommended: 400x400px. JPG, PNG, GIF.</p>
     </div>
   );
 }
