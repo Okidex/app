@@ -1,0 +1,15 @@
+{
+  "hosting": {
+    "source": ".",
+    "rewrites": [
+      {
+        "source": "**",
+        "apphosting": {
+          "backendId": "okidex-app",
+          "region": "us-central1"
+        }
+      }
+    ]
+  }
+}
+
