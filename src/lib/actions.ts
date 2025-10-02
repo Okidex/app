@@ -10,7 +10,7 @@ import { smartSearch } from "@/ai/flows/smart-search";
 import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserRole, TalentSubRole, InvestorProfile } from "./types";
 import { db, auth, storage } from './firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export async function getFinancialSummary(input: FinancialDataInput) {
@@ -136,6 +136,8 @@ export async function createUserAndProfile(
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        
+        await sendEmailVerification(user);
         
         let avatarUrl = "";
         if (avatarFile) {

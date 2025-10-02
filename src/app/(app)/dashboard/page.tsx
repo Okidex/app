@@ -9,7 +9,7 @@ import useAuth from "@/hooks/use-auth";
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Briefcase, CheckCheck, DollarSign, FileText, Mail, Star, UserCheck, Users as UsersIcon, X } from "lucide-react";
+import { Activity, Briefcase, CheckCheck, DollarSign, FileText, Mail, Star, UserCheck, Users as UsersIcon, X, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import UserAvatar from "@/components/shared/user-avatar";
 import SearchBar from "@/components/shared/search-bar";
@@ -237,6 +237,19 @@ export default function DashboardPage() {
                     <SearchBar userRole={currentUser.role} />
                 </div>
             </div>
+
+            {authUser && !authUser.emailVerified && (
+                <Card className="bg-amber-50 border-amber-200">
+                    <CardHeader className="flex flex-row items-center gap-4">
+                        <AlertTriangle className="w-6 h-6 text-amber-600" />
+                        <div>
+                            <CardTitle className="text-amber-900">Verify Your Email Address</CardTitle>
+                            <CardDescription className="text-amber-700">Please check your inbox for a verification link. Access to some features may be limited until your email is confirmed.</CardDescription>
+                        </div>
+                    </CardHeader>
+                </Card>
+            )}
+            
             {currentUser.role === 'founder' && renderFounderDashboard()}
             {currentUser.role === 'investor' && renderInvestorDashboard()}
             {currentUser.role === 'talent' && renderTalentDashboard()}
