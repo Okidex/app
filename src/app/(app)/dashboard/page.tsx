@@ -4,8 +4,7 @@
 import { useState, useEffect } from "react";
 import { FullUserProfile, Job, Startup, InvestmentThesis, FounderProfile, TalentProfile } from "@/lib/types";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
-import useAuth from "@/hooks/use-auth";
+import { useFirestore, useUser } from "@/firebase";
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +18,7 @@ import { getCurrentUser } from "@/lib/data";
 
 
 export default function DashboardPage() {
-    const { user: authUser, loading: authLoading } = useAuth();
+    const { user: authUser, isUserLoading: authLoading } = useUser();
     const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
     const [isUpgradeCardVisible, setIsUpgradeCardVisible] = useState(true);
     const [dashboardData, setDashboardData] = useState<any>(null);
@@ -38,7 +37,7 @@ export default function DashboardPage() {
             const userProfile = await getCurrentUser();
             setCurrentUser(userProfile);
             
-            if (!userProfile) {
+            if (!userProfile || !db) {
                 setLoading(false);
                 return;
             }
@@ -257,3 +256,5 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+    

@@ -1,23 +1,38 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import RegisterForm from "@/components/auth/register-form";
-import Link from "next/link";
 
-export default function RegisterPage() {
-  return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>
-          Join the premier platform for innovation. Already have an account?{' '}
-          <Link href="/login" className="text-primary hover:underline">
-            Log in
-          </Link>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <RegisterForm />
-      </CardContent>
-    </Card>
-  );
+"use server";
+
+import { initializeFirebase } from '@/firebase';
+import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
+
+export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
+  const { auth } = initializeFirebase();
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    return { success: true };
+  } catch(error: any) {
+    return { success: false, error: error.message };
+  }
 }
 
+export async function logout() {
+  const { auth } = initializeFirebase();
+  try {
+    await signOut(auth);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+
+export async function sendPasswordReset(email: string) {
+  const { auth } = initializeFirebase();
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+    
