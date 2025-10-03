@@ -71,6 +71,10 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                                         <SelectItem value="C-Corp">C-Corp</SelectItem>
                                         <SelectItem value="S-Corp">S-Corp</SelectItem>
                                         <SelectItem value="LLC">LLC</SelectItem>
+                                        <SelectItem value="PLT">PLT</SelectItem>
+                                        <SelectItem value="PLC">PLC</SelectItem>
+                                        <SelectItem value="OPC">OPC</SelectItem>
+                                        <SelectItem value="LLPs">LLPs</SelectItem>
                                         <SelectItem value="Other">Other</SelectItem>
                                     </SelectContent>
                                 </Select>

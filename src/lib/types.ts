@@ -30,7 +30,7 @@ export interface MonthlyFinancials {
 export interface IncorporationDetails {
   isIncorporated: boolean;
   country?: string;
-  incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'Other';
+  incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'PLT' | 'PLC' | 'OPC' | 'LLPs' | 'Other';
   incorporationDate?: string;
   entityNumber?: string;
   taxId?: string;
