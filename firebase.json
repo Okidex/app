@@ -1,15 +1,19 @@
+
 {
   "hosting": {
     "source": ".",
     "rewrites": [
       {
         "source": "**",
-        "run": {
-          "serviceId": "ssrokidexinvestmentmatc",
+        "apphosting": {
+          "backendId": "okidex-app",
           "region": "us-central1"
         }
       }
     ]
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
 
