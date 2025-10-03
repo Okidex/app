@@ -13,6 +13,18 @@ import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { initializeAdminApp } from "./firebase-admin";
 
+export async function getCurrentUser(): Promise<FullUserProfile | null> {
+  const { auth, firestore } = initializeAdminApp();
+  
+  // This approach is insecure and will be replaced with a real session management solution
+  // For now, we'll fetch the first user as a placeholder for the "current" user.
+  const usersCollection = await firestore.collection("users").limit(1).get();
+  if (usersCollection.empty) {
+      return null;
+  }
+  return usersCollection.docs[0].data() as FullUserProfile;
+}
+
 export async function getFinancialSummary(input: FinancialDataInput) {
   try {
     const result = await summarizeFinancialData(input);
@@ -155,10 +167,6 @@ export async function createUserAndProfile(
 
         const user = userRecord;
 
-        // Note: Admin SDK does not send verification emails directly.
-        // This would typically be handled by a separate client-side call or a custom email service.
-        // For now, we'll skip sending the email from the server action.
-
         let avatarUrl = "";
         if (avatarFile) {
             avatarUrl = await uploadImage(avatarFile, `avatars/${user.uid}`);
@@ -297,4 +305,3 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
     }
 }
 
-    

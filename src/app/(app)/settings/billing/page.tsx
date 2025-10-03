@@ -9,7 +9,7 @@ import { Check, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { getCurrentUser } from '@/lib/data';
+import { getCurrentUser } from "@/lib/actions";
 import { FounderProfile, FullUserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -48,7 +48,7 @@ export default function ProfileEditPage() {
   const [startup, setStartup] = useState<Startup | undefined>(undefined);
   
   useEffect(() => {
-    if (user && user.role === 'founder') {
+    if (user && user.role === 'founder' && db) {
       const profile = user.profile as FounderProfile;
       if (profile.companyId) {
         const fetchStartup = async () => {

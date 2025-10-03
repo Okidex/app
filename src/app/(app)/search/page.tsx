@@ -10,13 +10,11 @@ import Image from "next/image";
 import Link from "next/link";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Suspense, useEffect, useState } from "react";
-import { getSearchResults } from "@/lib/actions";
+import { getSearchResults, getCurrentUser } from "@/lib/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchBar from "@/components/shared/search-bar";
-import { getCurrentUser } from "@/lib/data";
-import useAuth from "@/hooks/use-auth";
+import { useUser, useFirestore } from "@/firebase";
 import { collection, getDoc, doc } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
 
 const StartupResultCard = ({ startup }: { startup: Startup }) => {
   return (
@@ -48,6 +46,7 @@ const UserResultCard = ({ user }: { user: FullUserProfile }) => {
 
     useEffect(() => {
         const getProfileDetails = async () => {
+            if (!db) return;
             switch (user.role) {
                 case 'investor':
                     setDetails((user.profile as InvestorProfile).investmentInterests.slice(0, 3).join(' / '));
@@ -99,7 +98,7 @@ const SearchResults = () => {
   const query = searchParams.get('q') || '';
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<{ startups: Startup[], users: FullUserProfile[] }>({ startups: [], users: [] });
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, isUserLoading: authLoading } = useUser();
   const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
 
   useEffect(() => {
