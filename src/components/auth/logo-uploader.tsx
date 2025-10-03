@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -55,7 +56,7 @@ export default function LogoUploader({ onFileChange }: LogoUploaderProps) {
     <div className="flex flex-col items-center space-y-4">
       <div 
         className={cn(
-            "w-48 h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground cursor-pointer transition-colors",
+            "w-48 h-48 border-2 border-dashed rounded-full flex flex-col items-center justify-center text-muted-foreground cursor-pointer transition-colors relative overflow-hidden",
             isDragging ? "border-primary bg-accent" : "border-border"
         )}
         onDragOver={onDragOver}
@@ -64,7 +65,7 @@ export default function LogoUploader({ onFileChange }: LogoUploaderProps) {
         onClick={handleUploadClick}
       >
         {logoUrl ? (
-          <Image src={logoUrl} alt="Company Logo" width={192} height={192} className="rounded-lg object-cover w-full h-full" />
+          <Image src={logoUrl} alt="Company Logo" width={192} height={192} className="rounded-full object-cover w-full h-full" />
         ) : (
           <div className="text-center p-4">
             <UploadCloud className="mx-auto h-10 w-10 mb-2" />
