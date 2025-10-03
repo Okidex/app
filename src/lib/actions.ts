@@ -8,9 +8,9 @@ import { populateProfileFromLinkedIn } from "@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from "@/ai/flows/financial-breakdown";
 import { smartSearch } from "@/ai/flows/smart-search";
 import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserRole, TalentSubRole, InvestorProfile } from "./types";
-import { initializeFirebase } from '@/firebase';
+import { auth, db as firestore, storage } from './firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, deleteUser } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { deleteCurrentUser } from "./auth";
 
@@ -35,7 +35,6 @@ export async function getProfilePictureTags(photoDataUri: string) {
 }
 
 export async function getSmartMatches(user: FullUserProfile) {
-    const { firestore } = initializeFirebase();
     const startupsCollection = await getDocs(collection(firestore, 'startups'));
     const allStartups = startupsCollection.docs.map(doc => doc.data() as Startup);
     const usersCollection = await getDocs(collection(firestore, 'users'));
@@ -86,7 +85,6 @@ export async function getFinancialBreakdown(metric: string) {
 }
 
 export async function getSearchResults(query: string) {
-    const { firestore } = initializeFirebase();
     if (!query) {
         return { startups: [], users: [] };
     }
@@ -120,7 +118,6 @@ export async function getSearchResults(query: string) {
 }
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
-    const { storage } = initializeFirebase();
     if (!dataUrl) return "";
     const storageRef = ref(storage, path);
     const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
@@ -137,7 +134,6 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
-    const { auth, firestore } = initializeFirebase();
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -236,7 +232,6 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
-    const { firestore } = initializeFirebase();
     try {
         const userRef = doc(firestore, "users", userId);
         const existingDoc = await getDoc(userRef);
@@ -254,7 +249,6 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
 }
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
-    const { firestore } = initializeFirebase();
     try {
         // Delete user document from Firestore
         await deleteDoc(doc(firestore, "users", userId));
