@@ -1,36 +1,23 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import RegisterForm from "@/components/auth/register-form";
+import Link from "next/link";
 
-import { doc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
-import { FullUserProfile, InvestmentStage } from './types';
-
-export const investmentStages: InvestmentStage[] = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Series B+'];
-
-export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { auth, firestore } = initializeFirebase();
-  const firebaseUser = auth.currentUser;
-  if (!firebaseUser) {
-    return null;
-  }
-
-  const userDocRef = doc(firestore, "users", firebaseUser.uid);
-  const userDocSnap = await getDoc(userDocRef);
-
-  if (userDocSnap.exists()) {
-    return userDocSnap.data() as FullUserProfile;
-  }
-
-  return null;
-}
-
-export async function getUserById(userId: string): Promise<FullUserProfile | null> {
-    const { firestore } = initializeFirebase();
-    const userDocRef = doc(firestore, "users", userId);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-        return userDocSnap.data() as FullUserProfile;
-    }
-
-    return null;
+export default function RegisterPage() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Create your account</CardTitle>
+        <CardDescription>
+          Join the premier platform for innovation. Already have an account?{' '}
+          <Link href="/login" className="text-primary hover:underline">
+            Log in
+          </Link>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <RegisterForm />
+      </CardContent>
+    </Card>
+  );
 }
 

@@ -373,24 +373,24 @@ export default function ProfileEditPage() {
                                 <Textarea id="education" name="education" defaultValue={talentProfile.education} placeholder="e.g., B.S. in Computer Science..." />
                             </div>
                              <div className="flex items-center space-x-2 pt-2">
-                                <Switch
-                                    id="is-seeking-cofounder"
+                                <Switch 
+                                    id="is-seeking-cofounder" 
                                     checked={isSeekingCoFounder}
                                     onCheckedChange={setIsSeekingCoFounder}
                                 />
                                 <Label htmlFor="is-seeking-cofounder">Open to Co-founder Opportunities</Label>
                             </div>
                             <div className="flex items-center space-x-2 pt-2">
-                                <Switch
-                                    id="is-vendor"
+                                <Switch 
+                                    id="is-vendor" 
                                     checked={isVendor}
                                     onCheckedChange={setIsVendor}
                                 />
                                 <Label htmlFor="is-vendor">Promote my services as a Vendor</Label>
                             </div>
                             <div className="flex items-center space-x-2 pt-2">
-                                <Switch
-                                    id="is-fractional-leader"
+                                <Switch 
+                                    id="is-fractional-leader" 
                                     checked={isFractionalLeader}
                                     onCheckedChange={setIsFractionalLeader}
                                 />
@@ -434,4 +434,3 @@ export default function ProfileEditPage() {
     </div>
   );
 }
-

@@ -1,8 +1,23 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import RegisterForm from "@/components/auth/register-form";
+import Link from "next/link";
 
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+export default function RegisterPage() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Create your account</CardTitle>
+        <CardDescription>
+          Join the premier platform for innovation. Already have an account?{' '}
+          <Link href="/login" className="text-primary hover:underline">
+            Log in
+          </Link>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <RegisterForm />
+      </CardContent>
+    </Card>
+  );
 }
 
