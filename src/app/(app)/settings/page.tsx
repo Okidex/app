@@ -28,11 +28,15 @@ export default function SettingsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    getCurrentUser().then(userProfile => {
+    const fetchUser = async () => {
+        const userProfile = await getCurrentUser();
         setUser(userProfile);
         setLoading(false);
-    });
-  }, []);
+    }
+    if (authUser) {
+        fetchUser();
+    }
+  }, [authUser]);
 
   const handleSaveChanges = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
