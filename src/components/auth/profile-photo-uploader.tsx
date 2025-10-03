@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -84,3 +85,5 @@ export default function ProfilePhotoUploader({ onFileChange }: ProfilePhotoUploa
     </div>
   );
 }
+
+    
