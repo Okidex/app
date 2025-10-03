@@ -8,7 +8,7 @@ import { populateProfileFromLinkedIn } from "@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from "@/ai/flows/financial-breakdown";
 import { smartSearch } from "@/ai/flows/smart-search";
 import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserRole, TalentSubRole, InvestorProfile } from "./types";
-import { db, auth, storage } from './firebase';
+import { initializeFirebase } from '@/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -34,6 +34,7 @@ export async function getProfilePictureTags(photoDataUri: string) {
 }
 
 export async function getSmartMatches(user: FullUserProfile) {
+    const { db } = initializeFirebase();
     const startupsCollection = await getDocs(collection(db, 'startups'));
     const allStartups = startupsCollection.docs.map(doc => doc.data() as Startup);
     const usersCollection = await getDocs(collection(db, 'users'));
@@ -84,6 +85,7 @@ export async function getFinancialBreakdown(metric: string) {
 }
 
 export async function getSearchResults(query: string) {
+    const { db } = initializeFirebase();
     if (!query) {
         return { startups: [], users: [] };
     }
@@ -117,6 +119,7 @@ export async function getSearchResults(query: string) {
 }
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
+    const { storage } = initializeFirebase();
     if (!dataUrl) return "";
     const storageRef = ref(storage, path);
     const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
@@ -133,6 +136,7 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
+    const { auth, db } = initializeFirebase();
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -230,6 +234,7 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
+    const { db } = initializeFirebase();
     try {
         const userRef = doc(db, "users", userId);
         const existingDoc = await getDoc(userRef);

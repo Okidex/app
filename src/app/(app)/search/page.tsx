@@ -16,7 +16,7 @@ import SearchBar from "@/components/shared/search-bar";
 import { getCurrentUser } from "@/lib/data";
 import useAuth from "@/hooks/use-auth";
 import { collection, getDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 
 const StartupResultCard = ({ startup }: { startup: Startup }) => {
   return (
@@ -44,6 +44,7 @@ const StartupResultCard = ({ startup }: { startup: Startup }) => {
 
 const UserResultCard = ({ user }: { user: FullUserProfile }) => {
     const [details, setDetails] = useState("");
+    const db = useFirestore();
 
     useEffect(() => {
         const getProfileDetails = async () => {
@@ -74,7 +75,7 @@ const UserResultCard = ({ user }: { user: FullUserProfile }) => {
             }
         }
         getProfileDetails();
-    }, [user]);
+    }, [user, db]);
 
   return (
     <Card>

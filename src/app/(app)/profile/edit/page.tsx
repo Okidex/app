@@ -28,7 +28,7 @@ import { updateUserProfile } from "@/lib/actions";
 import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
 import { getDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import { investmentStages } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -37,6 +37,7 @@ export default function ProfileEditPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const db = useFirestore();
 
   useEffect(() => {
     getCurrentUser().then((user) => {
@@ -64,7 +65,7 @@ export default function ProfileEditPage() {
     } else if (user) {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, db]);
 
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
   const [isVendor, setIsVendor] = useState(false);

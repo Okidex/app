@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import FounderApplyPrompt from "@/components/jobs/founder-apply-prompt";
 import { collection, addDoc, serverTimestamp, query, getDocs, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import useAuth from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -30,6 +30,7 @@ export default function JobsPage() {
     const [isPostJobOpen, setIsPostJobOpen] = useState(false);
     const [showFounderPrompt, setShowFounderPrompt] = useState(false);
     const { toast } = useToast();
+    const db = useFirestore();
 
     useEffect(() => {
         if (!authLoading && authUser) {
@@ -49,7 +50,7 @@ export default function JobsPage() {
             setLoading(false);
         };
         fetchJobs();
-    }, []);
+    }, [db]);
 
     const [newJob, setNewJob] = useState({
         title: "",

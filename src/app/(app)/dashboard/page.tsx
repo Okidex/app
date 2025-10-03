@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { FullUserProfile, Job, Startup, InvestmentThesis, FounderProfile, TalentProfile } from "@/lib/types";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import useAuth from "@/hooks/use-auth";
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export default function DashboardPage() {
     const [isUpgradeCardVisible, setIsUpgradeCardVisible] = useState(true);
     const [dashboardData, setDashboardData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const db = useFirestore();
 
     useEffect(() => {
         if (authLoading) return;
@@ -89,7 +90,7 @@ export default function DashboardPage() {
 
         fetchData();
 
-    }, [authUser, authLoading]);
+    }, [authUser, authLoading, db]);
 
     if (authLoading || loading || !currentUser || !dashboardData) {
         return (

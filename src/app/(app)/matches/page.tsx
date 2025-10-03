@@ -12,7 +12,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import useAuth from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -147,6 +147,7 @@ export default function MatchesPage() {
     const [allMatches, setAllMatches] = useState<FullUserProfile[]>([]);
     const [startups, setStartups] = useState<Startup[]>([]);
     const [loading, setLoading] = useState(true);
+    const db = useFirestore();
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -172,7 +173,7 @@ export default function MatchesPage() {
             setLoading(false);
         };
         fetchInitialData();
-    }, [authUser]);
+    }, [authUser, db]);
 
     const getMatchableUsers = (currentUser: FullUserProfile, allUsers: FullUserProfile[]): FullUserProfile[] => {
         switch (currentUser.role) {

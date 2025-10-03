@@ -11,7 +11,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Conversation, FullUserProfile, Message } from "@/lib/types";
 import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import useAuth from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -21,6 +21,7 @@ export default function MessagesPage() {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const db = useFirestore();
 
     useEffect(() => {
         if (!authLoading && authUser) {
@@ -67,7 +68,7 @@ export default function MessagesPage() {
         });
 
         return () => unsubscribe();
-    }, [currentUser, activeConversationId]);
+    }, [currentUser, activeConversationId, db]);
     
     if (authLoading || loading) {
         return (

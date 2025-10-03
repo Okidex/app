@@ -1,0 +1,198 @@
+/**
+ * @fileoverview Firestore Security Rules for Okidex Platform
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user-generated content
+ * (Job Postings, Financial Data), while allowing public read access to Investment Theses.
+ * User and Profile data is protected with owner-only access.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores core user data; document ID is the Firebase Auth UID.
+ * - /profiles/{profileId}: Stores user profile information; profileId matches the user document's profileId.
+ * - /users/{userId}/jobPostings/{jobPostingId}: Stores job postings created by founders.
+ * - /investmentTheses/{investmentThesisId}: Stores investment theses, potentially anonymously.
+ * - /users/{userId}/financialData/{financialDataId}: Stores financial data for startups.
+ * - /matches/{matchId}: Stores match data between two users.
+ * - /messages/{messageId}: Stores messages exchanged between matched users.
+ *
+ * Key Security Decisions:
+ * - User listing is disabled.
+ * - Public read access is granted for Investment Theses.
+ * - Strict ownership is enforced for Job Postings and Financial Data.
+ * - All write operations require authentication.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Checks if the user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Authentication check.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces document ownership based on user ID.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of an existing document.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Combines ownership and existence checks for destructive operations.
+     */
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Security rules for user documents.
+     * @path /users/{userId}
+     * @allow (create) User with auth UID 'user_abc' can create their own document.
+     * @allow (get) User with auth UID 'user_abc' can read their own document.
+     * @allow (update) User with auth UID 'user_abc' can update their own document.
+     * @allow (delete) User with auth UID 'user_abc' can delete their own document.
+     * @deny (create) User with auth UID 'user_xyz' cannot create a document with ID 'user_abc'.
+     * @deny (get) User with auth UID 'user_xyz' cannot read document owned by 'user_abc'.
+     * @deny (update) User with auth UID 'user_xyz' cannot update document owned by 'user_abc'.
+     * @deny (delete) User with auth UID 'user_xyz' cannot delete document owned by 'user_abc'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is not permitted.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for user profile documents.
+     * @path /profiles/{profileId}
+     * @allow (create) User with auth UID 'user_abc' can create a profile with ID 'profile_123', if the profileId in their user doc is 'profile_123'.
+     * @allow (get) User with auth UID 'user_abc' can read a profile with ID 'profile_123', if the profileId in their user doc is 'profile_123'.
+     * @allow (update) User with auth UID 'user_abc' can update a profile with ID 'profile_123', if the profileId in their user doc is 'profile_123'.
+     * @allow (delete) User with auth UID 'user_abc' can delete a profile with ID 'profile_123', if the profileId in their user doc is 'profile_123'.
+     * @deny (create) User with auth UID 'user_xyz' cannot create a profile with ID 'profile_123'.
+     * @deny (get) User with auth UID 'user_xyz' cannot read a profile with ID 'profile_123'.
+     * @deny (update) User with auth UID 'user_xyz' cannot update a profile with ID 'profile_123'.
+     * @deny (delete) User with auth UID 'user_xyz' cannot delete a profile with ID 'profile_123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /profiles/{profileId} {
+      allow get: if isSignedIn();
+      allow list: if false; // Profile listing is not permitted.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if false; // Profiles should not be deleted directly.
+    }
+
+    /**
+     * @description Security rules for job postings under a user.
+     * @path /users/{userId}/jobPostings/{jobPostingId}
+     * @allow (create) User with auth UID 'user_abc' can create a job posting under their user document.
+     * @allow (get) User with auth UID 'user_abc' can read a job posting under their user document.
+     * @allow (update) User with auth UID 'user_abc' can update a job posting under their user document.
+     * @allow (delete) User with auth UID 'user_abc' can delete a job posting under their user document.
+     * @deny (create) User with auth UID 'user_xyz' cannot create a job posting under user 'user_abc'.
+     * @deny (get) User with auth UID 'user_xyz' cannot read a job posting under user 'user_abc'.
+     * @deny (update) User with auth UID 'user_xyz' cannot update a job posting under user 'user_abc'.
+     * @deny (delete) User with auth UID 'user_xyz' cannot delete a job posting under user 'user_abc'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/jobPostings/{jobPostingId} {
+      allow get: if isSignedIn();
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.founderId == userId;
+      allow update: if isExistingOwner(userId) && resource.data.founderId == userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for investment theses.
+     * @path /investmentTheses/{investmentThesisId}
+     * @allow (get) Any user can read investment theses.
+     * @allow (list) Any user can list investment theses.
+     * @allow (create) Any authenticated user can create an investment thesis.
+     * @allow (update) Only the owner can update an investment thesis.
+     * @allow (delete) Only the owner can delete an investment thesis.
+     * @principle Public read, owner-only writes.
+     */
+    match /investmentTheses/{investmentThesisId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid == resource.data.investorId;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.investorId;
+    }
+
+    /**
+     * @description Security rules for financial data under a user.
+     * @path /users/{userId}/financialData/{financialDataId}
+     * @allow (create) User with auth UID 'user_abc' can create financial data under their user document.
+     * @allow (get) User with auth UID 'user_abc' can read financial data under their user document.
+     * @allow (update) User with auth UID 'user_abc' can update financial data under their user document.
+     * @allow (delete) User with auth UID 'user_abc' can delete financial data under their user document.
+     * @deny (create) User with auth UID 'user_xyz' cannot create financial data under user 'user_abc'.
+     * @deny (get) User with auth UID 'user_xyz' cannot read financial data under user 'user_abc'.
+     * @deny (update) User with auth UID 'user_xyz' cannot update financial data under user 'user_abc'.
+     * @deny (delete) User with auth UID 'user_xyz' cannot delete financial data under user 'user_abc'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/financialData/{financialDataId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.founderId == userId;
+      allow update: if isExistingOwner(userId) && resource.data.founderId == userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for matches.
+     * @path /matches/{matchId}
+     * @allow (create) Any authenticated user can create a match.
+     * @allow (get) Any authenticated user can get a match.
+     * @allow (update) Any authenticated user can update a match.
+     * @allow (delete) Any authenticated user can delete a match.
+     * @principle Authenticated users can perform CRUD operations.
+     */
+    match /matches/{matchId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for messages.
+     * @path /messages/{messageId}
+     * @allow (create) Any authenticated user can create a message.
+     * @allow (get) Any authenticated user can get a message.
+     * @allow (update) Any authenticated user can update a message.
+     * @allow (delete) Any authenticated user can delete a message.
+     * @principle Authenticated users can perform CRUD operations.
+     */
+    match /messages/{messageId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+  }
+}

@@ -27,7 +27,7 @@ import { format, subMonths, getMonth, getYear } from 'date-fns';
 import CapTableCard from "@/components/profile/cap-table-card";
 import LockedFinancialsCard from "@/components/profile/locked-financials-card";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import useAuth from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -36,6 +36,7 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     const profile = user.profile as FounderProfile;
     const [startup, setStartup] = useState<Startup | null>(null);
     const [loading, setLoading] = useState(true);
+    const db = useFirestore();
 
     useEffect(() => {
         const fetchStartup = async () => {
@@ -49,7 +50,7 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
             setLoading(false);
         };
         fetchStartup();
-    }, [profile.companyId]);
+    }, [profile.companyId, db]);
 
     const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
     const [breakdown, setBreakdown] = useState<string>("");
@@ -58,7 +59,6 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     const [selectedMonth, setSelectedMonth] = useState(0);
     const [founders, setFounders] = useState<FullUserProfile[]>([]);
     
-    // Simulate connection status.
     const isConnected = false; 
     const showFinancials = currentUser?.role === 'investor' && (isConnected || currentUser?.id === user.id);
 
@@ -501,6 +501,7 @@ const UserProfileHeader = ({ user, isOwnProfile, startup }: { user: FullUserProf
 
 const UserProfileClient = ({ user, currentUser }: { user: FullUserProfile, currentUser: FullUserProfile | null }) => {
     const [startup, setStartup] = useState<Startup | null>(null);
+    const db = useFirestore();
 
     useEffect(() => {
         const fetchStartup = async () => {
@@ -514,7 +515,7 @@ const UserProfileClient = ({ user, currentUser }: { user: FullUserProfile, curre
             }
         };
         fetchStartup();
-    }, [user]);
+    }, [user, db]);
     
     const isOwnProfile = currentUser?.id === user.id;
 

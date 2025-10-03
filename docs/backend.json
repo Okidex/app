@@ -1,0 +1,393 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Okidex platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "userType": {
+          "type": "string",
+          "description": "The type of user: founder, investor, or talent."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Reference to the user's profile. (Relationship: User 1:1 Profile)"
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "userType",
+        "profileId",
+        "email"
+      ]
+    },
+    "Profile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Profile",
+      "type": "object",
+      "description": "Represents a user's profile, containing details about their startup, investment interests, or skills.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Profile entity."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name or company name."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A brief biography or company description."
+        },
+        "websiteUrl": {
+          "type": "string",
+          "description": "Link to the user's personal or company website.",
+          "format": "uri"
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
+        },
+        "companyLogoUrl": {
+          "type": "string",
+          "description": "URL of the company logo, if applicable.",
+          "format": "uri"
+        },
+        "location": {
+          "type": "string",
+          "description": "The user's general location."
+        }
+      },
+      "required": [
+        "id",
+        "displayName"
+      ]
+    },
+    "Match": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Match",
+      "type": "object",
+      "description": "Represents a match between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Match entity."
+        },
+        "user1Id": {
+          "type": "string",
+          "description": "Reference to the first user in the match. (Relationship: User N:N Match)"
+        },
+        "user2Id": {
+          "type": "string",
+          "description": "Reference to the second user in the match. (Relationship: User N:N Match)"
+        },
+        "matchDate": {
+          "type": "string",
+          "description": "Date when the match was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "user1Id",
+        "user2Id",
+        "matchDate"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a message exchanged between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "matchId": {
+          "type": "string",
+          "description": "Reference to the match the message belongs to. (Relationship: Match 1:N Message)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the user who sent the message. (Relationship: User 1:N Message)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "matchId",
+        "senderId",
+        "content",
+        "timestamp"
+      ]
+    },
+    "JobPosting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "JobPosting",
+      "type": "object",
+      "description": "Represents a job posting created by a founder.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the JobPosting entity."
+        },
+        "founderId": {
+          "type": "string",
+          "description": "Reference to the founder who created the job posting. (Relationship: User 1:N JobPosting)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the job posting."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the job requirements and responsibilities."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the job."
+        },
+        "salaryRange": {
+          "type": "string",
+          "description": "The salary range for the job."
+        },
+        "datePosted": {
+          "type": "string",
+          "description": "The date when the job posting was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "founderId",
+        "title",
+        "description",
+        "location"
+      ]
+    },
+    "InvestmentThesis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InvestmentThesis",
+      "type": "object",
+      "description": "Represents an investment thesis posted by an investor anonymously.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InvestmentThesis entity."
+        },
+        "investorId": {
+          "type": "string",
+          "description": "Reference to the investor who created the investment thesis.  Can be null for anonymous posts. (Relationship: User 1:N InvestmentThesis)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the investment thesis."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the investor's thesis and criteria."
+        },
+        "datePosted": {
+          "type": "string",
+          "description": "The date when the investment thesis was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description"
+      ]
+    },
+    "FinancialData": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FinancialData",
+      "type": "object",
+      "description": "Represents the financial data of a startup.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FinancialData entity."
+        },
+        "founderId": {
+          "type": "string",
+          "description": "Reference to the founder who owns the startup providing this data. (Relationship: User 1:N FinancialData)"
+        },
+        "revenue": {
+          "type": "number",
+          "description": "The startup's revenue."
+        },
+        "netIncome": {
+          "type": "number",
+          "description": "The startup's net income."
+        },
+        "grossProfitMargin": {
+          "type": "number",
+          "description": "The startup's gross profit margin."
+        },
+        "dateReported": {
+          "type": "string",
+          "description": "The date when the financial data was reported.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "founderId",
+        "revenue",
+        "netIncome"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data.  The document ID is the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/profiles/{profileId}",
+        "definition": {
+          "entityName": "Profile",
+          "schema": {
+            "$ref": "#/backend/entities/Profile"
+          },
+          "description": "Stores user profile information. Each profile document ID should match the profileId stored in the corresponding user document.",
+          "params": [
+            {
+              "name": "profileId",
+              "description": "Unique identifier for the profile, referenced in the user document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/jobPostings/{jobPostingId}",
+        "definition": {
+          "entityName": "JobPosting",
+          "schema": {
+            "$ref": "#/backend/entities/JobPosting"
+          },
+          "description": "Stores job postings created by founders. Ensures only the founder can create, update, or delete job postings.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the founder."
+            },
+            {
+              "name": "jobPostingId",
+              "description": "Unique identifier for the job posting."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/investmentTheses/{investmentThesisId}",
+        "definition": {
+          "entityName": "InvestmentThesis",
+          "schema": {
+            "$ref": "#/backend/entities/InvestmentThesis"
+          },
+          "description": "Stores investment theses posted by investors. Allows for anonymous posts (investorId can be null).",
+          "params": [
+            {
+              "name": "investmentThesisId",
+              "description": "Unique identifier for the investment thesis."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/financialData/{financialDataId}",
+        "definition": {
+          "entityName": "FinancialData",
+          "schema": {
+            "$ref": "#/backend/entities/FinancialData"
+          },
+          "description": "Stores financial data for startups. Ensures only the founder can create, update, or delete financial data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the founder."
+            },
+            {
+              "name": "financialDataId",
+              "description": "Unique identifier for the financial data."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/matches/{matchId}",
+        "definition": {
+          "entityName": "Match",
+          "schema": {
+            "$ref": "#/backend/entities/Match"
+          },
+          "description": "Stores match data between two users.",
+          "params": [
+            {
+              "name": "matchId",
+              "description": "Unique identifier for the match."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores messages exchanged between matched users.",
+          "params": [
+            {
+              "name": "messageId",
+              "description": "Unique identifier for the message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to provide a secure, scalable, and easily maintainable database for the Okidex application, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. The structure leverages denormalization to avoid hierarchical authorization dependencies and ensures that security rules can be simple and robust.  \n\nUsers and Profiles are separated into top-level collections for ease of access and management. User-generated content like Job Postings, Investment Theses, and Financial Data are stored in subcollections under the user's document, ensuring clear ownership and simplified security rules.  Matches and Messages are stored in their own collections to support the direct messaging feature.\n\n**Authorization Independence:**\n\n*   The design enforces authorization independence by avoiding `get()` calls in security rules. For instance, JobPostings, InvestmentTheses, and FinancialData are stored as subcollections of `/users/{userId}`, ensuring the `request.auth.uid` matches the `{userId}` parameter.\n*   Matches do not depend on user attributes. Messages are stored in a top level messages collection, and each message contains the matchId to which it belongs and the senderId. This removes the need to perform `get()` operations to determine access.\n\n**QAPs (Rules are not Filters):**\n\n*   The segregation of data into distinct collections based on access requirements (e.g., user profiles versus job postings) allows for secure `list` operations, ensuring that rules do not act as filters.\n*   Investment theses are stored in a top-level collection, allowing for listing without requiring complex filtering based on user roles or permissions. Limiting query parameters will ensure list operations don't require filtering at the rule level."
+  }
+}

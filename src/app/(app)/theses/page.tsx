@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import TalentInterestPrompt from "@/components/theses/talent-interest-prompt";
 import useAuth from "@/hooks/use-auth";
 import { collection, query, getDocs, orderBy, addDoc, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type ThesisWithAuthor = InvestmentThesis & { author?: FullUserProfile };
@@ -33,6 +33,7 @@ export default function ThesesPage() {
   const [isPostThesisOpen, setIsPostThesisOpen] = useState(false);
   const [showTalentPrompt, setShowTalentPrompt] = useState(false);
   const { toast } = useToast();
+  const db = useFirestore();
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -69,7 +70,7 @@ export default function ThesesPage() {
           setLoading(false);
       };
       fetchTheses();
-  }, []);
+  }, [db]);
   
   const [newThesis, setNewThesis] = useState({
     title: "",

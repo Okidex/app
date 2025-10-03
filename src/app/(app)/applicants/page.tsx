@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { Lock } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import useAuth from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -54,6 +54,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
     const [thesisInterests, setThesisInterests] = useState<ApplicantItem[]>([]);
     const [jobInterests, setJobInterests] = useState<ApplicantItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const db = useFirestore();
 
     useEffect(() => {
         const fetchInterests = async () => {
@@ -112,7 +113,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
             setLoading(false);
         };
         fetchInterests();
-    }, [currentUser.id]);
+    }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
 
@@ -135,6 +136,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
 const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }) => {
     const [jobInterests, setJobInterests] = useState<ApplicantItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const db = useFirestore();
 
     useEffect(() => {
         const fetchInterests = async () => {
@@ -164,7 +166,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
             setLoading(false);
         };
         fetchInterests();
-    }, [currentUser.id]);
+    }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
 
