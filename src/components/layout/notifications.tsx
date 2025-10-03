@@ -16,9 +16,8 @@ import UserAvatar from '@/components/shared/user-avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import useAuth from '@/hooks/use-auth';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, getDocs, doc, writeBatch, orderBy } from "firebase/firestore";
-import { db } from '@/lib/firebase';
 
 const getIcon = (type: NotificationType) => {
     switch (type) {
@@ -34,13 +33,14 @@ const getIcon = (type: NotificationType) => {
 }
 
 export default function Notifications() {
-    const { user: authUser } = useAuth();
+    const { user: authUser } = useUser();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [senders, setSenders] = useState<Map<string, FullUserProfile>>(new Map());
     const unreadCount = notifications.filter(n => !n.isRead).length;
+    const db = useFirestore();
 
     useEffect(() => {
-        if (!authUser) return;
+        if (!authUser || !db) return;
 
         const q = query(collection(db, "notifications"), where("userId", "==", authUser.uid), orderBy("timestamp", "desc"));
         const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -63,10 +63,10 @@ export default function Notifications() {
         });
 
         return () => unsubscribe();
-    }, [authUser, senders]);
+    }, [authUser, senders, db]);
 
     const markAllAsRead = async () => {
-        if (!authUser || unreadCount === 0) return;
+        if (!authUser || unreadCount === 0 || !db) return;
         const batch = writeBatch(db);
         notifications.forEach(n => {
             if (!n.isRead) {

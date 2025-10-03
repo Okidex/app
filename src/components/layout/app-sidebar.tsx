@@ -30,11 +30,10 @@ import {
 import Logo from "@/components/logo"
 import { FullUserProfile, FounderProfile, TalentProfile, Notification } from "@/lib/types"
 import { useIsMobile } from "@/hooks/use-mobile"
-import useAuth from "@/hooks/use-auth"
+import { useUser, useFirestore } from "@/firebase"
 import { logout } from "@/lib/auth"
 import { getCurrentUser } from "@/lib/data"
 import { collection, query, where, onSnapshot } from "firebase/firestore"
-import { db } from "@/lib/firebase"
 
 const menuItemsFounder = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -69,10 +68,11 @@ const menuItemsTalent = [
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter();
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, isUserLoading: authLoading } = useUser();
   const [user, setUser] = React.useState<FullUserProfile | null>(null);
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const isMobile = useIsMobile();
+  const db = useFirestore();
 
   React.useEffect(() => {
     if (authUser) {
@@ -83,7 +83,7 @@ export function AppSidebar() {
   }, [authUser]);
 
   React.useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const q = query(collection(db, "notifications"), where("userId", "==", user.id), where("isRead", "==", false));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -91,7 +91,7 @@ export function AppSidebar() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, db]);
 
   if (authLoading || !user) {
     return null;

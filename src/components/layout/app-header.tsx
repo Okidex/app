@@ -15,11 +15,11 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import Logo from "@/components/logo";
 import UserAvatar from "@/components/shared/user-avatar";
 import Notifications from "./notifications";
-import useAuth from "@/hooks/use-auth";
+import { useUser } from "@/firebase";
 import { logout } from "@/lib/auth";
 
 export default function AppHeader() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading: loading } = useUser();
   const router = useRouter();
 
   const handleLogout = async () => {
