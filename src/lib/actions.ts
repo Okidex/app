@@ -34,10 +34,10 @@ export async function getProfilePictureTags(photoDataUri: string) {
 }
 
 export async function getSmartMatches(user: FullUserProfile) {
-    const { db } = initializeFirebase();
-    const startupsCollection = await getDocs(collection(db, 'startups'));
+    const { firestore } = initializeFirebase();
+    const startupsCollection = await getDocs(collection(firestore, 'startups'));
     const allStartups = startupsCollection.docs.map(doc => doc.data() as Startup);
-    const usersCollection = await getDocs(collection(db, 'users'));
+    const usersCollection = await getDocs(collection(firestore, 'users'));
     const allUsers = usersCollection.docs.map(doc => doc.data() as FullUserProfile);
 
     let userProfileDesc = `User is a ${user.role}. Name: ${user.name}. `;
@@ -85,14 +85,14 @@ export async function getFinancialBreakdown(metric: string) {
 }
 
 export async function getSearchResults(query: string) {
-    const { db } = initializeFirebase();
+    const { firestore } = initializeFirebase();
     if (!query) {
         return { startups: [], users: [] };
     }
     
-    const startupsCollection = await getDocs(collection(db, 'startups'));
+    const startupsCollection = await getDocs(collection(firestore, 'startups'));
     const allStartups = startupsCollection.docs.map(doc => doc.data() as Startup);
-    const usersCollection = await getDocs(collection(db, 'users'));
+    const usersCollection = await getDocs(collection(firestore, 'users'));
     const allUsers = usersCollection.docs.map(doc => doc.data() as FullUserProfile);
 
     try {
@@ -136,7 +136,7 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
-    const { auth, db } = initializeFirebase();
+    const { auth, firestore } = initializeFirebase();
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -160,7 +160,8 @@ export async function createUserAndProfile(
         };
         
         if (role === 'founder') {
-            const startupId = doc(collection(db, 'startups')).id;
+            const startupRef = doc(collection(firestore, 'startups'));
+            const startupId = startupRef.id;
             let companyLogoUrl = "";
             if (logoFile) {
                 companyLogoUrl = await uploadImage(logoFile, `logos/${startupId}`);
@@ -196,7 +197,7 @@ export async function createUserAndProfile(
                     taxId: profileData.taxId,
                 }
             };
-            await setDoc(doc(db, "startups", startupId), startupData);
+            await setDoc(startupRef, startupData);
 
         } else if (role === 'investor') {
             userData.profile = {
@@ -224,7 +225,7 @@ export async function createUserAndProfile(
             } as TalentProfile;
         }
         
-        await setDoc(doc(db, "users", user.uid), userData);
+        await setDoc(doc(firestore, "users", user.uid), userData);
 
         return { success: true, userId: user.uid };
     } catch (error: any) {
@@ -234,9 +235,9 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
-    const { db } = initializeFirebase();
+    const { firestore } = initializeFirebase();
     try {
-        const userRef = doc(db, "users", userId);
+        const userRef = doc(firestore, "users", userId);
         const existingDoc = await getDoc(userRef);
         if (!existingDoc.exists()) {
             throw new Error("User not found");
@@ -251,3 +252,4 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
     }
 }
 
+    
