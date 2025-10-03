@@ -8,11 +8,10 @@ import { populateProfileFromLinkedIn } from "@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from "@/ai/flows/financial-breakdown";
 import { smartSearch } from "@/ai/flows/smart-search";
 import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserRole, TalentSubRole, InvestorProfile } from "./types";
-import { auth, db as firestore, storage } from './firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { deleteCurrentUser } from "./auth";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+import { initializeAdminApp } from "./firebase-admin";
 
 export async function getFinancialSummary(input: FinancialDataInput) {
   try {
@@ -35,9 +34,10 @@ export async function getProfilePictureTags(photoDataUri: string) {
 }
 
 export async function getSmartMatches(user: FullUserProfile) {
-    const startupsCollection = await getDocs(collection(firestore, 'startups'));
+    const { firestore } = initializeAdminApp();
+    const startupsCollection = await firestore.collection('startups').get();
     const allStartups = startupsCollection.docs.map(doc => doc.data() as Startup);
-    const usersCollection = await getDocs(collection(firestore, 'users'));
+    const usersCollection = await firestore.collection('users').get();
     const allUsers = usersCollection.docs.map(doc => doc.data() as FullUserProfile);
 
     let userProfileDesc = `User is a ${user.role}. Name: ${user.name}. `;
@@ -85,13 +85,14 @@ export async function getFinancialBreakdown(metric: string) {
 }
 
 export async function getSearchResults(query: string) {
+    const { firestore } = initializeAdminApp();
     if (!query) {
         return { startups: [], users: [] };
     }
     
-    const startupsCollection = await getDocs(collection(firestore, 'startups'));
+    const startupsCollection = await firestore.collection('startups').get();
     const allStartups = startupsCollection.docs.map(doc => doc.data() as Startup);
-    const usersCollection = await getDocs(collection(firestore, 'users'));
+    const usersCollection = await firestore.collection('users').get();
     const allUsers = usersCollection.docs.map(doc => doc.data() as FullUserProfile);
 
     try {
@@ -118,10 +119,20 @@ export async function getSearchResults(query: string) {
 }
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
+    const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
-    const storageRef = ref(storage, path);
-    const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
-    return getDownloadURL(snapshot.ref);
+    
+    const bucket = storage.bucket();
+    const file = bucket.file(path);
+    
+    const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
+    const mimeType = dataUrl.match(/data:(.*);base64/)?.[1] || 'image/jpeg';
+    
+    await file.save(buffer, {
+        metadata: { contentType: mimeType },
+        public: true,
+    });
+    return file.publicUrl();
 }
 
 export async function createUserAndProfile(
@@ -134,18 +145,27 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
+    const { auth, firestore } = initializeAdminApp();
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        await sendEmailVerification(user);
-        
+        const userRecord = await auth.createUser({
+            email,
+            password,
+            displayName: name,
+        });
+
+        const user = userRecord;
+
+        // Note: Admin SDK does not send verification emails directly.
+        // This would typically be handled by a separate client-side call or a custom email service.
+        // For now, we'll skip sending the email from the server action.
+
         let avatarUrl = "";
         if (avatarFile) {
             avatarUrl = await uploadImage(avatarFile, `avatars/${user.uid}`);
         }
+        
+        await auth.updateUser(user.uid, { photoURL: avatarUrl });
 
-        await updateProfile(user, { displayName: name, photoURL: avatarUrl });
 
         const userData: FullUserProfile = {
             id: user.uid,
@@ -157,8 +177,9 @@ export async function createUserAndProfile(
         };
         
         if (role === 'founder') {
-            const startupRef = doc(collection(firestore, 'startups'));
+            const startupRef = firestore.collection('startups').doc();
             const startupId = startupRef.id;
+
             let companyLogoUrl = "";
             if (logoFile) {
                 companyLogoUrl = await uploadImage(logoFile, `logos/${startupId}`);
@@ -194,7 +215,7 @@ export async function createUserAndProfile(
                     taxId: profileData.taxId,
                 }
             };
-            await setDoc(startupRef, startupData);
+            await startupRef.set(startupData);
 
         } else if (role === 'investor') {
             userData.profile = {
@@ -222,7 +243,7 @@ export async function createUserAndProfile(
             } as TalentProfile;
         }
         
-        await setDoc(doc(firestore, "users", user.uid), userData);
+        await firestore.collection("users").doc(user.uid).set(userData);
 
         return { success: true, userId: user.uid };
     } catch (error: any) {
@@ -232,15 +253,16 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
+    const { firestore } = initializeAdminApp();
     try {
-        const userRef = doc(firestore, "users", userId);
-        const existingDoc = await getDoc(userRef);
-        if (!existingDoc.exists()) {
+        const userRef = firestore.collection("users").doc(userId);
+        const existingDoc = await userRef.get();
+        if (!existingDoc.exists) {
             throw new Error("User not found");
         }
-        const existingProfile = existingDoc.data().profile || {};
+        const existingProfile = existingDoc.data()?.profile || {};
 
-        await updateDoc(userRef, { profile: { ...existingProfile, ...data } });
+        await userRef.update({ profile: { ...existingProfile, ...data } });
         return { success: true };
     } catch (error: any) {
         console.error("Error updating user profile:", error);
@@ -249,18 +271,18 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
 }
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
+    const { auth, firestore } = initializeAdminApp();
     try {
         // Delete user document from Firestore
-        await deleteDoc(doc(firestore, "users", userId));
+        await firestore.collection("users").doc(userId).delete();
 
         // If user is a founder and has a company, delete the startup document
         if (role === 'founder' && companyId) {
-            await deleteDoc(doc(firestore, "startups", companyId));
+            await firestore.collection("startups").doc(companyId).delete();
         }
 
         // Finally, delete user from Firebase Auth
-        // This should be the last step
-        await deleteCurrentUser();
+        await auth.deleteUser(userId);
 
         return { success: true };
     } catch (error: any) {
@@ -275,3 +297,4 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
     }
 }
 
+    
