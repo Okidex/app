@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -6,12 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowRight, Briefcase, Lightbulb, Users } from 'lucide-react';
 import Logo from '@/components/logo';
 import { redirect } from 'next/navigation';
-import useAuth from '@/hooks/use-auth';
+import { useUser } from '@/firebase';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading: loading } = useUser();
 
   useEffect(() => {
     if (!loading && user) {
