@@ -14,12 +14,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { getCurrentUser } from "@/lib/data";
 import { FounderProfile, FullUserProfile } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { deleteCurrentUserAccount } from "@/lib/actions";
+import { useUser } from "@/firebase";
+import { useRouter } from "next/navigation";
+import { logout } from "@/lib/auth";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { user: authUser } = useUser();
   const [user, setUser] = useState<FullUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     getCurrentUser().then(userProfile => {
@@ -27,6 +33,42 @@ export default function SettingsPage() {
         setLoading(false);
     });
   }, []);
+
+  const handleSaveChanges = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    toast({
+      title: "Settings Saved",
+      description: "Your login and security settings have been updated.",
+    });
+  };
+  
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    if (!user) {
+        toast({ title: "Error", description: "Could not delete account. User not found.", variant: "destructive" });
+        setIsDeleting(false);
+        return;
+    }
+
+    const result = await deleteCurrentUserAccount(user.id, user.role, (user.profile as FounderProfile)?.companyId);
+    
+    setIsDeleting(false);
+
+    if (result.success) {
+        toast({
+            title: "Account Deleted",
+            description: "Your account and all associated data have been permanently deleted.",
+        });
+        await logout();
+        router.push('/register');
+    } else {
+        toast({
+            title: "Error Deleting Account",
+            description: result.error || "An unexpected error occurred.",
+            variant: "destructive",
+        });
+    }
+  };
 
   if (loading || !user) {
     return (
@@ -43,27 +85,6 @@ export default function SettingsPage() {
   
   const isFounder = user.role === 'founder';
   const isPremiumFounder = isFounder && (user.profile as FounderProfile).isPremium;
-
-  const handleSaveChanges = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    toast({
-      title: "Settings Saved",
-      description: "Your login and security settings have been updated.",
-    });
-  };
-  
-  const handleDeleteAccount = async () => {
-    setIsDeleting(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    // In a real app, you would redirect to a logged-out state.
-    // For now, we just show a toast.
-    setIsDeleting(false);
-    toast({
-        title: "Account Deletion Initiated",
-        description: "Your account is scheduled for deletion. You will be logged out.",
-        variant: "destructive",
-    });
-  };
 
   return (
     <div className="space-y-6">

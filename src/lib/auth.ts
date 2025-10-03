@@ -2,7 +2,7 @@
 "use server";
 
 import { initializeFirebase } from '@/firebase';
-import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut, deleteUser } from "firebase/auth";
 
 export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
   const { auth } = initializeFirebase();
@@ -35,4 +35,13 @@ export async function sendPasswordReset(email: string) {
   }
 }
 
-    
+export async function deleteCurrentUser() {
+  const { auth } = initializeFirebase();
+  const user = auth.currentUser;
+  if (user) {
+    await deleteUser(user);
+  } else {
+    throw new Error("No user is currently signed in.");
+  }
+}
+

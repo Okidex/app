@@ -9,9 +9,10 @@ import { financialBreakdown } from "@/ai/flows/financial-breakdown";
 import { smartSearch } from "@/ai/flows/smart-search";
 import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserRole, TalentSubRole, InvestorProfile } from "./types";
 import { initializeFirebase } from '@/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
+import { collection, getDocs, doc, setDoc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, deleteUser } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { deleteCurrentUser } from "./auth";
 
 export async function getFinancialSummary(input: FinancialDataInput) {
   try {
@@ -252,4 +253,31 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
     }
 }
 
-    
+export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
+    const { firestore } = initializeFirebase();
+    try {
+        // Delete user document from Firestore
+        await deleteDoc(doc(firestore, "users", userId));
+
+        // If user is a founder and has a company, delete the startup document
+        if (role === 'founder' && companyId) {
+            await deleteDoc(doc(firestore, "startups", companyId));
+        }
+
+        // Finally, delete user from Firebase Auth
+        // This should be the last step
+        await deleteCurrentUser();
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error deleting user account:", error);
+        let errorMessage = "An unexpected error occurred.";
+        if (error.code === 'auth/requires-recent-login') {
+            errorMessage = "This is a sensitive operation and requires recent authentication. Please log in again before retrying.";
+        } else {
+            errorMessage = error.message;
+        }
+        return { success: false, error: errorMessage };
+    }
+}
+
