@@ -1,7 +1,7 @@
 
 "use client";
 
-import { getUserById, getCurrentUser } from "@/lib/data";
+import { getUserById, getCurrentUser } from "@/lib/actions";
 import { notFound, useParams } from "next/navigation";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,7 @@ import { format, subMonths, getMonth, getYear } from 'date-fns';
 import CapTableCard from "@/components/profile/cap-table-card";
 import LockedFinancialsCard from "@/components/profile/locked-financials-card";
 import { doc, getDoc } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
-import useAuth from "@/hooks/use-auth";
+import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
@@ -40,7 +39,7 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
 
     useEffect(() => {
         const fetchStartup = async () => {
-            if (profile.companyId) {
+            if (profile.companyId && db) {
                 const startupRef = doc(db, "startups", profile.companyId);
                 const startupSnap = await getDoc(startupRef);
                 if (startupSnap.exists()) {
@@ -505,7 +504,7 @@ const UserProfileClient = ({ user, currentUser }: { user: FullUserProfile, curre
 
     useEffect(() => {
         const fetchStartup = async () => {
-            if (user.role === 'founder' && (user.profile as FounderProfile).companyId) {
+            if (user.role === 'founder' && (user.profile as FounderProfile).companyId && db) {
                 const companyId = (user.profile as FounderProfile).companyId;
                 const startupRef = doc(db, "startups", companyId!);
                 const startupSnap = await getDoc(startupRef);
@@ -532,7 +531,7 @@ const UserProfileClient = ({ user, currentUser }: { user: FullUserProfile, curre
 export default function UserProfilePage() {
     const params = useParams();
     const id = params.id as string;
-    const { user: authUser, loading: authLoading } = useAuth();
+    const { user: authUser, isUserLoading: authLoading } = useUser();
     const [user, setUser] = useState<FullUserProfile | null>(null);
     const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
     const [loading, setLoading] = useState(true);

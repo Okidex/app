@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FullUserProfile, Interest, FounderProfile, Job, InvestmentThesis } from "@/lib/types";
@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { Lock } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
-import useAuth from "@/hooks/use-auth";
+import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type ApplicantItem = Interest & { user: FullUserProfile | undefined; targetName: string };
@@ -58,6 +57,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
 
     useEffect(() => {
         const fetchInterests = async () => {
+            if (!db) return;
             // Fetch theses created by investor
             const thesesQuery = query(collection(db, "theses"), where("investorId", "==", currentUser.id));
             const thesesSnap = await getDocs(thesesQuery);
@@ -140,6 +140,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
 
     useEffect(() => {
         const fetchInterests = async () => {
+            if (!db) return;
             const jobsQuery = query(collection(db, "jobs"), where("founderId", "==", currentUser.id));
             const jobsSnap = await getDocs(jobsQuery);
             const myJobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
@@ -174,7 +175,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
 };
 
 export default function ApplicantsPage() {
-    const { user: authUser, loading: authLoading } = useAuth();
+    const { user: authUser, isUserLoading: authLoading } = useUser();
     const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 

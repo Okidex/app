@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,15 +18,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import TalentInterestPrompt from "@/components/theses/talent-interest-prompt";
-import useAuth from "@/hooks/use-auth";
+import { useUser, useFirestore } from "@/firebase";
 import { collection, query, getDocs, orderBy, addDoc, where } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type ThesisWithAuthor = InvestmentThesis & { author?: FullUserProfile };
 
 export default function ThesesPage() {
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, isUserLoading: authLoading } = useUser();
   const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
   const [theses, setTheses] = useState<ThesisWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +44,10 @@ export default function ThesesPage() {
 
   useEffect(() => {
       const fetchTheses = async () => {
+          if (!db) {
+            setLoading(false);
+            return;
+          };
           setLoading(true);
           const thesesQuery = query(collection(db, "theses"), orderBy("postedAt", "desc"));
           const querySnapshot = await getDocs(thesesQuery);
@@ -80,7 +83,7 @@ export default function ThesesPage() {
 
   const handlePostThesis = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || !db) return;
     
     const newThesisData: Omit<InvestmentThesis, "id"> = {
       investorId: currentUser.id,

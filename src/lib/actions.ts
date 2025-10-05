@@ -25,6 +25,18 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
   return usersCollection.docs[0].data() as FullUserProfile;
 }
 
+export async function getUserById(userId: string): Promise<FullUserProfile | null> {
+    const { firestore } = initializeAdminApp();
+    const userDocRef = firestore.collection("users").doc(userId);
+    const userDocSnap = await userDocRef.get();
+
+    if (userDocSnap.exists) {
+        return userDocSnap.data() as FullUserProfile;
+    }
+
+    return null;
+}
+
 export async function getFinancialSummary(input: FinancialDataInput) {
   try {
     const result = await summarizeFinancialData(input);

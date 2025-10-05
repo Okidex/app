@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 import { Job, FounderProfile, InvestorProfile, FullUserProfile } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,12 +18,11 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import FounderApplyPrompt from "@/components/jobs/founder-apply-prompt";
 import { collection, addDoc, serverTimestamp, query, getDocs, orderBy } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
-import useAuth from "@/hooks/use-auth";
+import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function JobsPage() {
-    const { user: authUser, loading: authLoading } = useAuth();
+    const { user: authUser, isUserLoading: authLoading } = useUser();
     const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
@@ -42,6 +41,10 @@ export default function JobsPage() {
     
     useEffect(() => {
         const fetchJobs = async () => {
+            if (!db) {
+                setLoading(false);
+                return;
+            };
             setLoading(true);
             const jobsQuery = query(collection(db, "jobs"), orderBy("postedAt", "desc"));
             const querySnapshot = await getDocs(jobsQuery);
@@ -94,7 +97,7 @@ export default function JobsPage() {
 
     const handlePostJob = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser) return;
+        if (!currentUser || !db) return;
 
         let companyName = "Your Company";
         let companyLogoUrl = `https://picsum.photos/seed/logo-default/200/200`;

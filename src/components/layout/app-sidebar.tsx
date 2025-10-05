@@ -27,12 +27,12 @@ import {
   Search,
   Users as UsersIcon,
 } from "lucide-react"
-import Logo from "@/components/logo"
+import Logo from "../logo"
 import { FullUserProfile, FounderProfile, TalentProfile, Notification } from "@/lib/types"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useUser, useFirestore } from "@/firebase"
 import { logout } from "@/lib/auth"
-import { getCurrentUser } from "@/lib/data"
+import { getCurrentUser } from "@/lib/actions"
 import { collection, query, where, onSnapshot } from "firebase/firestore"
 
 const menuItemsFounder = [

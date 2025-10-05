@@ -11,13 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 import { FounderProfile, FullUserProfile } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteCurrentUserAccount } from "@/lib/actions";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/auth";
+import { deleteCurrentUserAccount } from "@/lib/actions";
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -28,13 +28,11 @@ export default function SettingsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchUser = async () => {
-        const userProfile = await getCurrentUser();
-        setUser(userProfile);
-        setLoading(false);
-    }
     if (authUser) {
-        fetchUser();
+      getCurrentUser().then(userProfile => {
+          setUser(userProfile);
+          setLoading(false);
+      });
     }
   }, [authUser]);
 
