@@ -11,10 +11,10 @@ import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserR
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { initializeAdminApp } from "@/lib/firebase-admin";
+import { initializeAdminApp } from "./firebase-admin";
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { auth, firestore } = initializeAdminApp();
+  const { firestore } = initializeAdminApp();
   
   // This approach is insecure and will be replaced with a real session management solution
   // For now, we'll fetch the first user as a placeholder for the "current" user.
