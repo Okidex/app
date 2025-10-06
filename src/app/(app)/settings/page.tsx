@@ -11,13 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getCurrentUser } from "@/lib/actions";
+import { deleteCurrentUserAccount, getCurrentUser } from "@/lib/actions";
 import { FounderProfile, FullUserProfile } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/auth";
-import { deleteCurrentUserAccount } from "@/lib/actions";
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -198,3 +197,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { getUserById, getCurrentUser } from "@/lib/actions";
+import { getUserById, getCurrentUser, getFinancialBreakdown } from "@/lib/actions";
 import { notFound, useParams } from "next/navigation";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts"
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { getFinancialBreakdown } from "@/lib/actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

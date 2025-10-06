@@ -318,4 +318,3 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
     }
 }
 
-    

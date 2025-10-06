@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getCurrentUser } from "@/lib/actions";
+import { getCurrentUser, updateUserProfile } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,6 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { updateUserProfile } from "@/lib/actions";
 import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
 import { getDoc, doc } from "firebase/firestore";

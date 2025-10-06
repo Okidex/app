@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
@@ -11,12 +11,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Conversation, FullUserProfile, Message } from "@/lib/types";
 import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
-import useAuth from "@/hooks/use-auth";
+import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MessagesPage() {
-    const { user: authUser, loading: authLoading } = useAuth();
+    const { user: authUser, isUserLoading: authLoading } = useUser();
     const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -32,7 +31,7 @@ export default function MessagesPage() {
     }, [authUser, authLoading]);
 
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser || !db) return;
 
         setLoading(true);
         const q = query(collection(db, "conversations"), where("participantIds", "array-contains", currentUser.id));
@@ -101,11 +100,15 @@ export default function MessagesPage() {
 
     const activeConversation = conversations.find(c => c.id === activeConversationId);
     
-    if (!activeConversation) {
+    if (conversations.length > 0 && !activeConversation) {
+         return <div className="flex items-center justify-center h-full">Select a conversation to start chatting.</div>
+    }
+
+    if (conversations.length === 0) {
         return <div className="flex items-center justify-center h-full">No conversations yet. Start a new one!</div>
     }
 
-    const otherParticipant = (activeConversation.participants as FullUserProfile[]).find(p => p.id !== currentUser.id)!;
+    const otherParticipant = (activeConversation!.participants as FullUserProfile[]).find(p => p.id !== currentUser.id)!;
 
 
     return (
@@ -135,7 +138,8 @@ export default function MessagesPage() {
                     })}
                 </div>
             </div>
-            <div className="w-2/3 pl-4 flex flex-col">
+           {activeConversation && otherParticipant && (
+             <div className="w-2/3 pl-4 flex flex-col">
                 <div className="border-b pb-2 mb-4">
                     <h2 className="text-xl font-semibold">{otherParticipant.name}</h2>
                 </div>
@@ -168,6 +172,7 @@ export default function MessagesPage() {
                     </Button>
                 </div>
             </div>
+           )}
         </div>
     );
 }

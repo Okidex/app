@@ -27,7 +27,7 @@ import {
   Search,
   Users as UsersIcon,
 } from "lucide-react"
-import Logo from "../logo"
+import Logo from "@/components/logo"
 import { FullUserProfile, FounderProfile, TalentProfile, Notification } from "@/lib/types"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useUser, useFirestore } from "@/firebase"
@@ -193,3 +193,5 @@ export function AppSidebar() {
     </Sidebar>
   )
 }
+
+    
