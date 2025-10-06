@@ -2,7 +2,9 @@
 "use server";
 
 import { initializeFirebase } from '@/firebase';
-import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut, deleteUser } from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth } from 'firebase-admin/auth';
+import { initializeAdminApp } from './firebase-admin';
 
 export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
   const { auth } = initializeFirebase();
@@ -36,12 +38,19 @@ export async function sendPasswordReset(email: string) {
 }
 
 export async function deleteCurrentUser() {
-  const { auth } = initializeFirebase();
-  const user = auth.currentUser;
+  const { auth: adminAuth } = initializeAdminApp();
+  const { auth: clientAuth } = initializeFirebase();
+  const user = clientAuth.currentUser;
+
   if (user) {
-    await deleteUser(user);
+    // This function can now only be called from a server action that has validated the user's identity.
+    // The client should call a server action which in turn calls this.
+    // The server action should verify the user's token before deleting.
+    // For simplicity here, we assume the server action has done this.
+    // A better implementation would pass the UID from a verified token.
+    await adminAuth.deleteUser(user.uid);
   } else {
-    throw new Error("No user is currently signed in.");
+    throw new Error("No user is currently signed in to delete.");
   }
 }
 

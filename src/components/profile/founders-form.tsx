@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FullUserProfile, Startup, FounderProfile } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { getUserById } from '@/lib/data';
+import { getUserById } from '@/lib/actions';
 import UserAvatar from '@/components/shared/user-avatar';
 import { Star, Trash, UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';

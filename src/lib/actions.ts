@@ -11,7 +11,7 @@ import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserR
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { initializeAdminApp } from "@/lib/firebase-admin";
+import { initializeAdminApp } from "./firebase-admin";
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const { auth, firestore } = initializeAdminApp();
