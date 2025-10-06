@@ -1,16 +1,16 @@
+
 import admin from 'firebase-admin';
-import { getFirebaseAdminApp } from 'firebase-frameworks';
 
 // This pattern ensures that the Firebase Admin SDK is initialized only once.
 export function initializeAdminApp() {
-    // Use getFirebaseAdminApp() to safely initialize the app in any environment.
-    // It handles the check for existing apps and uses the correct credentials.
-    const app = getFirebaseAdminApp();
-    
+    if (!admin.apps.length) {
+      // Initialize without arguments to use Application Default Credentials in App Hosting.
+      admin.initializeApp();
+    }
     return {
-        auth: admin.auth(app),
-        firestore: admin.firestore(app),
-        storage: admin.storage(app)
+        auth: admin.auth(),
+        firestore: admin.firestore(),
+        storage: admin.storage()
     }
 }
 

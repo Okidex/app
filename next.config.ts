@@ -36,13 +36,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  webpack: (config, { isServer }) => {
-    // This is to fix a bug in firebase-frameworks with Next.js.
-    if (isServer) {
-      config.externals.push('nitro-output', 'nuxt', '@sveltejs/kit/node/polyfills');
-    }
-    return config;
-  }
 };
 
 export default nextConfig;
