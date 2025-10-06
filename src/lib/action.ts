@@ -1,4 +1,3 @@
-
 "use server";
 
 import { summarizeFinancialData, FinancialDataInput } from "@/ai/flows/financial-data-summary";
@@ -11,7 +10,7 @@ import { FullUserProfile, FounderProfile, TalentProfile, Startup, Profile, UserR
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { initializeAdminApp } from "./firebase-admin";
+import { initializeAdminApp } from "@/lib/firebase-admin";
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const { auth, firestore } = initializeAdminApp();
@@ -36,6 +35,7 @@ export async function getUserById(userId: string): Promise<FullUserProfile | nul
 
     return null;
 }
+
 
 export async function getFinancialSummary(input: FinancialDataInput) {
   try {
