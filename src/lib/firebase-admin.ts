@@ -31,4 +31,3 @@ function getStorage(app: admin.app.App) {
     return admin.storage(app);
 }
 
-    
