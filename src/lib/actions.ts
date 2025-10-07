@@ -14,7 +14,7 @@ import { smartMatch } from '@/ai/flows/smart-matching';
 import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
-import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile } from './types';
+import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
 
 // This pattern ensures that the Firebase Admin SDK is initialized only once per server instance.
 if (!admin.apps.length) {
@@ -160,7 +160,7 @@ export async function createUserAndProfile(
     name: string,
     role: UserRole,
     profileData: any,
-    subRole?: any,
+    subRole?: TalentSubRole,
     avatarFile?: string,
     logoFile?: string,
 ) {
