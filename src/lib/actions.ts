@@ -1,5 +1,10 @@
+
 'use server';
 
+import admin from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import {
   summarizeFinancialData,
   FinancialDataInput,
@@ -10,17 +15,22 @@ import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile } from './types';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-import { getStorage } from 'firebase-admin/storage';
-import { initializeAdminApp } from './firebase-admin';
+
+// This pattern ensures that the Firebase Admin SDK is initialized only once per server instance.
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = getFirestore();
+const auth = getAuth();
+const storage = getStorage();
+
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   // This function simulates getting the current user. In a real app this would involve session management.
   // For now, it fetches the first user from the database as a placeholder.
   // This should only be called from server components/actions where there's no client-side user context.
-  const { firestore } = initializeAdminApp();
-  const usersCollection = await firestore().collection('users').limit(1).get();
+  const usersCollection = await db.collection('users').limit(1).get();
   if (usersCollection.empty) {
     return null;
   }
@@ -28,8 +38,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
 }
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
-  const userDoc = await firestore().collection('users').doc(userId).get();
+  const userDoc = await db.collection('users').doc(userId).get();
   if (userDoc.exists) {
     return userDoc.data() as FullUserProfile;
   }
@@ -57,8 +66,7 @@ export async function getProfilePictureTags(photoDataUri: string) {
 }
 
 export async function getSmartMatches(user: FullUserProfile) {
-  const { firestore } = initializeAdminApp();
-  const startupsCollection = await firestore().collection('startups').get();
+  const startupsCollection = await db.collection('startups').get();
   const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
 
   let userProfileDesc = `User is a ${user.role}. Name: ${user.name}. `;
@@ -94,14 +102,13 @@ export async function getFinancialBreakdown(metric: string) {
 }
 
 export async function getSearchResults(query: string) {
-    const { firestore } = initializeAdminApp();
   if (!query) {
     return { startups: [], users: [] };
   }
 
-  const startupsCollection = await firestore().collection('startups').get();
+  const startupsCollection = await db.collection('startups').get();
   const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
-  const usersCollection = await firestore().collection('users').get();
+  const usersCollection = await db.collection('users').get();
   const allUsers = usersCollection.docs.map((doc) => doc.data() as FullUserProfile);
 
   try {
@@ -132,10 +139,9 @@ export async function getSearchResults(query: string) {
 }
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
-    const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
     
-    const bucket = storage().bucket();
+    const bucket = storage.bucket();
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
@@ -158,9 +164,8 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
-    const { auth, firestore } = initializeAdminApp();
     try {
-        const userRecord = await auth().createUser({
+        const userRecord = await auth.createUser({
             email,
             password,
             displayName: name,
@@ -171,9 +176,9 @@ export async function createUserAndProfile(
             avatarUrl = await uploadImage(avatarFile, `avatars/${userRecord.uid}`);
         }
         
-        await auth().updateUser(userRecord.uid, { photoURL: avatarUrl });
+        await auth.updateUser(userRecord.uid, { photoURL: avatarUrl });
 
-        const userDocRef = firestore().collection("users").doc(userRecord.uid);
+        const userDocRef = db.collection("users").doc(userRecord.uid);
 
         const userData: Omit<FullUserProfile, 'profile'> = {
             id: userRecord.uid,
@@ -186,7 +191,7 @@ export async function createUserAndProfile(
         let finalProfile: Profile = {};
 
         if (role === 'founder') {
-            const startupRef = firestore().collection('startups').doc();
+            const startupRef = db.collection('startups').doc();
             let companyLogoUrl = "";
             if (logoFile) {
                 companyLogoUrl = await uploadImage(logoFile, `logos/${startupRef.id}`);
@@ -260,9 +265,8 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
-    const { firestore } = initializeAdminApp();
     try {
-        const userRef = firestore().collection("users").doc(userId);
+        const userRef = db.collection("users").doc(userId);
         const existingDoc = await userRef.get();
         if (!existingDoc.exists) {
             throw new Error("User not found");
@@ -278,13 +282,12 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
 }
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
-    const { auth, firestore } = initializeAdminApp();
     try {
-        await firestore().collection("users").doc(userId).delete();
+        await db.collection("users").doc(userId).delete();
         if (role === 'founder' && companyId) {
-            await firestore().collection("startups").doc(companyId).delete();
+            await db.collection("startups").doc(companyId).delete();
         }
-        await auth().deleteUser(userId);
+        await auth.deleteUser(userId);
 
         return { success: true };
     } catch (error: any) {

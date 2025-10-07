@@ -1,8 +1,11 @@
+
 'use server';
 
 import { getAuth as getClientAuth, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeFirebase } from '@/firebase';
-import { initializeAdminApp } from './firebase-admin';
+import { getAuth } from "firebase-admin/auth";
+import admin from 'firebase-admin';
+
 
 // This function is intended to be called from client components
 export async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
@@ -39,13 +42,16 @@ export async function sendPasswordReset(email: string) {
 
 // This is a server-side only function
 export async function deleteCurrentUser() {
-  const { auth: adminAuth } = initializeAdminApp();
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  const adminAuth = getAuth();
   // Note: Determining the current user on the server requires session management
   // or passing a verified ID token. The logic below is a placeholder.
   // In a real app, you'd get the UID from a verified session cookie or auth header.
   const uidToDelete = "some-verified-user-uid"; // This needs to be replaced with real logic
   if (uidToDelete) {
-    await adminAuth().deleteUser(uidToDelete);
+    await adminAuth.deleteUser(uidToDelete);
   } else {
     throw new Error("Could not determine user to delete.");
   }

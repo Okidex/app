@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -25,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { login, sendPasswordReset } from "@/lib/auth";
+import { sendPasswordReset, login } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -65,6 +66,15 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsLoggingIn(true);
     try {
+      if (!auth) {
+        toast({
+          title: "Login Failed",
+          description: "Authentication service not available.",
+          variant: "destructive",
+        });
+        setIsLoggingIn(false);
+        return;
+      }
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push("/dashboard");
     } catch (error: any) {
@@ -81,6 +91,15 @@ export default function LoginPage() {
   const handlePasswordReset = async (values: z.infer<typeof resetSchema>) => {
     setIsResetting(true);
     try {
+       if (!auth) {
+        toast({
+          title: "Error",
+          description: "Authentication service not available.",
+          variant: "destructive",
+        });
+        setIsResetting(false);
+        return;
+      }
       await sendPasswordResetEmail(auth, values.resetEmail);
       setIsForgotPasswordOpen(false);
       toast({
