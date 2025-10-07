@@ -1,20 +1,21 @@
+'use server';
 
-"use server";
-
+import { getAuth as getClientAuth, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeFirebase } from '@/firebase';
-import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeAdminApp } from './firebase-admin';
 
-export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
+// This function is intended to be called from client components
+export async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
   const { auth } = initializeFirebase();
   try {
     await signInWithEmailAndPassword(auth, email, password);
     return { success: true };
-  } catch(error: any) {
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
+// This function is intended to be called from client components
 export async function logout() {
   const { auth } = initializeFirebase();
   try {
@@ -25,7 +26,7 @@ export async function logout() {
   }
 }
 
-
+// This function is intended to be called from client components
 export async function sendPasswordReset(email: string) {
   const { auth } = initializeFirebase();
   try {
@@ -36,20 +37,17 @@ export async function sendPasswordReset(email: string) {
   }
 }
 
+// This is a server-side only function
 export async function deleteCurrentUser() {
   const { auth: adminAuth } = initializeAdminApp();
-  const { auth: clientAuth } = initializeFirebase();
-  const user = clientAuth.currentUser;
-
-  if (user) {
-    // This function can now only be called from a server action that has validated the user's identity.
-    // The client should call a server action which in turn calls this.
-    // The server action should verify the user's token before deleting.
-    // For simplicity here, we assume the server action has done this.
-    // A better implementation would pass the UID from a verified token.
-    await adminAuth.deleteUser(user.uid);
+  // Note: Determining the current user on the server requires session management
+  // or passing a verified ID token. The logic below is a placeholder.
+  // In a real app, you'd get the UID from a verified session cookie or auth header.
+  const uidToDelete = "some-verified-user-uid"; // This needs to be replaced with real logic
+  if (uidToDelete) {
+    await adminAuth().deleteUser(uidToDelete);
   } else {
-    throw new Error("No user is currently signed in to delete.");
+    throw new Error("Could not determine user to delete.");
   }
 }
 

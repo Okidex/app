@@ -1,9 +1,5 @@
-
 import { FullUserProfile, Startup, Job, InvestmentThesis, Conversation, Notification, Interest } from './types';
 import { subMonths, format } from 'date-fns';
-
-// This file is kept for seeding purposes but is not used directly by the application anymore.
-// Data is fetched from Firestore.
 
 export const users: FullUserProfile[] = [
     {
@@ -314,4 +310,3 @@ export const interests: Interest[] = [
     }
 ];
 
-    

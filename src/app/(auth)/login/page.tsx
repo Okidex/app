@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -26,8 +25,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { sendPasswordReset, login } from "@/lib/auth";
+import { login, sendPasswordReset } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/firebase";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -41,6 +42,7 @@ const resetSchema = z.object({
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -62,37 +64,37 @@ export default function LoginPage() {
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsLoggingIn(true);
-    const result = await login(values.email, values.password);
-    setIsLoggingIn(false);
-
-    if (result.success) {
+    try {
+      await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push("/dashboard");
-    } else {
+    } catch (error: any) {
        toast({
         title: "Login Failed",
-        description: result.error,
+        description: error.message,
         variant: "destructive",
       });
+    } finally {
+        setIsLoggingIn(false);
     }
   };
   
   const handlePasswordReset = async (values: z.infer<typeof resetSchema>) => {
     setIsResetting(true);
-    const result = await sendPasswordReset(values.resetEmail);
-    setIsResetting(false);
-    
-    if (result.success) {
+    try {
+      await sendPasswordResetEmail(auth, values.resetEmail);
       setIsForgotPasswordOpen(false);
       toast({
         title: "Password Reset Email Sent",
         description: "Please check your inbox for instructions to reset your password.",
       });
-    } else {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: result.error,
+        description: error.message,
         variant: "destructive",
       });
+    } finally {
+        setIsResetting(false);
     }
   };
 
