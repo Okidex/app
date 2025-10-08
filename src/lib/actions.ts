@@ -11,11 +11,7 @@ import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
-import { initializeAdminApp } from './firebase-admin';
-
-// This pattern ensures that the Firebase Admin SDK is initialized only once per server instance.
-const { firestore, auth, storage } = initializeAdminApp();
-
+import { auth, firestore, storage } from './firebase-admin';
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   // This function simulates getting the current user. In a real app this would involve session management.
