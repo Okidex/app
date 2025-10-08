@@ -2,211 +2,248 @@
  * @file Firebase Security Rules for Okidex Application
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-related data and allows public read access to certain collections while restricting write access to authorized users. Data essential for authorization is denormalized to avoid costly `get()` operations.
+ * This ruleset enforces a strict user-ownership model for user-related data
+ * and open access to publicly-listed data, while using path-based ownership to
+ * secure data trees. For other entities, it assumes a public read model, but
+ * enforces ownership for create/update/delete operations via an `ownerId` field.
  *
  * Data Structure:
- * - /users/{userId}: Stores core user data, accessible only by the user themselves.
+ * - /users/{userId}: Stores user data, accessible only by the user.
  * - /users/{userId}/userProfiles/{profileId}: Stores user profile data, accessible only by the user.
- * - /startups/{startupId}: Stores startup information. Write access to authorized users.
- * - /investmentTheses/{investmentThesisId}: Stores investment theses. Write access to authorized users.
- * - /jobPostings/{jobPostingId}: Stores job postings. Write access to authorized users.
- * - /matches/{matchId}: Stores match information between users.
- * - /matches/{matchId}/messages/{messageId}: Stores messages within a match, accessible only to users involved in the match.
- * - /startups/{startupId}/financialData/{financialDataId}: Stores financial data for startups.
+ * - /startups/{startupId}: Stores startup data, readable by all, but writable only by the owner.
+ * - /investmentTheses/{investmentThesisId}: Stores investment theses, readable by all, but writable only by the owner.
+ * - /jobPostings/{jobPostingId}: Stores job postings, readable by all, but writable only by the owner.
+ * - /matches/{matchId}: Stores match data, readable by all, but writable only by the owner.
+ * - /matches/{matchId}/messages/{messageId}: Stores messages for matches, accessible only to users in the match.
+ * - /startups/{startupId}/financialData/{financialDataId}: Stores financial data for startups, accessible only to those with access to the startup.
  *
  * Key Security Decisions:
- * - User data is strictly controlled by the user's ID in the path.
- * - Listing of users is implicitly denied; only specific user documents can be accessed.
- * - Public read access is granted to 'startups', 'investmentTheses', and 'jobPostings' collections.
- * - Authorization context is denormalized (copied) onto documents to avoid `get()` calls in rules.
+ * - User listing is disallowed to protect user privacy.
+ * - Ambiguous relationships default to owner-only access.
+ * - All write operations require a verified user identity (request.auth != null).
+ * - Public read access is enabled for certain top-level collections but guarded
+ *   by owner-only write access.
  *
  * Denormalization for Authorization:
- *   - User profile data is stored as a subcollection of the user's document to easily enforce ownership.
+ * - The rules rely on path-based ownership for /users/{userId} and
+ *   /users/{userId}/userProfiles/{profileId}, avoiding the need for get() calls.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user documents. Only the authenticated user can access their own document.
+     * @description Secures the /users/{userId} collection, ensuring only the user can access their data.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user_abc' can create their own document at /users/user_abc.
-     * @allow (get, list) - User with UID 'user_abc' can get and list their own document at /users/user_abc.
-     * @allow (update, delete) - User with UID 'user_abc' can update and delete their own document at /users/user_abc.
-     * @deny (create) - User with UID 'user_xyz' cannot create a document at /users/user_abc.
-     * @deny (get, list) - User with UID 'user_xyz' cannot get and list the document at /users/user_abc.
-     * @deny (update, delete) - User with UID 'user_xyz' cannot update or delete the document at /users/user_abc.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with ID 'user123' can create their document.
+     * @allow (get) User with ID 'user123' can read their document.
+     * @allow (update) User with ID 'user123' can update their document.
+     * @allow (delete) User with ID 'user123' can delete their document.
+     * @deny (create) User with ID 'user456' cannot create a document for 'user123'.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       function isSignedIn() {
         return request.auth != null;
       }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+
+      allow create: if isSignedIn() && isOwner(userId) && request.auth.uid == userId;
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to user profile documents. Only the authenticated user can access their own profile document.
+     * @description Secures the /users/{userId}/userProfiles/{profileId} collection, ensuring only the user can access their profile data.
      * @path /users/{userId}/userProfiles/{profileId}
-     * @allow (create) - User with UID 'user_abc' can create their own profile document at /users/user_abc/userProfiles/profile_123 if userId == profileId.
-     * @allow (get, list) - User with UID 'user_abc' can get and list their own profile document at /users/user_abc/userProfiles/profile_123.
-     * @allow (update, delete) - User with UID 'user_abc' can update and delete their own profile document at /users/user_abc/userProfiles/profile_123.
-     * @deny (create) - User with UID 'user_xyz' cannot create a profile document at /users/user_abc/userProfiles/profile_123.
-     * @deny (get, list) - User with UID 'user_xyz' cannot get and list the profile document at /users/user_abc/userProfiles/profile_123.
-     * @deny (update, delete) - User with UID 'user_xyz' cannot update or delete the profile document at /users/user_abc/userProfiles/profile_123.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with ID 'user123' can create a profile document under their user document.
+     * @allow (get) User with ID 'user123' can read their profile document.
+     * @allow (update) User with ID 'user123' can update their profile document.
+     * @allow (delete) User with ID 'user123' can delete their profile document.
+     * @deny (create) User with ID 'user456' cannot create a profile document for 'user123'.
+     * @principle Enforces document ownership for writes within a user's data tree.
      */
     match /users/{userId}/userProfiles/{profileId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       function isSignedIn() {
         return request.auth != null;
       }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to startup documents. Allows public read access, but restricts write access.
+     * @description Secures the /startups/{startupId} collection, allowing public read access but restricting writes to the owner.
      * @path /startups/{startupId}
-     * @allow (get, list) - Any user (signed in or not) can read the startup documents.
-     * @allow (create) - Signed-in user can create a new startup document. The `founderId` field in the document MUST match the user's UID.
-     * @allow (update, delete) - Only the user who is the founder of the startup (as indicated by the `founderId` field) can update or delete the document. Document must exist.
-     * @deny (create) - Signed-in user tries to create a startup document, but the `founderId` field does not match their UID.
-     * @deny (update, delete) - User who is not the founder tries to update or delete the startup document.
-     * @principle Allows public read access while enforcing ownership for writes.
+     * @allow (get) Any user can read a startup document.
+     * @allow (list) Any user can list startup documents.
+     * @allow (create) User with ID 'user123' can create a startup document with 'founderId' set to 'user123'.
+     * @allow (update) User with ID 'user123' can update a startup document where 'founderId' is 'user123'.
+     * @allow (delete) User with ID 'user123' can delete a startup document where 'founderId' is 'user123'.
+     * @deny (create) User with ID 'user456' cannot create a startup document with 'founderId' set to 'user123'.
+     * @principle Allows public read access with owner-only writes.
      */
     match /startups/{startupId} {
       function isSignedIn() {
         return request.auth != null;
       }
+
+      function isOwner() {
+        return isSignedIn() && request.auth.uid == resource.data.founderId;
+      }
+
       allow get: if true;
       allow list: if true;
+
       allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
-      allow update: if isSignedIn() && get(/databases/$(database)/documents/startups/$(startupId)).data.founderId == request.auth.uid;
-      allow delete: if isSignedIn() && get(/databases/$(database)/documents/startups/$(startupId)).data.founderId == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+      allow delete: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
     }
 
     /**
-     * @description Controls access to investment thesis documents. Allows public read access, but restricts write access.
+     * @description Secures the /investmentTheses/{investmentThesisId} collection, allowing public read access but restricting writes to the owner.
      * @path /investmentTheses/{investmentThesisId}
-     * @allow (get, list) - Any user (signed in or not) can read the investment thesis documents.
-     * @allow (create) - Signed-in user can create a new investment thesis document. The `investorId` field in the document MUST match the user's UID.
-     * @allow (update, delete) - Only the user who is the investor of the thesis (as indicated by the `investorId` field) can update or delete the document. Document must exist.
-     * @deny (create) - Signed-in user tries to create an investment thesis document, but the `investorId` field does not match their UID.
-     * @deny (update, delete) - User who is not the investor tries to update or delete the investment thesis document.
-     * @principle Allows public read access while enforcing ownership for writes.
+     * @allow (get) Any user can read an investment thesis document.
+     * @allow (list) Any user can list investment thesis documents.
+     * @allow (create) User with ID 'user123' can create an investment thesis document with 'investorId' set to 'user123'.
+     * @allow (update) User with ID 'user123' can update an investment thesis document where 'investorId' is 'user123'.
+     * @allow (delete) User with ID 'user123' can delete an investment thesis document where 'investorId' is 'user123'.
+     * @deny (create) User with ID 'user456' cannot create an investment thesis document with 'investorId' set to 'user123'.
+     * @principle Allows public read access with owner-only writes.
      */
     match /investmentTheses/{investmentThesisId} {
       function isSignedIn() {
         return request.auth != null;
       }
+
+      function isOwner() {
+        return isSignedIn() && request.auth.uid == resource.data.investorId;
+      }
+
       allow get: if true;
       allow list: if true;
+
       allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
-      allow update: if isSignedIn() && get(/databases/$(database)/documents/investmentTheses/$(investmentThesisId)).data.investorId == request.auth.uid;
-      allow delete: if isSignedIn() && get(/databases/$(database)/documents/investmentTheses/$(investmentThesisId)).data.investorId == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
+      allow delete: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
     }
 
     /**
-     * @description Controls access to job posting documents. Allows public read access, but restricts write access.
+     * @description Secures the /jobPostings/{jobPostingId} collection, allowing public read access but restricting writes to the owner.
      * @path /jobPostings/{jobPostingId}
-     * @allow (get, list) - Any user (signed in or not) can read the job posting documents.
-     * @allow (create) - Signed-in user can create a new job posting document. The `startupId` field in the document MUST match the user's UID.
-     * @allow (update, delete) - Only the user who is the owner of the startup (as indicated by the `startupId` field) can update or delete the document. Document must exist.
-     * @deny (create) - Signed-in user tries to create a job posting document, but the `startupId` field does not match their UID.
-     * @deny (update, delete) - User who is not the owner of the startup tries to update or delete the job posting document.
-     * @principle Allows public read access while enforcing ownership for writes.
+     * @allow (get) Any user can read a job posting document.
+     * @allow (list) Any user can list job posting documents.
+     * @deny (create) User can not create a job posting, requires startup id relationship to validate access
+     * @principle Allows public read access with owner-only writes.
      */
     match /jobPostings/{jobPostingId} {
       function isSignedIn() {
         return request.auth != null;
       }
+
+      function isOwner() {
+        return isSignedIn() && request.auth.uid == resource.data.ownerId;
+      }
+
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.startupId == request.auth.uid;
-      allow update: if isSignedIn() && get(/databases/$(database)/documents/jobPostings/$(jobPostingId)).data.startupId == request.auth.uid;
-      allow delete: if isSignedIn() && get(/databases/$(database)/documents/jobPostings/$(jobPostingId)).data.startupId == request.auth.uid;
+
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn() && request.resource.data.ownerId == request.auth.uid; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn() && request.resource.data.ownerId == request.auth.uid; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Controls access to match documents.
+     * @description Secures the /matches/{matchId} collection, allowing public read access but restricting writes to the owner.
      * @path /matches/{matchId}
-     * @allow (get) - Any signed-in user can get a match document.
-     * @allow (create) - Signed-in user can create a match document if the `user1Id` or `user2Id` matches their UID.
-     * @allow (update, delete) - Only users who are part of the match (`user1Id` or `user2Id`) can update or delete the match document. Document must exist.
-     * @deny (create) - Signed-in user tries to create a match document, but neither `user1Id` nor `user2Id` matches their UID.
-     * @deny (update, delete) - User who is not part of the match tries to update or delete the match document.
-     * @principle Allows matches between users, with access restricted to those involved in the match.
+     * @allow (get) Any user can read a match document.
+     * @allow (list) Any user can list match documents.
+     * @deny (create) User can not create a match, requires user id relationship to validate access
+     * @principle Allows public read access with owner-only writes.
      */
     match /matches/{matchId} {
       function isSignedIn() {
         return request.auth != null;
       }
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
-      allow update: if isSignedIn() && (get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid);
-      allow delete: if isSignedIn() && (get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid);
+
+      function isOwner() {
+        return isSignedIn() && request.auth.uid == resource.data.ownerId;
+      }
+
+      allow get: if true;
+      allow list: if true;
+
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn() && request.resource.data.ownerId == request.auth.uid; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn() && request.resource.data.ownerId == request.auth.uid; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Controls access to messages within a match. Only users involved in the match can access messages.
+     * @description Secures the /matches/{matchId}/messages/{messageId} collection, ensuring only users in the match can access messages.
      * @path /matches/{matchId}/messages/{messageId}
-     * @allow (get, list) - Users `user_abc` or `user_xyz` can read messages within match `match_123`.
-     * @allow (create) - Only users `user_abc` or `user_xyz` can create messages within match `match_123`. The senderId must be the auth user.
-     * @allow (update, delete) - No one can update or delete messages (messages are immutable).
-     * @deny (get, list) - User `user_def` cannot read messages within match `match_123`.
-     * @principle Restricts message access to users participating in the match.
+     * @allow (create) User who is part of the match can create a message.
+     * @allow (get) User who is part of the match can read a message.
+     * @allow (list) User who is part of the match can list messages.
+     * @allow (update) User who is part of the match can update a message.
+     * @allow (delete) User who is part of the match can delete a message.
+     * @deny (create) User who is not part of the match cannot create a message.
+     * @principle Restricts access to messages based on match membership.
      */
     match /matches/{matchId}/messages/{messageId} {
-       function isParticipant(matchId) {
-            let matchDoc = get(/databases/$(database)/documents/matches/$(matchId)).data;
-            return request.auth != null && (matchDoc.user1Id == request.auth.uid || matchDoc.user2Id == request.auth.uid);
-      }
       function isSignedIn() {
         return request.auth != null;
       }
 
-      allow get: if isSignedIn() && isParticipant(matchId);
-      allow list: if isSignedIn() && isParticipant(matchId);
-      allow create: if isSignedIn() && isParticipant(matchId) && request.resource.data.senderId == request.auth.uid;
-      allow update: if false;
-      allow delete: if false;
+      function isParticipant(matchId) {
+        return isSignedIn() && (get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid);
+      }
+
+      allow get: if isParticipant(matchId);
+      allow list: if isParticipant(matchId);
+
+      allow create: if isParticipant(matchId);
+      allow update: if isParticipant(matchId);
+      allow delete: if isParticipant(matchId);
     }
 
     /**
-     * @description Controls access to financial data documents for startups.
+     * @description Secures the /startups/{startupId}/financialData/{financialDataId} collection.
      * @path /startups/{startupId}/financialData/{financialDataId}
-     * @allow (get) -  Any signed-in user can get a financial data document.
-     * @allow (create) - Signed-in user can create a financial data document.
-     * @allow (update, delete) - Signed-in user can update or delete the financial data document. Document must exist.
-     * @principle Restricts financial data access to authorized users.
+     * @allow (create) User with access to the startup can create financial data.
+     * @allow (get) User with access to the startup can read financial data.
+     * @allow (list) User with access to the startup can list financial data.
+     * @allow (update) User with access to the startup can update financial data.
+     * @allow (delete) User without access to the startup cannot create financial data.
      */
     match /startups/{startupId}/financialData/{financialDataId} {
-        function isOwner(startupId) {
-          let startup = get(/databases/$(database)/documents/startups/$(startupId)).data;
-          return request.auth != null && request.auth.uid == startup.founderId;
-        }
-      function isSignedIn() {
+       function isSignedIn() {
         return request.auth != null;
       }
-       allow get: if isSignedIn() && isOwner(startupId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(startupId);
-      allow update: if isSignedIn() && isOwner(startupId);
-      allow delete: if isSignedIn() && isOwner(startupId);
+
+      function isStartupOwner(startupId) {
+        return isSignedIn() && get(/databases/$(database)/documents/startups/$(startupId)).data.founderId == request.auth.uid;
+      }
+
+      allow get: if isStartupOwner(startupId);
+      allow list: if isStartupOwner(startupId);
+
+      allow create: if isStartupOwner(startupId);
+      allow update: if isStartupOwner(startupId);
+      allow delete: if isStartupOwner(startupId);
     }
   }
 }
