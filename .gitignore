@@ -4,7 +4,6 @@
 /node_modules
 /.pnp
 .pnp.js
-.pnp.cjs
 
 # testing
 /coverage
@@ -38,5 +37,6 @@ pnpm-debug.log*
 next-env.d.ts
 
 # firebase
-.firebase
-firebase-debug.log*
+.firebase/
+firebase-debug.log
+firestore-debug.log
