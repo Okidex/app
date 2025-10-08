@@ -1,8 +1,9 @@
 
 'use server';
 
-import { getAuth as getClientAuth, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeFirebase } from '@/firebase';
+import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { initializeAdminApp } from './firebase-admin';
 
 // This function is intended to be called from client components
 export async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {

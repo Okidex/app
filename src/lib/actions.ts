@@ -11,9 +11,10 @@ import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
-import { auth, firestore, storage } from './firebase-admin';
+import { initializeAdminApp } from './firebase-admin';
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
+  const { firestore } = initializeAdminApp();
   // This function simulates getting the current user. In a real app this would involve session management.
   // For now, it fetches the first user from the database as a placeholder.
   // This should only be called from server components/actions where there's no client-side user context.
@@ -25,6 +26,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
 }
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
+  const { firestore } = initializeAdminApp();
   const userDoc = await firestore.collection('users').doc(userId).get();
   if (userDoc.exists) {
     return userDoc.data() as FullUserProfile;
@@ -53,6 +55,7 @@ export async function getProfilePictureTags(photoDataUri: string) {
 }
 
 export async function getSmartMatches(user: FullUserProfile) {
+  const { firestore } = initializeAdminApp();
   const startupsCollection = await firestore.collection('startups').get();
   const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
 
@@ -93,6 +96,7 @@ export async function getSearchResults(query: string) {
     return { startups: [], users: [] };
   }
 
+  const { firestore } = initializeAdminApp();
   const startupsCollection = await firestore.collection('startups').get();
   const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
   const usersCollection = await firestore.collection('users').get();
@@ -126,6 +130,7 @@ export async function getSearchResults(query: string) {
 }
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
+    const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
     
     const bucket = storage.bucket();
@@ -151,6 +156,7 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
+    const { auth, firestore } = initializeAdminApp();
     try {
         const userRecord = await auth.createUser({
             email,
@@ -252,6 +258,7 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
+    const { firestore } = initializeAdminApp();
     try {
         const userRef = firestore.collection("users").doc(userId);
         const existingDoc = await userRef.get();
@@ -269,6 +276,7 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
 }
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
+    const { auth, firestore } = initializeAdminApp();
     try {
         await firestore.collection("users").doc(userId).delete();
         if (role === 'founder' && companyId) {
