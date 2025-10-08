@@ -1,5 +1,7 @@
+
 import { FullUserProfile, Startup, Job, InvestmentThesis, Conversation, Notification, Interest } from './types';
 import { subMonths, format } from 'date-fns';
+import { getImage } from './placeholder-images';
 
 export const users: FullUserProfile[] = [
     {
@@ -7,7 +9,7 @@ export const users: FullUserProfile[] = [
         name: 'Ada Lovelace',
         email: 'ada@example.com',
         role: 'founder',
-        avatarUrl: 'https://images.unsplash.com/photo-1590650153855-d9e808231d41?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d29tYW4lMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzU4NTg1MzQzfDA&ixlib=rb-4.1.0&q=80&w=1080',
+        avatarUrl: getImage('user-1').imageUrl,
         profile: {
             companyId: 'startup-1',
             isLead: true,
@@ -20,7 +22,7 @@ export const users: FullUserProfile[] = [
         name: 'Charles Babbage',
         email: 'charles@example.com',
         role: 'investor',
-        avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBzdWl0fGVufDB8fHx8MTc1ODU5NTYzMXww&ixlib=rb-4.1.0&q=80&w=1080',
+        avatarUrl: getImage('user-2').imageUrl,
         profile: {
             companyName: 'Difference Capital',
             companyUrl: 'https://example.com',
@@ -28,8 +30,8 @@ export const users: FullUserProfile[] = [
             investmentInterests: ['AI', 'Fintech', 'SaaS'],
             investmentStages: ['Seed', 'Series A'],
             portfolio: [
-                { companyName: 'InnovateAI', companyLogoUrl: 'https://picsum.photos/seed/logo1/200/200', companyUrl: 'https://example.com' },
-                { companyName: 'QuantumLeap', companyLogoUrl: 'https://picsum.photos/seed/logo2/200/200', companyUrl: 'https://example.com' },
+                { companyName: 'InnovateAI', companyLogoUrl: getImage('logo-1').imageUrl, companyUrl: 'https://example.com' },
+                { companyName: 'QuantumLeap', companyLogoUrl: getImage('logo-2').imageUrl, companyUrl: 'https://example.com' },
             ],
             exits: [
                  { companyName: 'DataDriven Inc.', companyUrl: 'https://example.com' }
@@ -44,7 +46,7 @@ export const users: FullUserProfile[] = [
         name: 'Grace Hopper',
         email: 'grace@example.com',
         role: 'talent',
-        avatarUrl: 'https://images.unsplash.com/photo-1603575448360-153f093fd0b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZGV2ZWxvcGVyJTIwY29kZXxlbnwwfHx8fDE3NTg2MTgwMTR8MA&ixlib=rb-4.1.0&q=80&w=1080',
+        avatarUrl: getImage('user-3').imageUrl,
         profile: {
             subRole: 'employee',
             headline: 'Senior Software Engineer',
@@ -63,7 +65,7 @@ export const users: FullUserProfile[] = [
         name: 'Alan Turing',
         email: 'alan@example.com',
         role: 'talent',
-        avatarUrl: 'https://images.unsplash.com/photo-1690191795219-d88b1af86e3b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwcmVzZW50YXRpb24lMjBidXNpbmVzc3xlbnwwfHx8fDE3NTg2MTgwMTN8MA&ixlib=rb-4.1.0&q=80&w=1080',
+        avatarUrl: getImage('user-4').imageUrl,
         profile: {
             subRole: 'co-founder',
             headline: 'Product Leader & Strategist',
@@ -81,7 +83,7 @@ export const users: FullUserProfile[] = [
         name: 'Hedy Lamarr',
         email: 'hedy@example.com',
         role: 'investor',
-        avatarUrl: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxpbnZlc3RvciUyMG9mZmljZXxlbnwwfHx8fDE3NTg2MTgwMTN8MA&ixlib=rb-4.1.0&q=80&w=1080',
+        avatarUrl: getImage('user-5').imageUrl,
         profile: {
             companyName: 'Frequency Ventures',
             companyUrl: 'https://frequency.vc',
@@ -89,7 +91,7 @@ export const users: FullUserProfile[] = [
             investmentInterests: ['Deep Tech', 'Telecommunications', 'Hardware'],
             investmentStages: ['Seed', 'Series A', 'Series B+'],
             portfolio: [
-                { companyName: 'ConnectSphere', companyLogoUrl: 'https://picsum.photos/seed/logo3/200/200', companyUrl: 'https://connectsphere.io' },
+                { companyName: 'ConnectSphere', companyLogoUrl: getImage('logo-3').imageUrl, companyUrl: 'https://connectsphere.io' },
             ],
             exits: [],
             thesis: 'Investing in foundational technologies that will shape the future of communication and connectivity.',
@@ -101,7 +103,7 @@ export const users: FullUserProfile[] = [
         name: 'Tim Berners-Lee',
         email: 'tim@example.com',
         role: 'founder',
-        avatarUrl: 'https://images.unsplash.com/photo-1613152748447-e126a98fbdaa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBnbGFzc2VzfGVufDB8fHx8MTc1ODU4NTA5MHww&ixlib=rb-4.1.0&q=80&w=1080',
+        avatarUrl: getImage('user-6').imageUrl,
         profile: {
             companyId: 'startup-2',
             isLead: true,
@@ -115,7 +117,7 @@ export const startups: Startup[] = [
     {
         id: 'startup-1',
         companyName: 'InnovateAI',
-        companyLogoUrl: 'https://images.unsplash.com/photo-1754837369018-ff35655d126f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzU4NTg0MjExfDA&ixlib=rb-4.1.0&q=80&w=1080',
+        companyLogoUrl: getImage('logo-1').imageUrl,
         founderIds: ['user-1'],
         industry: 'Artificial Intelligence',
         stage: 'Seed',
@@ -164,7 +166,7 @@ export const startups: Startup[] = [
     {
         id: 'startup-2',
         companyName: 'WebWeave',
-        companyLogoUrl: 'https://images.unsplash.com/photo-1607203391481-ff5db95e392f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtaW5pbWFsaXN0JTIwbG9nb3xlbnwwfHx8fDE3NTg1OTgwMjJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
+        companyLogoUrl: getImage('logo-2').imageUrl,
         founderIds: ['user-6'],
         industry: 'Decentralized Web',
         stage: 'Idea',
@@ -197,7 +199,7 @@ export const jobs: Job[] = [
         id: 'job-1',
         title: 'Lead Frontend Engineer',
         companyName: 'InnovateAI',
-        companyLogoUrl: 'https://images.unsplash.com/photo-1754837369018-ff35655d126f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzU4NTg0MjExfDA&ixlib=rb-4.1.0&q=80&w=1080',
+        companyLogoUrl: getImage('logo-1').imageUrl,
         founderId: 'user-1',
         location: 'Remote',
         type: 'Full-time',
@@ -208,7 +210,7 @@ export const jobs: Job[] = [
         id: 'job-2',
         title: 'AI Research Scientist',
         companyName: 'InnovateAI',
-        companyLogoUrl: 'https://images.unsplash.com/photo-1754837369018-ff35655d126f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzU4NTg0MjExfDA&ixlib=rb-4.1.0&q=80&w=1080',
+        companyLogoUrl: getImage('logo-1').imageUrl,
         founderId: 'user-1',
         location: 'New York, NY',
         type: 'Full-time',
