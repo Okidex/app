@@ -1,8 +1,7 @@
 
-import { config } from 'dotenv';
-config({ path: '.env.local' });
+// The dotenv/config import is no longer needed here as it's handled by the `tsx` command in package.json
 
-import admin from 'firebase-admin';
+import { initializeAdminApp } from '@/lib/firebase-admin';
 import {
   users,
   startups,
@@ -13,55 +12,50 @@ import {
   interests,
 } from '@/lib/mock-data';
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
-
-const db = admin.firestore();
+const { firestore } = initializeAdminApp();
 
 async function seedDatabase() {
-  const batch = db.batch();
+  const batch = firestore.batch();
 
   console.log('Seeding users...');
   users.forEach((user) => {
-    const userRef = db.collection('users').doc(user.id);
+    const userRef = firestore.collection('users').doc(user.id);
     batch.set(userRef, user);
   });
 
   console.log('Seeding startups...');
   startups.forEach((startup) => {
-    const startupRef = db.collection('startups').doc(startup.id);
+    const startupRef = firestore.collection('startups').doc(startup.id);
     batch.set(startupRef, startup);
   });
 
   console.log('Seeding jobs...');
   jobs.forEach((job) => {
-    const jobRef = db.collection('jobs').doc(job.id);
+    const jobRef = firestore.collection('jobs').doc(job.id);
     batch.set(jobRef, job);
   });
 
   console.log('Seeding theses...');
   theses.forEach((thesis) => {
-    const thesisRef = db.collection('theses').doc(thesis.id);
+    const thesisRef = firestore.collection('theses').doc(thesis.id);
     batch.set(thesisRef, thesis);
   });
 
   console.log('Seeding conversations...');
   conversations.forEach((conversation) => {
-    const conversationRef = db.collection('conversations').doc(conversation.id);
+    const conversationRef = firestore.collection('conversations').doc(conversation.id);
     batch.set(conversationRef, conversation);
   });
 
   console.log('Seeding notifications...');
   notifications.forEach((notification) => {
-    const notificationRef = db.collection('notifications').doc(notification.id);
+    const notificationRef = firestore.collection('notifications').doc(notification.id);
     batch.set(notificationRef, notification);
   });
 
   console.log('Seeding interests...');
   interests.forEach((interest) => {
-    const interestRef = db.collection('interests').doc(interest.id);
+    const interestRef = firestore.collection('interests').doc(interest.id);
     batch.set(interestRef, interest);
   });
 

@@ -1,8 +1,7 @@
 
-import { config } from 'dotenv';
-config({ path: '.env.local' });
+// The dotenv/config import is no longer needed here as it's handled by the `tsx` command in package.json
 
-import { auth, firestore } from '@/lib/firebase-admin';
+import { initializeAdminApp } from '@/lib/firebase-admin';
 import {
   users,
   startups,
@@ -13,6 +12,7 @@ import {
   interests,
 } from '@/lib/mock-data';
 
+const { firestore } = initializeAdminApp();
 
 async function seedDatabase() {
   const batch = firestore.batch();

@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -7,6 +8,7 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -17,8 +19,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        headline: ["Inter", "sans-serif"],
+        sans: ["var(--font-inter)"],
+        headline: ["var(--font-inter)"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -54,7 +56,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-         chart: {
+        chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",
           "3": "hsl(var(--chart-3))",
