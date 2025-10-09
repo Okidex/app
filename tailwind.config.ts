@@ -17,8 +17,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        body: ["var(--font-inter)", "sans-serif"],
-        headline: ["var(--font-inter)", "sans-serif"],
+        sans: ["Inter", "sans-serif"],
+        headline: ["Inter", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
