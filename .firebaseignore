@@ -1,0 +1,27 @@
+
+# Ignore the .git directory to prevent it from being deployed
+.git
+
+# Ignore node_modules, as dependencies are installed during the build process
+node_modules
+
+# Ignore local environment files
+.env
+.env.local
+
+# Ignore build outputs (Next.js)
+.next
+
+# Ignore IDE/editor configuration files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Ignore package manager lockfiles if they are not needed in deployment
+package-lock.json
+yarn.error.log
+pnpm-lock.yaml
