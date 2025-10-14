@@ -1,0 +1,22 @@
+
+{
+  "hosting": {
+    "source": ".",
+    "rewrites": [
+      {
+        "source": "**",
+        "apphosting": {
+          "backendId": "okidex-app",
+          "region": "us-central1"
+        }
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
+
