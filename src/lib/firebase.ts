@@ -19,11 +19,7 @@ const firebaseConfig = {
 };
 
 if (getApps().length === 0) {
-  try {
-    app = initializeApp();
-  } catch (e) {
-    app = initializeApp(firebaseConfig);
-  }
+  app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
@@ -33,3 +29,4 @@ db = getFirestore(app);
 storage = getStorage(app);
 
 export { app, db, storage, auth };
+

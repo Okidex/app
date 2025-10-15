@@ -3,9 +3,10 @@
 
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth as useFirebaseAuth } from '@/firebase';
 
 export default function useAuth() {
+  const auth = useFirebaseAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -16,7 +17,9 @@ export default function useAuth() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   return { user, loading };
 }
+
+    
