@@ -23,9 +23,12 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https'
+        protocol: 'https',
+        hostname: 'picsum.photos',
+        port: '',
+        pathname: '/**',
       },
-      {
+       {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
         port: '',
@@ -33,7 +36,7 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-   webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.resolve.alias['@'] = __dirname + '/src';
     return config;
   },
