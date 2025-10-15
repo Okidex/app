@@ -17,10 +17,9 @@ export const getImage = (id: string): ImagePlaceholder => {
         return {
             id: 'default',
             description: 'Default placeholder image',
-            imageUrl: 'https://picsum.photos/seed/default/400/400',
+            imageUrl: `https://picsum.photos/seed/default-${id}/400/400`,
             imageHint: 'placeholder'
         };
     }
     return image;
 };
-
