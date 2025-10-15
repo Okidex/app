@@ -1,3 +1,22 @@
-// This file is no longer needed and has been replaced by the `useUser` hook
-// from `@/firebase/auth/use-user.ts` which is exposed via `@/firebase/index.ts`.
-// You can remove this file.
+
+"use client";
+
+import { useState, useEffect } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+
+export default function useAuth() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return { user, loading };
+}
