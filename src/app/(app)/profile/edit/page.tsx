@@ -1,4 +1,3 @@
-
 'use client';
 
 import { getCurrentUser, updateUserProfile } from "@/lib/actions";
@@ -27,11 +26,12 @@ import { useState, useEffect } from "react";
 import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
 import { getDoc, doc } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { investmentStages } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfileEditPage() {
+  const { user: authUser } = useUser();
   const [user, setUser] = useState<FullUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -39,12 +39,14 @@ export default function ProfileEditPage() {
   const db = useFirestore();
 
   useEffect(() => {
-    getCurrentUser().then((user) => {
-      if (user) {
-        setUser(user);
-      }
-    });
-  }, []);
+    if (authUser) {
+        getCurrentUser().then((user) => {
+          if (user) {
+            setUser(user);
+          }
+        });
+    }
+  }, [authUser]);
 
   const [startup, setStartup] = useState<Startup | undefined>(undefined);
   
