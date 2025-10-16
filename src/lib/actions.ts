@@ -4,12 +4,12 @@
 import {
   summarizeFinancialData,
   FinancialDataInput,
-} from '@/ai/flows/financial-data-summary';
-import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
-import { smartMatch } from '@/ai/flows/smart-matching';
-import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
-import { financialBreakdown } from '@/ai/flows/financial-breakdown';
-import { smartSearch } from '@/ai/flows/smart-search';
+} from '../ai/flows/financial-data-summary';
+import { profilePictureAutoTagging } from '../ai/flows/profile-picture-auto-tagging';
+import { smartMatch } from '../ai/flows/smart-matching';
+import { populateProfileFromLinkedIn } from '../ai/flows/linkedin-profile-populator';
+import { financialBreakdown } from '../ai/flows/financial-breakdown';
+import { smartSearch } from '../ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
 import { initializeAdminApp } from './firebase-admin';
 

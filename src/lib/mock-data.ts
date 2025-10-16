@@ -311,4 +311,3 @@ export const interests: Interest[] = [
         timestamp: new Date().toISOString(),
     }
 ];
-
