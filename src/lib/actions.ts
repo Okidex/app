@@ -208,7 +208,7 @@ export async function createUserAndProfile(
                 companyUrl: profileData.companyUrl,
                 investorType: profileData.investorType,
                 about: profileData.about,
-                investmentInterests: profileData.investmentInterests.split(',').map((s: string) => s.trim()),
+                investmentInterests: profileData.investmentInterests,
                 investmentStages: profileData.investmentStages,
                 portfolio: [],
                 exits: profileData.exits,
@@ -217,7 +217,7 @@ export async function createUserAndProfile(
             finalProfile = {
                 subRole,
                 headline: profileData.headline,
-                skills: profileData.skills.split(',').map((s: string) => s.trim()),
+                skills: profileData.skills,
                 experience: profileData.experience,
                 linkedin: profileData.linkedin,
                 github: profileData.github,
@@ -281,24 +281,19 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const { firestore, auth } = initializeAdminApp();
   // This is a placeholder. In a real app, you'd get the UID from a verified session token.
   // For now, we'll fetch the first user as a substitute for a logged-in user context on the server.
-  const usersList = await auth.listUsers(1);
-  if (usersList.users.length === 0) return null;
-  const uid = usersList.users[0].uid;
+  try {
+    const usersList = await auth.listUsers(1);
+    if (usersList.users.length === 0) return null;
+    const uid = usersList.users[0].uid;
 
-  const userDoc = await firestore.collection('users').doc(uid).get();
-  if (userDoc.exists) {
-    return userDoc.data() as FullUserProfile;
+    const userDoc = await firestore.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+      return userDoc.data() as FullUserProfile;
+    }
+  } catch (e) {
+    // This can happen if the emulator isn't running or there are no users.
+    console.error("Could not fetch current user from admin SDK. This might be expected in a clean environment.", e)
+    return null;
   }
   return null;
 }
-
-export async function getUserById(userId: string): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
-  const userDoc = await firestore.collection('users').doc(userId).get();
-  if (userDoc.exists) {
-    return userDoc.data() as FullUserProfile;
-  }
-  return null;
-}
-
-    
