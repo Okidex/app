@@ -13,6 +13,26 @@ import { smartSearch } from '@/ai/flows/smart-search.ts';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
 import { initializeAdminApp } from './firebase-admin';
 
+export async function getCurrentUser(): Promise<FullUserProfile | null> {
+  const { firestore } = initializeAdminApp();
+  // This function simulates getting the current user. In a real app this would involve session management.
+  // For now, it fetches the first user from the database as a placeholder.
+  // This should only be called from server components/actions where there's no client-side user context.
+  const usersCollection = await firestore.collection('users').limit(1).get();
+  if (usersCollection.empty) {
+    return null;
+  }
+  return usersCollection.docs[0].data() as FullUserProfile;
+}
+
+export async function getUserById(userId: string): Promise<FullUserProfile | null> {
+  const { firestore } = initializeAdminApp();
+  const userDoc = await firestore.collection('users').doc(userId).get();
+  if (userDoc.exists) {
+    return userDoc.data() as FullUserProfile;
+  }
+  return null;
+}
 
 export async function getFinancialSummary(input: FinancialDataInput) {
   try {
@@ -113,7 +133,7 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
     const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
     
-    const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const bucket = storage.bucket();
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
@@ -208,7 +228,7 @@ export async function createUserAndProfile(
                 companyUrl: profileData.companyUrl,
                 investorType: profileData.investorType,
                 about: profileData.about,
-                investmentInterests: profileData.investmentInterests,
+                investmentInterests: profileData.investmentInterests.split(',').map((s: string) => s.trim()),
                 investmentStages: profileData.investmentStages,
                 portfolio: [],
                 exits: profileData.exits,
@@ -217,7 +237,7 @@ export async function createUserAndProfile(
             finalProfile = {
                 subRole,
                 headline: profileData.headline,
-                skills: profileData.skills,
+                skills: profileData.skills.split(',').map((s: string) => s.trim()),
                 experience: profileData.experience,
                 linkedin: profileData.linkedin,
                 github: profileData.github,
@@ -277,11 +297,4 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
     }
 }
 
-export async function getUserById(userId: string): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
-  const userDoc = await firestore.collection('users').doc(userId).get();
-  if (userDoc.exists) {
-    return userDoc.data() as FullUserProfile;
-  }
-  return null;
-}
+    
