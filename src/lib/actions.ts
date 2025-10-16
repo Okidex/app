@@ -4,12 +4,12 @@
 import {
   summarizeFinancialData,
   FinancialDataInput,
-} from '@/ai/flows/financial-data-summary';
-import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
-import { smartMatch } from '@/ai/flows/smart-matching';
-import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
-import { financialBreakdown } from '@/ai/flows/financial-breakdown';
-import { smartSearch } from '@/ai/flows/smart-search';
+} from '@/ai/flows/financial-data-summary.ts';
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging.ts';
+import { smartMatch } from '@/ai/flows/smart-matching.ts';
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator.ts';
+import { financialBreakdown } from '@/ai/flows/financial-breakdown.ts';
+import { smartSearch } from '@/ai/flows/smart-search.ts';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
 import { initializeAdminApp } from './firebase-admin';
 
@@ -277,23 +277,11 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
     }
 }
 
-export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { firestore, auth } = initializeAdminApp();
-  // This is a placeholder. In a real app, you'd get the UID from a verified session token.
-  // For now, we'll fetch the first user as a substitute for a logged-in user context on the server.
-  try {
-    const usersList = await auth.listUsers(1);
-    if (usersList.users.length === 0) return null;
-    const uid = usersList.users[0].uid;
-
-    const userDoc = await firestore.collection('users').doc(uid).get();
-    if (userDoc.exists) {
-      return userDoc.data() as FullUserProfile;
-    }
-  } catch (e) {
-    // This can happen if the emulator isn't running or there are no users.
-    console.error("Could not fetch current user from admin SDK. This might be expected in a clean environment.", e)
-    return null;
+export async function getUserById(userId: string): Promise<FullUserProfile | null> {
+  const { firestore } = initializeAdminApp();
+  const userDoc = await firestore.collection('users').doc(userId).get();
+  if (userDoc.exists) {
+    return userDoc.data() as FullUserProfile;
   }
   return null;
 }

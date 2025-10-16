@@ -1,11 +1,7 @@
 
 import { FullUserProfile, Startup, Job, InvestmentThesis, Conversation, Notification, Interest } from './types';
 import { subMonths, format } from 'date-fns';
-import { placeholderImages } from './placeholder-images';
-
-function getImage(id: string) {
-    return placeholderImages.find(img => img.id === id) || { imageUrl: `https://picsum.photos/seed/${id}/400/400`};
-}
+import { getImage } from './placeholder-images';
 
 export const users: FullUserProfile[] = [
     {
