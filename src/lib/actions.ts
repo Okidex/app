@@ -1,7 +1,130 @@
+
 'use server';
 
+import {
+  summarizeFinancialData,
+  FinancialDataInput,
+} from '@/ai/flows/financial-data-summary';
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
+import { smartMatch } from '@/ai/flows/smart-matching';
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
+import { financialBreakdown } from '@/ai/flows/financial-breakdown';
+import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
 import { initializeAdminApp } from './firebase-admin';
+
+
+export async function getFinancialSummary(input: FinancialDataInput) {
+  try {
+    const result = await summarizeFinancialData(input);
+    return result.summary;
+  } catch (error) {
+    console.error(error);
+    return 'Error generating summary. Please try again.';
+  }
+}
+
+export async function getProfilePictureTags(photoDataUri: string) {
+  try {
+    const result = await profilePictureAutoTagging({ photoDataUri });
+    return result.tags;
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function getSmartMatches(user: FullUserProfile) {
+  const { firestore } = initializeAdminApp();
+  const startupsCollection = await firestore.collection('startups').get();
+  const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
+
+  let userProfileDesc = `User is a ${user.role}. Name: ${user.name}. `;
+  // Profile specific descriptions can be added here based on user.profile
+
+  try {
+    const result = await smartMatch({ startupProfile: userProfileDesc });
+    return result;
+  } catch (error) {
+    console.error(error);
+    return { investorMatches: [], talentMatches: [] };
+  }
+}
+
+export async function getProfileFromLinkedIn(linkedinUrl: string) {
+  try {
+    const result = await populateProfileFromLinkedIn({ linkedinUrl });
+    return result;
+  } catch (error) {
+    console.error('Error in getProfileFromLinkedIn:', error);
+    throw new Error('Failed to get profile from LinkedIn.');
+  }
+}
+
+export async function getFinancialBreakdown(metric: string) {
+  try {
+    const result = await financialBreakdown({ metric });
+    return result.breakdown;
+  } catch (error) {
+    console.error('Error in getFinancialBreakdown:', error);
+    return 'Could not generate breakdown. Please try again.';
+  }
+}
+
+export async function getSearchResults(query: string) {
+  if (!query) {
+    return { startups: [], users: [] };
+  }
+
+  const { firestore } = initializeAdminApp();
+  const startupsCollection = await firestore.collection('startups').get();
+  const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
+  const usersCollection = await firestore.collection('users').get();
+  const allUsers = usersCollection.docs.map((doc) => doc.data() as FullUserProfile);
+
+  try {
+    const searchableData = JSON.stringify({
+      startups: allStartups,
+      users: allUsers,
+    });
+    const { startupIds, userIds } = await smartSearch({ query, searchableData });
+    const filteredStartups = allStartups.filter((s) => startupIds.includes(s.id));
+    const filteredUsers = allUsers.filter((u) => userIds.includes(u.id));
+    return { startups: filteredStartups, users: filteredUsers };
+  } catch (error) {
+    console.error('Error performing smart search:', error);
+    // Fallback to basic text search
+    const lowerCaseQuery = query.toLowerCase();
+    const filteredStartups = allStartups.filter((startup) =>
+      Object.values(startup).some((val) =>
+        String(val).toLowerCase().includes(lowerCaseQuery)
+      )
+    );
+    const filteredUsers = allUsers.filter((user) =>
+      Object.values(user).some((val) =>
+        String(val).toLowerCase().includes(lowerCaseQuery)
+      )
+    );
+    return { startups: filteredStartups, users: filteredUsers };
+  }
+}
+
+async function uploadImage(dataUrl: string, path: string): Promise<string> {
+    const { storage } = initializeAdminApp();
+    if (!dataUrl) return "";
+    
+    const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const file = bucket.file(path);
+    
+    const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
+    const mimeType = dataUrl.match(/data:(.*);base64/)?.[1] || 'image/jpeg';
+    
+    await file.save(buffer, {
+        metadata: { contentType: mimeType },
+        public: true,
+    });
+    return file.publicUrl();
+}
 
 export async function createUserAndProfile(
     email: string,
@@ -23,8 +146,7 @@ export async function createUserAndProfile(
 
         let avatarUrl = "";
         if (avatarFile) {
-            // In a real app, this would upload to a storage service and return the URL
-            avatarUrl = `https://firebasestorage.googleapis.com/v0/b/okidex-investment-match.appspot.com/o/avatars%2F${userRecord.uid}?alt=media`;
+            avatarUrl = await uploadImage(avatarFile, `avatars/${userRecord.uid}`);
         }
         
         await auth.updateUser(userRecord.uid, { photoURL: avatarUrl });
@@ -45,8 +167,7 @@ export async function createUserAndProfile(
             const startupRef = firestore.collection('startups').doc();
             let companyLogoUrl = "";
             if (logoFile) {
-                // In a real app, this would upload to a storage service and return the URL
-                companyLogoUrl = `https://firebasestorage.googleapis.com/v0/b/okidex-investment-match.appspot.com/o/logos%2F${startupRef.id}?alt=media`;
+                companyLogoUrl = await uploadImage(logoFile, `logos/${startupRef.id}`);
             }
 
             const startupData: Startup = {
@@ -87,7 +208,7 @@ export async function createUserAndProfile(
                 companyUrl: profileData.companyUrl,
                 investorType: profileData.investorType,
                 about: profileData.about,
-                investmentInterests: (profileData.investmentInterests || '').split(',').map((s: string) => s.trim()),
+                investmentInterests: profileData.investmentInterests.split(',').map((s: string) => s.trim()),
                 investmentStages: profileData.investmentStages,
                 portfolio: [],
                 exits: profileData.exits,
@@ -96,7 +217,7 @@ export async function createUserAndProfile(
             finalProfile = {
                 subRole,
                 headline: profileData.headline,
-                skills: (profileData.skills || '').split(',').map((s: string) => s.trim()),
+                skills: profileData.skills.split(',').map((s: string) => s.trim()),
                 experience: profileData.experience,
                 linkedin: profileData.linkedin,
                 github: profileData.github,
@@ -113,6 +234,46 @@ export async function createUserAndProfile(
     } catch (error: any) {
         console.error("Error creating user:", error);
         return { success: false, error: error.message };
+    }
+}
+
+export async function updateUserProfile(userId: string, data: Partial<Profile>) {
+    const { firestore } = initializeAdminApp();
+    try {
+        const userRef = firestore.collection("users").doc(userId);
+        const existingDoc = await userRef.get();
+        if (!existingDoc.exists) {
+            throw new Error("User not found");
+        }
+        const existingProfile = existingDoc.data()?.profile || {};
+
+        await userRef.update({ profile: { ...existingProfile, ...data } });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error updating user profile:", error);
+        return { success: false, error: error.message || "Failed to update profile." };
+    }
+}
+
+export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
+    const { auth, firestore } = initializeAdminApp();
+    try {
+        await firestore.collection("users").doc(userId).delete();
+        if (role === 'founder' && companyId) {
+            await firestore.collection("startups").doc(companyId).delete();
+        }
+        await auth.deleteUser(userId);
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error deleting user account:", error);
+        let errorMessage = "An unexpected error occurred.";
+        if (error.code === 'auth/requires-recent-login') {
+            errorMessage = "This is a sensitive operation and requires recent authentication. Please log in again before retrying.";
+        } else {
+            errorMessage = error.message;
+        }
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -139,3 +300,5 @@ export async function getUserById(userId: string): Promise<FullUserProfile | nul
   }
   return null;
 }
+
+    
