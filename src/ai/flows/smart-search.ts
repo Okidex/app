@@ -7,7 +7,7 @@
  * - SmartSearchInput - The input type for the smartSearch function  * - SmartSearchOutput - The return type for the smartSearch function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const SmartSearchInputSchema = z.object({

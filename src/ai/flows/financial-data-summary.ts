@@ -9,7 +9,7 @@
  * - FinancialDataOutput - The return type for the summarizeFinancialData function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const FinancialDataInputSchema = z.object({

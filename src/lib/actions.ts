@@ -229,7 +229,7 @@ export async function createUserAndProfile(
                 companyUrl: profileData.companyUrl,
                 investorType: profileData.investorType,
                 about: profileData.about,
-                investmentInterests: profileData.investmentInterests.split(',').map((s: string) => s.trim()),
+                investmentInterests: profileData.investmentInterests,
                 investmentStages: profileData.investmentStages,
                 portfolio: [],
                 exits: profileData.exits,
@@ -238,7 +238,7 @@ export async function createUserAndProfile(
             finalProfile = {
                 subRole,
                 headline: profileData.headline,
-                skills: profileData.skills.split(',').map((s: string) => s.trim()),
+                skills: profileData.skills,
                 experience: profileData.experience,
                 linkedin: profileData.linkedin,
                 github: profileData.github,
