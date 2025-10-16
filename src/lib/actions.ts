@@ -4,14 +4,15 @@
 import {
   summarizeFinancialData,
   FinancialDataInput,
-} from '../ai/flows/financial-data-summary';
-import { profilePictureAutoTagging } from '../ai/flows/profile-picture-auto-tagging';
-import { smartMatch } from '../ai/flows/smart-matching';
-import { populateProfileFromLinkedIn } from '../ai/flows/linkedin-profile-populator';
-import { financialBreakdown } from '../ai/flows/financial-breakdown';
-import { smartSearch } from '../ai/flows/smart-search';
-import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
+} from '@/ai/flows/financial-data-summary';
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
+import { smartMatch } from '@/ai/flows/smart-matching';
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
+import { financialBreakdown } from '@/ai/flows/financial-breakdown';
+import { smartSearch } from '@/ai/flows/smart-search';
+import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole, Message } from './types';
 import { initializeAdminApp } from './firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const { firestore, auth } = initializeAdminApp();
@@ -294,5 +295,24 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
             errorMessage = error.message;
         }
         return { success: false, error: errorMessage };
+    }
+}
+
+export async function sendMessage(conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) {
+    const { firestore } = initializeAdminApp();
+    try {
+        const convoRef = firestore.collection('conversations').doc(conversationId);
+        const newMessage: Message = {
+            ...message,
+            id: firestore.collection('tmp').doc().id, // Generate a client-side ID
+            timestamp: new Date().toISOString(),
+        }
+        await convoRef.update({
+            messages: FieldValue.arrayUnion(newMessage)
+        });
+        return { success: true, message: newMessage };
+    } catch (error: any) {
+        console.error("Error sending message:", error);
+        return { success: false, error: error.message };
     }
 }
