@@ -4,8 +4,8 @@
     "rewrites": [
       {
         "source": "**",
-        "apphosting": {
-          "backendId": "okidex-investment-match",
+        "run": {
+          "serviceId": "ssrokidexinvestmentmatc",
           "region": "us-central1"
         }
       }
