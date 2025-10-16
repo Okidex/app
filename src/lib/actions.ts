@@ -4,20 +4,20 @@
 import {
   summarizeFinancialData,
   FinancialDataInput,
-} from '@/ai/flows/financial-data-summary.ts';
-import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging.ts';
-import { smartMatch } from '@/ai/flows/smart-matching.ts';
-import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator.ts';
-import { financialBreakdown } from '@/ai/flows/financial-breakdown.ts';
-import { smartSearch } from '@/ai/flows/smart-search.ts';
+} from '@/ai/flows/financial-data-summary';
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
+import { smartMatch } from '@/ai/flows/smart-matching';
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
+import { financialBreakdown } from '@/ai/flows/financial-breakdown';
+import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole } from './types';
 import { initializeAdminApp } from './firebase-admin';
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
-  // This function simulates getting the current user. In a real app this would involve session management.
-  // For now, it fetches the first user from the database as a placeholder.
-  // This should only be called from server components/actions where there's no client-side user context.
+  const { firestore, auth } = initializeAdminApp();
+  // In a real app, you would get the UID from the session.
+  // For this prototype, we will fetch the first user as a placeholder.
+  // THIS IS NOT SECURE FOR PRODUCTION.
   const usersCollection = await firestore.collection('users').limit(1).get();
   if (usersCollection.empty) {
     return null;
@@ -164,7 +164,7 @@ export async function createUserAndProfile(
             displayName: name,
         });
 
-        let avatarUrl = "";
+        let avatarUrl = `https://picsum.photos/seed/${userRecord.uid}/400/400`;
         if (avatarFile) {
             avatarUrl = await uploadImage(avatarFile, `avatars/${userRecord.uid}`);
         }
@@ -185,7 +185,7 @@ export async function createUserAndProfile(
 
         if (role === 'founder') {
             const startupRef = firestore.collection('startups').doc();
-            let companyLogoUrl = "";
+            let companyLogoUrl = `https://picsum.photos/seed/logo-${startupRef.id}/200/200`;
             if (logoFile) {
                 companyLogoUrl = await uploadImage(logoFile, `logos/${startupRef.id}`);
             }
@@ -296,5 +296,3 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
         return { success: false, error: errorMessage };
     }
 }
-
-    
