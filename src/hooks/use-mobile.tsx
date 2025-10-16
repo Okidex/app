@@ -1,19 +1,24 @@
-import * as React from "react"
+import data from './placeholder-images.json';
 
-const MOBILE_BREAKPOINT = 768
+export type ImagePlaceholder = {
+  id: string;
+  description: string;
+  imageUrl: string;
+  imageHint: string;
+};
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+export const placeholderImages: ImagePlaceholder[] = data.placeholderImages;
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+export const getImage = (id: string): ImagePlaceholder => {
+    const image = placeholderImages.find(img => img.id === id);
+    if (!image) {
+        // Return a default placeholder if not found
+        return {
+            id: 'default',
+            description: 'Default placeholder image',
+            imageUrl: `https://picsum.photos/seed/default-${id}/400/400`,
+            imageHint: 'placeholder'
+        };
     }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
-
-  return isMobile
-}
+    return image;
+};
