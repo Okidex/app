@@ -1,12 +1,13 @@
 
+
 {
   "hosting": {
     "source": ".",
     "rewrites": [
       {
         "source": "**",
-        "apphosting": {
-          "backendId": "okidex-investment-match",
+        "run": {
+          "serviceId": "okidex-investment-match",
           "region": "us-central1"
         }
       }
@@ -20,3 +21,4 @@
   }
 }
 
+    
