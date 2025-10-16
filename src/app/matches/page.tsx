@@ -4,7 +4,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/actions";
+import { getCurrentUser, getUserById } from "@/lib/actions";
 import { FullUserProfile, Startup, FounderProfile, InvestorProfile, TalentProfile, UserRole } from "@/lib/types";
 import { Check, DollarSign, MessageCircle, TrendingUp, X, Briefcase, BrainCircuit, UserCheck } from "lucide-react";
 import UserAvatar from "@/components/shared/user-avatar";

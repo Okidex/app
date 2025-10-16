@@ -1,25 +1,23 @@
 
-import data from './placeholder-images.json';
+"use client";
 
-export type ImagePlaceholder = {
-  id: string;
-  description: string;
-  imageUrl: string;
-  imageHint: string;
-};
+import { useState, useEffect } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { useAuth as useFirebaseAuth } from '@/firebase';
 
-export const placeholderImages: ImagePlaceholder[] = data.placeholderImages;
+export default function useAuth() {
+  const auth = useFirebaseAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export const getImage = (id: string): ImagePlaceholder => {
-    const image = placeholderImages.find(img => img.id === id);
-    if (!image) {
-        // Return a default placeholder if not found
-        return {
-            id: 'default',
-            description: 'Default placeholder image',
-            imageUrl: `https://picsum.photos/seed/default-${id}/400/400`,
-            imageHint: 'placeholder'
-        };
-    }
-    return image;
-};
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  return { user, loading };
+}
