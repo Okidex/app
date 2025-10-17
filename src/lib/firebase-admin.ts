@@ -5,8 +5,8 @@ import admin from 'firebase-admin';
 export function initializeAdminApp() {
     if (!admin.apps.length) {
       try {
-        // When running in a Google Cloud environment (like App Hosting),
-        // applicationDefault() will automatically find the correct credentials.
+        // When deployed to App Hosting, GOOGLE_APPLICATION_CREDENTIALS is automatically set
+        // and initializeApp() will use it.
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
           storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
