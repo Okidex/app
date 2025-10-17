@@ -5,12 +5,9 @@ import admin from 'firebase-admin';
 export function initializeAdminApp() {
     if (!admin.apps.length) {
       try {
-        // When deployed to App Hosting, GOOGLE_APPLICATION_CREDENTIALS is automatically set
-        // and initializeApp() will use it.
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        });
+        // When deployed to App Hosting, GOOGLE_APPLICATION_CREDENTIALS is automatically set.
+        // Calling initializeApp() without arguments uses these default credentials.
+        admin.initializeApp();
       } catch (e: any) {
         console.error("Firebase Admin SDK initialization failed.", e.message);
       }
