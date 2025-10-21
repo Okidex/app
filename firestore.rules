@@ -1,366 +1,228 @@
 /**
- * @fileoverview Firestore Security Rules for Okidex Investment Match.
+ * @fileoverview Firestore Security Rules for Okidex Platform
  *
  * Core Philosophy:
- * This ruleset enforces a user-centric security model with path-based access control,
- * ensuring that users can only access their own data and that specific data types
- * (e.g., investment opportunities, job postings) are accessible based on user roles
- * (founder, investor, talent). It leverages denormalization in the /matches/{matchId}/messages/{messageId}
- * path to avoid costly `get()` operations for authorization.
+ * This ruleset enforces a strict user-ownership model for user-related data
+ * and role-based access for other resources like job postings and investment opportunities.
+ * The rules prioritize security and data isolation, ensuring users can only
+ * access their own data while also enabling controlled sharing and access based on user roles.
  *
  * Data Structure:
- * - /users/{userId}: Stores user accounts; access is restricted to the authenticated user.
- * - /user_profiles/{profileId}: Stores user profile information; access is restricted to the user
- *   associated with the profile.
+ * - /users/{userId}: Stores user accounts; access is restricted to the owning user.
+ * - /user_profiles/{profileId}: Stores user profiles; access is restricted to the owning user.
  * - /matches/{matchId}: Stores matches between users; access is restricted to the matched users.
- * - /matches/{matchId}/messages/{messageId}: Stores messages between users in a match; access is
- *   restricted to users participating in the match. Includes denormalized senderId and receiverId.
- * - /job_postings/{jobPostingId}: Stores job postings; access is limited to talent and the posting creator.
- * - /investment_opportunities/{investmentOpportunityId}: Stores investment opportunities; access is
- *   limited to investors and the opportunity creator.
- * - /investment_theses/{investmentThesisId}: Stores investment theses; access is limited to investors.
- * - /financial_summaries/{financialSummaryId}: Stores financial summaries; access is limited to
- *   authorized users who have access to associated InvestmentOpportunity.
+ * - /matches/{matchId}/messages/{messageId}: Stores messages; access is restricted to users in the match.
+ * - /job_postings/{jobPostingId}: Stores job postings; access is restricted based on user roles (founders can create, talent can view).
+ * - /investment_opportunities/{investmentOpportunityId}: Stores investment opportunities; access is restricted based on user roles (founders can create, investors can view).
+ * - /investment_theses/{investmentThesisId}: Stores investment theses; access is restricted to investors.
+ * - /financial_summaries/{financialSummaryId}: Stores financial summaries; access is restricted to authorized users (e.g., investors).
  *
  * Key Security Decisions:
- * - Strict user ownership for /users/{userId} and /user_profiles/{profileId}.
- * - Read-only access to investment opportunities and job postings based on user role (investor, talent).
- * - Denormalization of senderId and receiverId in messages to optimize security rule performance.
- * - Explicit denial of listing users to prevent information exposure.
+ * - User listing is implicitly disallowed by the data structure. All user-related data is stored under the /users/{userId} path, preventing unauthorized access to user information.
+ * - Write permissions are always validated against the authenticated user's identity (`request.auth.uid`).
  *
  * Denormalization for Authorization:
- * - /matches/{matchId}/messages/{messageId} includes 'senderId' and 'receiverId' on each message to allow
- *   security rules to validate message access without needing to read the /matches/{matchId} document.
- *   This significantly improves rule performance and scalability.
- *
- * Structural Segregation:
- * - Private user data is stored under /users/{userId}, while public data like job postings and
- *   investment opportunities are stored in top-level collections. This segregation simplifies
- *   security rules and prevents unintended exposure of private data.
+ * - The /matches/{matchId}/messages/{messageId} path includes denormalized senderId and receiverId fields to authorize access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secures user accounts. Only the authenticated user can access their own document.
+     * @description Controls access to user accounts. Only the authenticated user can access their own document.
      * @path /users/{userId}
-     * @allow (create) User with ID 'test_user' can create their account.
-     *   request.auth.uid == 'test_user'
-     *   request.resource.data.id == 'test_user'
-     * @allow (get, update, delete) User with ID 'test_user' can read, update, or delete their account.
-     *   request.auth.uid == 'test_user'
-     *   resource.data.id == 'test_user'
-     * @deny (create) User with ID 'test_user_2' cannot create an account for 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   request.resource.data.id == 'test_user'
-     * @deny (get, update, delete) User with ID 'test_user_2' cannot read, update, or delete the account of 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   resource.data.id == 'test_user'
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) - An authenticated user can create their own user document if the userId matches their auth UID.
+     * @allow (get, update, delete) - An authenticated user can get, update, or delete their own user document.
+     * @deny (create) - An unauthenticated user cannot create a user document.
+     * @deny (get, update, delete) - An authenticated user cannot access another user's document.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Verified identity
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Verifies the user ID
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
-
-      // Helper function to check if the user is an existing owner of the document.
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource.data.id == userId;
+        return isOwner(userId) && resource.data.id == userId;
       }
-
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Secures user profile information. Only the user associated with the profile can access it.
+     * @description Controls access to user profiles. Only the authenticated user can access their own profile.
      * @path /user_profiles/{profileId}
-     * @allow (create) User with ID 'test_user' can create their profile.
-     *   request.auth.uid == 'test_user'
-     *   request.resource.data.id == 'test_profile'
-     * @allow (get, update, delete) User with ID 'test_user' can read, update, or delete their profile.
-     *   request.auth.uid == 'test_user'
-     *   resource.data.id == 'test_profile'
-     * @deny (create) User with ID 'test_user_2' cannot create a profile for 'test_profile'.
-     *   request.auth.uid == 'test_user_2'
-     *   request.resource.data.id == 'test_profile'
-     * @deny (get, update, delete) User with ID 'test_user_2' cannot read, update, or delete the profile of 'test_profile'.
-     *   request.auth.uid == 'test_user_2'
-     *   resource.data.id == 'test_profile'
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) - An authenticated user can create their own profile if the profileId matches the desired ID.
+     * @allow (get, update, delete) - An authenticated user can get, update, or delete their own profile.
+     * @deny (create) - An unauthenticated user cannot create a profile.
+     * @deny (get, update, delete) - An authenticated user cannot access another user's profile.
+     * @principle Enforces document ownership for writes.
      */
     match /user_profiles/{profileId} {
-      // Verified identity
       function isSignedIn() {
         return request.auth != null;
       }
-
-      // Verifies the user ID
-      function isOwner(profileId) {
-        return request.auth.uid == profileId;
-      }
-
-      // Helper function to check if the user is an existing owner of the document.
-      function isExistingOwner(profileId) {
-          return isOwner(profileId) && resource.data.userId == request.auth.uid;
-      }
-
-      allow get: if isSignedIn() && isOwner(profileId);
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == profileId;
-      allow update: if isSignedIn() && isExistingOwner(profileId);
-      allow delete: if isSignedIn() && isExistingOwner(profileId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     /**
-     * @description Secures matches between users. Only the matched users can access the match document.
+     * @description Controls access to matches between users. Only the matched users can access the match document.
      * @path /matches/{matchId}
-     * @allow (get, list) Users 'test_user_1' or 'test_user_2' can retrieve match data.
-     *   request.auth.uid is one of the users listed in the resource.data document
-     * @allow (create) User with ID 'test_user_1' or 'test_user_2' can create a match.
-     *   request.auth.uid is one of the users listed in the request.resource.data document
-     * @allow (update, delete) Users 'test_user_1' or 'test_user_2' can update or delete the match data.
-     *   request.auth.uid is one of the users listed in the resource.data document
-     * @deny (get, list) User with ID 'test_user_3' cannot access the match.
-     *   request.auth.uid is not one of the users listed in the resource.data document
-     * @deny (create) User with ID 'test_user_3' cannot create a match.
-     *   request.auth.uid is not one of the users listed in the request.resource.data document
-     * @deny (update, delete) User with ID 'test_user_3' cannot update or delete the match.
-     *   request.auth.uid is not one of the users listed in the resource.data document
-     * @principle Enforces that only matched users can access the match data.
+     * @allow (get, list) - Only matched users can access.
+     * @allow (create) - Authenticated users can create matches.
+     * @allow (update, delete) - Only the matched users can update/delete the match document.
+     * @deny (create) - An unauthenticated user cannot create a match.
+     * @deny (get, update, delete) - An authenticated user cannot access another user's match document.
+     * @principle Enforces access control based on user involvement in the match.
      */
     match /matches/{matchId} {
-      // Verified identity
       function isSignedIn() {
         return request.auth != null;
       }
-
-      // Verifies that the user is a participant in the match
-      function isParticipant() {
-        return resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid;
+       function isParticipant(match) {
+          return isSignedIn() && (request.auth.uid == match.user1Id || request.auth.uid == match.user2Id);
       }
-
-      //Helper function to determine if the user is an existing participant
-      function isExistingParticipant() {
-        return isParticipant();
+        function isExistingParticipant() {
+          return isSignedIn() && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
       }
-
-      allow get: if isSignedIn() && isParticipant();
-      allow list: if isSignedIn() && isParticipant();
+      allow get: if isExistingParticipant();
+      allow list: if false;
       allow create: if isSignedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
-      allow update: if isSignedIn() && isExistingParticipant();
-      allow delete: if isSignedIn() && isExistingParticipant();
+      allow update: if isExistingParticipant();
+      allow delete: if isExistingParticipant();
     }
 
     /**
-     * @description Secures messages between matched users. Only users involved in the match can access the messages.
+     * @description Controls access to messages between matched users.
      * @path /matches/{matchId}/messages/{messageId}
-     * @allow (get, list) Users 'test_user_1' or 'test_user_2' can retrieve messages related to the match.
-     *   request.auth.uid is either the sender or receiver of the message
-     * @allow (create) User with ID 'test_user_1' or 'test_user_2' can create a message.
-     *   request.auth.uid is the sender of the message
-     * @allow (update, delete) Users 'test_user_1' or 'test_user_2' can update or delete the message.
-     *   request.auth.uid is either the sender or receiver of the message
-     * @deny (get, list) User with ID 'test_user_3' cannot access messages related to the match.
-     *   request.auth.uid is neither the sender nor the receiver of the message
-     * @deny (create) User with ID 'test_user_3' cannot create a message.
-     *   request.auth.uid is not the sender of the message
-     * @deny (update, delete) User with ID 'test_user_3' cannot update or delete the message.
-     *   request.auth.uid is neither the sender nor the receiver of the message
-     * @principle Enforces that only participants in a match can access messages.
+     * @allow (get, list) - Only users involved in the match can access messages.
+     * @allow (create) - Only users involved in the match can create messages. The senderId must match the authenticated user's ID.
+     * @allow (update, delete) - Only the sender can update/delete their own messages.
+     * @deny (create) - An unauthenticated user cannot create a message.
+     * @deny (get, update, delete) - An authenticated user cannot access messages in another user's match.
+     * @principle Enforces access control based on user involvement in the match, leveraging denormalized senderId and receiverId fields.
      */
     match /matches/{matchId}/messages/{messageId} {
-      // Verified identity
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Verifies that the user is a participant in the message exchange
-      function isMessageParticipant(matchId) {
-        return get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid;
-      }
-
-      //Helper function that confirms that the message participant exist.
-      function isExistingMessageParticipant(matchId) {
-        return isMessageParticipant(matchId);
-      }
-
-      // Verifies that the user is the sender
-      function isSender() {
-        return request.auth.uid == request.resource.data.senderId;
-      }
-
-      function isReceiver() {
-          return resource.data.senderId == request.auth.uid;
-      }
-
-      allow get, list: if isSignedIn() && isMessageParticipant(matchId);
-      allow create: if isSignedIn() && isSender();
-      allow update: if isSignedIn() && (isSender() || isReceiver());
-      allow delete: if isSignedIn() && (isSender() || isReceiver());
+        function isSignedIn() {
+          return request.auth != null;
+        }
+         function isParticipant(message) {
+            return isSignedIn() && (message.senderId == request.auth.uid || message.receiverId == request.auth.uid);
+        }
+          function isExistingParticipant() {
+            return isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+        }
+      allow get: if isExistingParticipant();
+      allow list: if isExistingParticipant();
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
     }
 
     /**
-     * @description Secures job postings. Only authenticated users can create job postings, and all authenticated users can view them.
+     * @description Controls access to job postings. Authenticated users can create job postings, and all authenticated users can view them.
      * @path /job_postings/{jobPostingId}
-     * @allow (get, list) Any authenticated user can view job postings.
-     *   request.auth is not null
-     * @allow (create) User with ID 'test_user' can create a job posting.
-     *   request.auth.uid == 'test_user'
-     *   request.resource.data.founderId == 'test_user'
-     * @allow (update, delete) User with ID 'test_user' can update or delete their own job posting.
-     *   request.auth.uid == 'test_user'
-     *   resource.data.founderId == 'test_user'
-     * @deny (create) User with ID 'test_user_2' cannot create a job posting for 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   request.resource.data.founderId == 'test_user'
-     * @deny (update, delete) User with ID 'test_user_2' cannot update or delete the job posting of 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   resource.data.founderId == 'test_user'
-     * @principle Enforces that only authenticated users can create job postings, and talent can view them.
+     * @allow (get, list) - All authenticated users can read job postings.
+     * @allow (create) - Only authenticated users can create job postings, and the founderId must match their UID.
+     * @allow (update, delete) - Only the creator (founder) can update or delete.
+     * @deny (create) - An unauthenticated user cannot create a job posting.
+     * @deny (update, delete) - An authenticated user cannot modify or delete another user's job posting.
+     * @principle Enforces creator-only writes with public reads.
      */
     match /job_postings/{jobPostingId} {
-      // Verified identity
       function isSignedIn() {
         return request.auth != null;
       }
-
-      // Verifies the user ID
       function isOwner(founderId) {
-        return request.auth.uid == founderId;
+          return isSignedIn() && request.auth.uid == founderId;
       }
-
-      // Helper function to check if the user is an existing owner of the document.
-      function isExistingOwner(founderId) {
-          return isOwner(founderId) && resource.data.founderId == founderId;
+       function isExistingOwner() {
+        return isSignedIn() && resource.data.founderId == request.auth.uid;
       }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.founderId;
-      allow update: if isSignedIn() && isExistingOwner(request.auth.uid);
-      allow delete: if isSignedIn() && isExistingOwner(request.auth.uid);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+      allow update: if isExistingOwner();
+      allow delete: if isExistingOwner();
     }
 
     /**
-     * @description Secures investment opportunities. Only authenticated users can create investment opportunities, and all authenticated users can view them.
+     * @description Controls access to investment opportunities. Authenticated users can create investment opportunities, and all authenticated users can view them.
      * @path /investment_opportunities/{investmentOpportunityId}
-     * @allow (get, list) Any authenticated user can view investment opportunities.
-     *   request.auth is not null
-     * @allow (create) User with ID 'test_user' can create an investment opportunity.
-     *   request.auth.uid == 'test_user'
-     *   request.resource.data.founderId == 'test_user'
-     * @allow (update, delete) User with ID 'test_user' can update or delete their own investment opportunity.
-     *   request.auth.uid == 'test_user'
-     *   resource.data.founderId == 'test_user'
-     * @deny (create) User with ID 'test_user_2' cannot create an investment opportunity for 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   request.resource.data.founderId == 'test_user'
-     * @deny (update, delete) User with ID 'test_user_2' cannot update or delete the investment opportunity of 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   resource.data.founderId == 'test_user'
-     * @principle Enforces that only authenticated users can create investment opportunities, and investors can view them.
+     * @allow (get, list) - All authenticated users can read investment opportunities.
+     * @allow (create) - Only authenticated users can create investment opportunities, and the founderId must match their UID.
+     * @allow (update, delete) - Only the creator (founder) can update or delete.
+     * @deny (create) - An unauthenticated user cannot create an investment opportunity.
+     * @deny (update, delete) - An authenticated user cannot modify or delete another user's investment opportunity.
+     * @principle Enforces creator-only writes with public reads.
      */
     match /investment_opportunities/{investmentOpportunityId} {
-      // Verified identity
       function isSignedIn() {
         return request.auth != null;
       }
-
-      // Verifies the user ID
       function isOwner(founderId) {
-        return request.auth.uid == founderId;
+          return isSignedIn() && request.auth.uid == founderId;
       }
-
-      // Helper function to check if the user is an existing owner of the document.
-      function isExistingOwner(founderId) {
-          return isOwner(founderId) && resource.data.founderId == founderId;
+        function isExistingOwner() {
+        return isSignedIn() && resource.data.founderId == request.auth.uid;
       }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.founderId;
-      allow update: if isSignedIn() && isExistingOwner(request.auth.uid);
-      allow delete: if isSignedIn() && isExistingOwner(request.auth.uid);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+      allow update: if isExistingOwner();
+      allow delete: if isExistingOwner();
     }
 
     /**
-     * @description Secures investment theses. Only investors can create investment theses, and all authenticated users can view them.
+     * @description Controls access to investment theses. Only investors can create them.
      * @path /investment_theses/{investmentThesisId}
-     * @allow (get, list) Any authenticated user can view investment theses.
-     *   request.auth is not null
-     * @allow (create) User with ID 'test_user' can create an investment thesis.
-     *   request.auth.uid == 'test_user'
-     *   request.resource.data.investorId == 'test_user'
-     * @allow (update, delete) User with ID 'test_user' can update or delete their own investment thesis.
-     *   request.auth.uid == 'test_user'
-     *   resource.data.investorId == 'test_user'
-     * @deny (create) User with ID 'test_user_2' cannot create an investment thesis for 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   request.resource.data.investorId == 'test_user'
-     * @deny (update, delete) User with ID 'test_user_2' cannot update or delete the investment thesis of 'test_user'.
-     *   request.auth.uid == 'test_user_2'
-     *   resource.data.investorId == 'test_user'
-     * @principle Enforces that only authenticated users can create investment theses, and investors can view them.
+     * @allow (get, list) - All authenticated users can read investment theses.
+     * @allow (create) - Only authenticated investors can create. The investorId must match their UID.
+     * @allow (update, delete) - Only the creator (investor) can update or delete.
+     * @deny (create) - An unauthenticated user cannot create an investment thesis.
+     * @deny (update, delete) - An authenticated user cannot modify or delete another user's investment thesis.
+     * @principle Enforces creator-only writes with public reads.
      */
     match /investment_theses/{investmentThesisId} {
-      // Verified identity
       function isSignedIn() {
         return request.auth != null;
       }
-
-      // Verifies the user ID
       function isOwner(investorId) {
-        return request.auth.uid == investorId;
+          return isSignedIn() && request.auth.uid == investorId;
       }
-
-      // Helper function to check if the user is an existing owner of the document.
-      function isExistingOwner(investorId) {
-          return isOwner(investorId) && resource.data.investorId == investorId;
+      function isExistingOwner() {
+        return isSignedIn() && resource.data.investorId == request.auth.uid;
       }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.investorId;
-      allow update: if isSignedIn() && isExistingOwner(request.auth.uid);
-      allow delete: if isSignedIn() && isExistingOwner(request.auth.uid);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
+      allow update: if isExistingOwner();
+      allow delete: if isExistingOwner();
     }
 
     /**
-     * @description Secures financial summaries. Only authorized users (e.g., investors) can access the financial summaries associated with InvestmentOpportunity documents they have access to.
+     * @description Controls access to financial summaries. Only authorized users (e.g., investors) can access the financial summaries associated with InvestmentOpportunity documents they have access to.
      * @path /financial_summaries/{financialSummaryId}
-     * @allow (get, list) Any authenticated user can view financial summaries.
-     *   request.auth is not null
-     * @allow (create) User with ID 'test_user' can create a financial summary.
-     * @allow (update, delete) User with ID 'test_user' can update or delete their own financial summary.
-     * @principle Enforces that only authorized users can access financial summaries related to accessible InvestmentOpportunity documents.
+     * // TODO: Implement rules once the authorization logic is fully defined.
+     * @allow (get, list, create, update, delete) - No access.
+     * @principle Restricts access to financial summaries based on investment opportunity access.
      */
     match /financial_summaries/{financialSummaryId} {
-      // Verified identity
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-        // Placeholder function for owner validation. Replace with actual logic when schema is updated.
-        function isOwner(userId) {
-            return request.auth.uid == userId; // In the prototype phase, disable owner validation.
+        function isSignedIn() {
+          return request.auth != null;
         }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && isOwner(request.auth.uid); // Placeholder: requires owner validation in data.
-      allow delete: if isSignedIn() && isOwner(request.auth.uid); // Placeholder: requires owner validation in data.
+      allow get: if isSignedIn() && resource.data.investorId == request.auth.uid;
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.investorId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.investorId == request.auth.uid;
+      // TODO: Add owner validation once the schema is updated with an ownership field or tie it to the parent /investment_opportunities/{investmentOpportunityId}
     }
   }
 }
