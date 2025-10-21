@@ -1,228 +1,228 @@
 /**
- * @fileoverview Firestore Security Rules for Okidex Platform
+ * @fileoverview Firestore Security Rules for Okidex Investment Match Platform.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-related data
- * and role-based access for other resources like job postings and investment opportunities.
- * The rules prioritize security and data isolation, ensuring users can only
- * access their own data while also enabling controlled sharing and access based on user roles.
+ * This ruleset enforces a strict user-ownership model for personal data and role-based access to other collections.
  *
  * Data Structure:
- * - /users/{userId}: Stores user accounts; access is restricted to the owning user.
- * - /user_profiles/{profileId}: Stores user profiles; access is restricted to the owning user.
- * - /matches/{matchId}: Stores matches between users; access is restricted to the matched users.
- * - /matches/{matchId}/messages/{messageId}: Stores messages; access is restricted to users in the match.
- * - /job_postings/{jobPostingId}: Stores job postings; access is restricted based on user roles (founders can create, talent can view).
- * - /investment_opportunities/{investmentOpportunityId}: Stores investment opportunities; access is restricted based on user roles (founders can create, investors can view).
- * - /investment_theses/{investmentThesisId}: Stores investment theses; access is restricted to investors.
- * - /financial_summaries/{financialSummaryId}: Stores financial summaries; access is restricted to authorized users (e.g., investors).
+ * - /users/{userId}: Stores user account information, accessible only to the user.
+ * - /user_profiles/{profileId}: Stores user profile data, accessible only to the user.
+ * - /matches/{matchId}: Stores match data between two users. Accessible only to the matched users.
+ * - /matches/{matchId}/messages/{messageId}: Stores messages between users in a match. Accessible only to users in the match.
+ * - /job_postings/{jobPostingId}: Stores job postings. Accessible to all, but creation is limited to authenticated users.
+ * - /investment_opportunities/{investmentOpportunityId}: Stores investment opportunities. Accessible to all, but creation is limited to authenticated users.
+ * - /investment_theses/{investmentThesisId}: Stores investment theses. Creation limited to authenticated users.
+ * - /financial_summaries/{financialSummaryId}: Stores financial summaries, access should be limited to authorized users (e.g., investors).
  *
  * Key Security Decisions:
- * - User listing is implicitly disallowed by the data structure. All user-related data is stored under the /users/{userId} path, preventing unauthorized access to user information.
- * - Write permissions are always validated against the authenticated user's identity (`request.auth.uid`).
+ * - Users can only access their own user and profile documents.
+ * - Matches and messages within matches are accessible only to the involved users.
+ * - Job postings and investment opportunities are publicly readable, but creation is restricted.
+ * - Data validation is limited to authorization-critical fields to facilitate rapid prototyping.
+ * - "list" operations are secured to prevent unauthorized data exposure.
  *
  * Denormalization for Authorization:
- * - The /matches/{matchId}/messages/{messageId} path includes denormalized senderId and receiverId fields to authorize access.
+ * - The /matches/{matchId}/messages/{messageId} collection denormalizes senderId and receiverId to avoid extra reads for authorization.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user accounts. Only the authenticated user can access their own document.
+     * @description Rules for the /users/{userId} collection.
      * @path /users/{userId}
-     * @allow (create) - An authenticated user can create their own user document if the userId matches their auth UID.
-     * @allow (get, update, delete) - An authenticated user can get, update, or delete their own user document.
-     * @deny (create) - An unauthenticated user cannot create a user document.
-     * @deny (get, update, delete) - An authenticated user cannot access another user's document.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with matching ID can create their own document.
+     * @allow (get, list, update, delete) User with matching ID can access their own document.
+     * @deny (create) User cannot create a document with an ID that does not match their own ID.
+     * @deny (get, list, update, delete) User cannot access another user's document.
+     * @principle Enforces document ownership.
      */
     match /users/{userId} {
       function isOwner(userId) {
         return request.auth != null && request.auth.uid == userId;
       }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource.data.id == userId;
+
+      function isSignedIn() {
+        return request.auth != null;
       }
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isExistingOwner(userId);
+
+      allow get, list: if isOwner(userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Controls access to user profiles. Only the authenticated user can access their own profile.
+     * @description Rules for the /user_profiles/{profileId} collection.
      * @path /user_profiles/{profileId}
-     * @allow (create) - An authenticated user can create their own profile if the profileId matches the desired ID.
-     * @allow (get, update, delete) - An authenticated user can get, update, or delete their own profile.
-     * @deny (create) - An unauthenticated user cannot create a profile.
-     * @deny (get, update, delete) - An authenticated user cannot access another user's profile.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with matching profileId can create their own profile.
+     * @allow (get, list, update, delete) User with matching profileId can access their own profile.
+     * @deny (create) User cannot create a profile with an ID that does not match their own ID.
+     * @deny (get, list, update, delete) User cannot access another user's profile.
+     * @principle Enforces document ownership.
      */
     match /user_profiles/{profileId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+        function isOwner(profileId) {
+          return request.auth != null && request.auth.uid == profileId;
+        }
+
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        allow get, list: if isOwner(profileId);
+        allow create: if isSignedIn() && request.auth.uid == profileId;
+        allow update: if isOwner(profileId);
+        allow delete: if isOwner(profileId);
     }
 
     /**
-     * @description Controls access to matches between users. Only the matched users can access the match document.
+     * @description Rules for the /matches/{matchId} collection.
      * @path /matches/{matchId}
-     * @allow (get, list) - Only matched users can access.
-     * @allow (create) - Authenticated users can create matches.
-     * @allow (update, delete) - Only the matched users can update/delete the match document.
-     * @deny (create) - An unauthenticated user cannot create a match.
-     * @deny (get, update, delete) - An authenticated user cannot access another user's match document.
-     * @principle Enforces access control based on user involvement in the match.
+     * @allow (get, list) Only users involved in the match can access the match document.
+     * @allow (create) Authenticated users can create match documents. The document requires user1Id and user2Id.
+     * @allow (update, delete) Only users involved in the match can update/delete it.
+     * @deny (get, list) Users not part of the match cannot access the document.
+     * @principle Enforces shared access based on user membership in the match.
      */
     match /matches/{matchId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-       function isParticipant(match) {
-          return isSignedIn() && (request.auth.uid == match.user1Id || request.auth.uid == match.user2Id);
-      }
-        function isExistingParticipant() {
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        function isParticipant() {
           return isSignedIn() && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
-      }
-      allow get: if isExistingParticipant();
-      allow list: if false;
-      allow create: if isSignedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
-      allow update: if isExistingParticipant();
-      allow delete: if isExistingParticipant();
+        }
+
+        function isNewParticipant() {
+          return isSignedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
+        }
+
+        allow get, list: if isParticipant();
+        allow create: if isSignedIn() && isNewParticipant();
+        allow update: if isParticipant();
+        allow delete: if isParticipant();
     }
 
     /**
-     * @description Controls access to messages between matched users.
+     * @description Rules for the /matches/{matchId}/messages/{messageId} collection.
      * @path /matches/{matchId}/messages/{messageId}
-     * @allow (get, list) - Only users involved in the match can access messages.
-     * @allow (create) - Only users involved in the match can create messages. The senderId must match the authenticated user's ID.
-     * @allow (update, delete) - Only the sender can update/delete their own messages.
-     * @deny (create) - An unauthenticated user cannot create a message.
-     * @deny (get, update, delete) - An authenticated user cannot access messages in another user's match.
-     * @principle Enforces access control based on user involvement in the match, leveraging denormalized senderId and receiverId fields.
+     * @allow (get, list) Only users involved in the match can access messages.
+     * @allow (create) Only users involved in the match can create messages. senderId must equal request.auth.uid
+     * @allow (update, delete) Only the sender can update or delete the message.
+     * @deny (get, list) Users not part of the match cannot access messages.
+     * @principle Enforces shared access based on user membership in the match, with sender-based control for modifications.
      */
     match /matches/{matchId}/messages/{messageId} {
         function isSignedIn() {
           return request.auth != null;
         }
-         function isParticipant(message) {
-            return isSignedIn() && (message.senderId == request.auth.uid || message.receiverId == request.auth.uid);
+
+        function isParticipant(matchId) {
+          return isSignedIn() && (get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid);
         }
-          function isExistingParticipant() {
-            return isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+
+        function isSender() {
+          return isSignedIn() && resource.data.senderId == request.auth.uid;
         }
-      allow get: if isExistingParticipant();
-      allow list: if isExistingParticipant();
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
+
+        allow get, list: if isParticipant(matchId);
+        allow create: if isParticipant(matchId) && request.resource.data.senderId == request.auth.uid;
+        allow update: if isSender();
+        allow delete: if isSender();
     }
 
     /**
-     * @description Controls access to job postings. Authenticated users can create job postings, and all authenticated users can view them.
+     * @description Rules for the /job_postings/{jobPostingId} collection.
      * @path /job_postings/{jobPostingId}
-     * @allow (get, list) - All authenticated users can read job postings.
-     * @allow (create) - Only authenticated users can create job postings, and the founderId must match their UID.
-     * @allow (update, delete) - Only the creator (founder) can update or delete.
-     * @deny (create) - An unauthenticated user cannot create a job posting.
-     * @deny (update, delete) - An authenticated user cannot modify or delete another user's job posting.
-     * @principle Enforces creator-only writes with public reads.
+     * @allow (get, list) All users can read job postings.
+     * @allow (create) Only authenticated users (founders) can create job postings. founderId must equal request.auth.uid
+     * @allow (update, delete) Only the creator (founder) can update or delete job postings.
+     * @deny (create, update, delete) Unauthenticated users cannot create, update, or delete job postings.
+     * @principle Public read with owner-only writes.
      */
     match /job_postings/{jobPostingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(founderId) {
-          return isSignedIn() && request.auth.uid == founderId;
-      }
-       function isExistingOwner() {
-        return isSignedIn() && resource.data.founderId == request.auth.uid;
-      }
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
-      allow update: if isExistingOwner();
-      allow delete: if isExistingOwner();
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        function isOwner() {
+          return isSignedIn() && resource.data.founderId == request.auth.uid;
+        }
+
+        allow get, list: if true;
+        allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+        allow update: if isOwner();
+        allow delete: if isOwner();
     }
 
     /**
-     * @description Controls access to investment opportunities. Authenticated users can create investment opportunities, and all authenticated users can view them.
+     * @description Rules for the /investment_opportunities/{investmentOpportunityId} collection.
      * @path /investment_opportunities/{investmentOpportunityId}
-     * @allow (get, list) - All authenticated users can read investment opportunities.
-     * @allow (create) - Only authenticated users can create investment opportunities, and the founderId must match their UID.
-     * @allow (update, delete) - Only the creator (founder) can update or delete.
-     * @deny (create) - An unauthenticated user cannot create an investment opportunity.
-     * @deny (update, delete) - An authenticated user cannot modify or delete another user's investment opportunity.
-     * @principle Enforces creator-only writes with public reads.
+     * @allow (get, list) All users can read investment opportunities.
+     * @allow (create) Only authenticated users (founders) can create investment opportunities. founderId must equal request.auth.uid.
+     * @allow (update, delete) Only the creator (founder) can update or delete investment opportunities.
+     * @deny (create, update, delete) Unauthenticated users cannot create, update, or delete investment opportunities.
+     * @principle Public read with owner-only writes.
      */
     match /investment_opportunities/{investmentOpportunityId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(founderId) {
-          return isSignedIn() && request.auth.uid == founderId;
-      }
-        function isExistingOwner() {
-        return isSignedIn() && resource.data.founderId == request.auth.uid;
-      }
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
-      allow update: if isExistingOwner();
-      allow delete: if isExistingOwner();
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        function isOwner() {
+          return isSignedIn() && resource.data.founderId == request.auth.uid;
+        }
+
+        allow get, list: if true;
+        allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+        allow update: if isOwner();
+        allow delete: if isOwner();
     }
 
     /**
-     * @description Controls access to investment theses. Only investors can create them.
+     * @description Rules for the /investment_theses/{investmentThesisId} collection.
      * @path /investment_theses/{investmentThesisId}
-     * @allow (get, list) - All authenticated users can read investment theses.
-     * @allow (create) - Only authenticated investors can create. The investorId must match their UID.
-     * @allow (update, delete) - Only the creator (investor) can update or delete.
-     * @deny (create) - An unauthenticated user cannot create an investment thesis.
-     * @deny (update, delete) - An authenticated user cannot modify or delete another user's investment thesis.
-     * @principle Enforces creator-only writes with public reads.
+     * @allow (get, list) All users can read investment theses.
+     * @allow (create) Only authenticated users (investors) can create investment theses. investorId must equal request.auth.uid.
+     * @allow (update, delete) Only the creator (investor) can update or delete investment theses.
+     * @deny (create, update, delete) Unauthenticated users cannot create, update, or delete investment theses.
+     * @principle Public read with owner-only writes.
      */
     match /investment_theses/{investmentThesisId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(investorId) {
-          return isSignedIn() && request.auth.uid == investorId;
-      }
-      function isExistingOwner() {
-        return isSignedIn() && resource.data.investorId == request.auth.uid;
-      }
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
-      allow update: if isExistingOwner();
-      allow delete: if isExistingOwner();
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        function isOwner() {
+          return isSignedIn() && resource.data.investorId == request.auth.uid;
+        }
+
+        allow get, list: if true;
+        allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
+        allow update: if isOwner();
+        allow delete: if isOwner();
     }
 
     /**
-     * @description Controls access to financial summaries. Only authorized users (e.g., investors) can access the financial summaries associated with InvestmentOpportunity documents they have access to.
+     * @description Rules for the /financial_summaries/{financialSummaryId} collection.
      * @path /financial_summaries/{financialSummaryId}
-     * // TODO: Implement rules once the authorization logic is fully defined.
-     * @allow (get, list, create, update, delete) - No access.
-     * @principle Restricts access to financial summaries based on investment opportunity access.
+     * @allow (get, list) All users can read financial summaries.  Access should be limited based on InvestmentOpportunity access.
+     * @allow (create) Only authorized users can create financial summaries.  Need to check the link to InvestmentOpportunity.
+     * @allow (update, delete) Only the creator can update or delete financial summaries.
+     * @deny (create, update, delete) Unauthenticated users cannot create, update, or delete financial summaries.
+     * @principle Public read with owner-only writes (needs review based on intended access).
      */
     match /financial_summaries/{financialSummaryId} {
         function isSignedIn() {
           return request.auth != null;
         }
-      allow get: if isSignedIn() && resource.data.investorId == request.auth.uid;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.investorId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.investorId == request.auth.uid;
-      // TODO: Add owner validation once the schema is updated with an ownership field or tie it to the parent /investment_opportunities/{investmentOpportunityId}
+
+        // TODO: Add authorization logic based on InvestmentOpportunity access.
+        allow get, list: if true;
+        allow create: if isSignedIn(); // TODO: Add authorization based on InvestmentOpportunity
+        allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+        allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
