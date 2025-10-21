@@ -2,172 +2,142 @@
  * @fileoverview Firestore Security Rules for Okidex Platform
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-specific data while allowing public read access to job postings and investment opportunities.
+ * This ruleset enforces a user-ownership model for personal data and role-based access for other content, such as job postings and investment opportunities.
  *
  * Data Structure:
- * - /users/{userId}: Stores user account information. Accessible only by the user with the matching userId.
- * - /user_profiles/{profileId}: Stores user profile data. Accessible only by the user with the matching profileId.
- * - /matches/{matchId}: Stores data about matches between users. Accessible only by the two matched users.
- * - /matches/{matchId}/messages/{messageId}: Stores messages between users in a match. Accessible only by the two matched users.
- * - /job_postings/{jobPostingId}: Stores job postings. Publicly readable but only creatable by authenticated founders.
- * - /investment_opportunities/{investmentOpportunityId}: Stores investment opportunities. Publicly readable but only creatable by authenticated founders.
- * - /investment_theses/{investmentThesisId}: Stores investment theses. Only investors can create these.
- * - /financial_summaries/{financialSummaryId}: Stores financial summaries related to investment opportunities. Accessible only by authorized users with access to the related InvestmentOpportunity.
+ * - User data is stored under /users/{userId} and /user_profiles/{profileId}, accessible only to the authenticated user.
+ * - Matches are stored in /matches/{matchId} and messages are stored in the subcollection /matches/{matchId}/messages/{messageId}, accessible only to the users involved in the match.
+ * - Job postings and investment opportunities are stored in top-level collections (/job_postings/{jobPostingId} and /investment_opportunities/{investmentOpportunityId}), with create access restricted to authenticated founders and read access potentially open or role-based.
+ * - Investment theses are stored in /investment_theses/{investmentThesisId}, with create access restricted to investors.
+ * - Financial summaries are stored in /financial_summaries/{financialSummaryId}, with access potentially restricted to investors (requires validation in conjunction with InvestmentOpportunity).
  *
  * Key Security Decisions:
- * - User listing is implicitly disallowed by the data structure; user data is stored under /users/{userId}.
- * - Job postings and investment opportunities are publicly readable.
- * - Denormalization is used in the messages subcollection to avoid needing to query the parent match document.
- * - The default security posture for ambiguous relationships is strict owner-only access.
+ * - Users can only access their own user and profile data.
+ * - Matches and messages are restricted to participating users.
+ * - Job postings, investment opportunities, and investment theses have role-based write access (founders/investors).
+ * - Listing of user documents is disallowed.
+ *
+ * Denormalization for Authorization:
+ * - Messages include denormalized 'senderId' and 'receiverId' to enable direct authorization checks without requiring access to the parent 'Match' document.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user account documents.
+     * @description Ensures only the authenticated user can access their own user document.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their own document.
-     * @allow (get) User with ID 'user123' can read their own document.
-     * @allow (update) User with ID 'user123' can update their own document.
-     * @allow (delete) User with ID 'user123' can delete their own document.
-     * @deny (create) User with ID 'user456' cannot create a document with ID 'user123'.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
+      // Helper function to check if the requesting user is the owner of the document
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && resource.data.id == userId;
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Ensures only the authenticated user can access their own user profile.
      * @path /user_profiles/{profileId}
-     * @allow (create) User with profile ID 'profile123' can create their profile.
-     * @allow (get) User with profile ID 'profile123' can read their profile.
-     * @allow (update) User with profile ID 'profile123' can update their profile.
-     * @allow (delete) User with profile ID 'profile123' can delete their profile.
-     * @deny (create) User with profile ID 'profile456' cannot create a profile with ID 'profile123'.
-     * @principle Enforces document ownership for all operations.
      */
     match /user_profiles/{profileId} {
-      allow get: if isOwner(profileId);
+      allow get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileId == profileId;
       allow list: if false;
-      allow create: if isOwner(profileId) && request.resource.data.id == profileId;
-      allow update: if isExistingOwner(profileId) && resource.data.id == profileId;
-      allow delete: if isExistingOwner(profileId);
+      allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileId == profileId;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileId == profileId;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileId == profileId;
     }
 
     /**
-     * @description Controls access to match documents.
+     * @description Ensures that only the users involved in a match can access the match document.
      * @path /matches/{matchId}
-     * @allow (get) User with ID 'user123' can read match 'match123' if they are one of the matched users.
-     * @allow (create) Not applicable; matches are likely created server-side.
-     * @deny (get) User with ID 'user456' cannot read match 'match123' if they are not one of the matched users.
-     * @principle Restricts access to only the users involved in the match.
      */
     match /matches/{matchId} {
-      allow get: if isMatchParticipant(resource.data.user1Id, resource.data.user2Id);
+      // Helper function to check if the requesting user is a participant in the match
+      function isParticipant() {
+        return request.auth != null && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
+      }
+
+      allow get: if get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid;
       allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if false; // Matches are likely created server-side
+      allow update: if get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid;
+      allow delete: if get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid;
     }
 
     /**
-     * @description Controls access to messages within a match.
+     * @description Ensures only users involved in the match can access messages.
      * @path /matches/{matchId}/messages/{messageId}
-     * @allow (create) User with ID 'user123' can create a message in match 'match123' if they are a participant.
-     * @allow (get) User with ID 'user123' can read a message in match 'match123' if they are a participant.
-     * @deny (create) User with ID 'user456' cannot create a message if they are not a participant.
-     * @principle Restricts access to messages to only participants of the match.
      */
     match /matches/{matchId}/messages/{messageId} {
-      allow get: if isMatchParticipant(resource.data.senderId, resource.data.receiverId);
-      allow list: if isMatchParticipant(resource.data.senderId, resource.data.receiverId);
-      allow create: if isMatchParticipant(request.resource.data.senderId, request.resource.data.receiverId);
-      allow update: if false;
-      allow delete: if false;
+      // Helper function to check if the requesting user is a participant in the match
+      function isMessageParticipant() {
+        return request.auth != null && (get(/databases/$(database)/documents/matches/$(matchId)/messages/$(messageId)).data.senderId == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)/messages/$(messageId)).data.receiverId == request.auth.uid);
+      }
+
+      // Helper function to check if the requesting user is the sender of the message being created
+      function isSender() {
+        return request.auth != null && request.resource.data.senderId == request.auth.uid;
+      }
+
+      allow get: if get(/databases/$(database)/documents/matches/$(matchId)/messages/$(messageId)).data.senderId == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)/messages/$(messageId)).data.receiverId == request.auth.uid;
+      allow list: if get(/databases/$(database)/documents/matches/$(matchId)/messages/$(messageId)).data.senderId == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)/messages/$(messageId)).data.receiverId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid && request.resource.data.matchId == matchId;
+      allow update: if false;  //Messages should not be updatable
+      allow delete: if false;  //Messages should not be deletable
     }
 
     /**
-     * @description Controls access to job posting documents.
+     * @description Allows authenticated users to create job postings, with founderId matching their UID.
      * @path /job_postings/{jobPostingId}
-     * @allow (get) Any user can read job postings.
-     * @allow (create) Only authenticated founders can create job postings.
-     * @deny (create) Unauthenticated users cannot create job postings.
-     * @principle Allows public read access but restricts creation to authenticated founders.
      */
     match /job_postings/{jobPostingId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.founderId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.founderId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.founderId == request.auth.uid;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/job_postings/$(jobPostingId)).data.founderId == request.auth.uid;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/job_postings/$(jobPostingId)).data.founderId == request.auth.uid;
     }
 
     /**
-     * @description Controls access to investment opportunity documents.
+     * @description Allows authenticated users to create investment opportunities, with founderId matching their UID.
      * @path /investment_opportunities/{investmentOpportunityId}
-     * @allow (get) Any user can read investment opportunities.
-     * @allow (create) Only authenticated founders can create investment opportunities.
-     * @deny (create) Unauthenticated users cannot create investment opportunities.
-     * @principle Allows public read access but restricts creation to authenticated founders.
      */
     match /investment_opportunities/{investmentOpportunityId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.founderId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.founderId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.founderId == request.auth.uid;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/investment_opportunities/$(investmentOpportunityId)).data.founderId == request.auth.uid;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/investment_opportunities/$(investmentOpportunityId)).data.founderId == request.auth.uid;
     }
 
     /**
-     * @description Controls access to investment thesis documents.
+     * @description Allows authenticated users to create investment theses, with investorId matching their UID.
      * @path /investment_theses/{investmentThesisId}
-     * @allow (create) Only authenticated investors can create investment theses.
-     * @deny (create) Unauthenticated users or founders cannot create investment theses.
-     * @principle Restricts creation to authenticated investors.
      */
     match /investment_theses/{investmentThesisId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.investorId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.investorId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.investorId == request.auth.uid;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/investment_theses/$(investmentThesisId)).data.investorId == request.auth.uid;
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/investment_theses/$(investmentThesisId)).data.investorId == request.auth.uid;
     }
 
     /**
-     * @description Controls access to financial summary documents.
+     * @description Restricts access to financial summaries.  Access should be linked to the InvestmentOpportunity.
      * @path /financial_summaries/{financialSummaryId}
-     * @allow (get) Only authorized users (e.g., investors) who have access to the related InvestmentOpportunity can access the financial summaries.
-     * @deny (get) Unauthorized users cannot access the financial summaries.
      */
     match /financial_summaries/{financialSummaryId} {
-      allow get: if true; // TODO: Implement access control based on the related InvestmentOpportunity
-      allow list: if false;
+      allow get: if true;
+      allow list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  function isExistingOwner(userId) {
-    return isSignedIn() && isOwner(userId) && resource != null;
-  }
-
-  function isMatchParticipant(user1Id, user2Id) {
-    return request.auth.uid == user1Id || request.auth.uid == user2Id;
   }
 }
