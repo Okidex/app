@@ -1,4 +1,4 @@
-
+import 'next-server-only';
 import admin from 'firebase-admin';
 
 // This pattern ensures that the Firebase Admin SDK is initialized only once.
