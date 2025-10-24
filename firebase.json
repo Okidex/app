@@ -1,15 +1,14 @@
 {
   "hosting": {
     "source": ".",
-    "rewrites": [
-      {
-        "source": "**",
-        "run": {
-          "serviceId": "ssrokidexinvestmentmatc",
-          "region": "us-central1"
-        }
-      }
-    ]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
   },
   "firestore": {
     "rules": "firestore.rules"
@@ -18,4 +17,3 @@
     "rules": "storage.rules"
   }
 }
-
