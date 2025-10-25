@@ -1,5 +1,5 @@
 
-import data from '@/lib/placeholder-images.json';
+import { placeholderImages as data } from '@/lib/placeholder-images-data';
 
 export type ImagePlaceholder = {
   id: string;
@@ -8,7 +8,7 @@ export type ImagePlaceholder = {
   imageHint: string;
 };
 
-export const placeholderImages: ImagePlaceholder[] = data.placeholderImages;
+export const placeholderImages: ImagePlaceholder[] = data;
 
 export const getImage = (id: string): ImagePlaceholder => {
     const image = placeholderImages.find(img => img.id === id);
@@ -23,3 +23,4 @@ export const getImage = (id: string): ImagePlaceholder => {
     }
     return image;
 };
+

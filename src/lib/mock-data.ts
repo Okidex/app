@@ -1,7 +1,7 @@
 
 import { FullUserProfile, Startup, Job, InvestmentThesis, Conversation, Notification, Interest } from './types';
 import { subMonths, format } from 'date-fns';
-import { getImage } from '@/lib/placeholder-images';
+import { getImage } from './placeholder-images';
 
 export const users: FullUserProfile[] = [
     {
@@ -311,3 +311,4 @@ export const interests: Interest[] = [
         timestamp: new Date().toISOString(),
     }
 ];
+
