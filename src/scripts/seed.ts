@@ -1,8 +1,6 @@
 
 // The dotenv/config import is now handled by the `tsx` command arguments in package.json
-// Example: tsx -r dotenv/config src/scripts/seed.ts
-
-import { initializeAdminApp } from '@/lib/firebase-admin';
+import admin from 'firebase-admin';
 import {
   users,
   startups,
@@ -13,8 +11,27 @@ import {
   interests,
 } from '@/lib/mock-data';
 
-// Initialize the app before using firestore
-const { firestore } = initializeAdminApp();
+// --- Direct Admin SDK Initialization ---
+// This pattern ensures the SDK is initialized only once.
+if (admin.apps.length === 0) {
+  // When running locally, we use the service account key file.
+  // The `GOOGLE_APPLICATION_CREDENTIALS` env var is set in the `.env` file
+  // and loaded by the `tsx -r dotenv/config` command.
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    });
+  } else {
+    // When deployed to a Google Cloud environment (like App Hosting),
+    // initializeApp() with no arguments will automatically use the production service account.
+    admin.initializeApp();
+  }
+}
+
+const firestore = admin.firestore();
+// --- End Initialization ---
+
 
 async function seedDatabase() {
   const batch = firestore.batch();
@@ -72,4 +89,3 @@ async function seedDatabase() {
 }
 
 seedDatabase();
-

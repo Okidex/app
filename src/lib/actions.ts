@@ -1,6 +1,6 @@
 
 'use server';
-
+import admin from 'firebase-admin';
 import {
   summarizeFinancialData,
   FinancialDataInput,
@@ -11,8 +11,27 @@ import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole, Message } from './types';
-import { initializeAdminApp } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+
+// This pattern ensures that the Firebase Admin SDK is initialized only once.
+function initializeAdminApp() {
+    if (admin.apps.length === 0) {
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            admin.initializeApp({
+                credential: admin.credential.applicationDefault(),
+                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+            });
+        } else {
+            admin.initializeApp();
+        }
+    }
+    return {
+        auth: admin.auth(),
+        firestore: admin.firestore(),
+        storage: admin.storage()
+    }
+}
+
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const { firestore, auth } = initializeAdminApp();
