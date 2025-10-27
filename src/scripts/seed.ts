@@ -1,0 +1,86 @@
+
+import 'dotenv/config';
+import admin from 'firebase-admin';
+import {
+  users,
+  startups,
+  jobs,
+  theses,
+  conversations,
+  notifications,
+  interests,
+} from '@/lib/mock-data';
+
+// --- Direct Admin SDK Initialization ---
+// This pattern ensures the SDK is initialized only once and correctly uses
+// the service account credentials specified in the .env file.
+if (admin.apps.length === 0) {
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    throw new Error('The GOOGLE_APPLICATION_CREDENTIALS environment variable must be set. It should point to your service account key file.');
+  }
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  });
+}
+
+const firestore = admin.firestore();
+// --- End Initialization ---
+
+
+async function seedDatabase() {
+  const batch = firestore.batch();
+
+  console.log('Seeding users...');
+  users.forEach((user) => {
+    const userRef = firestore.collection('users').doc(user.id);
+    batch.set(userRef, user);
+  });
+
+  console.log('Seeding startups...');
+  startups.forEach((startup) => {
+    const startupRef = firestore.collection('startups').doc(startup.id);
+    batch.set(startupRef, startup);
+  });
+
+  console.log('Seeding jobs...');
+  jobs.forEach((job) => {
+    const jobRef = firestore.collection('jobs').doc(job.id);
+    batch.set(jobRef, job);
+  });
+
+  console.log('Seeding theses...');
+  theses.forEach((thesis) => {
+    const thesisRef = firestore.collection('theses').doc(thesis.id);
+    batch.set(thesisRef, thesis);
+  });
+
+  console.log('Seeding conversations...');
+  conversations.forEach((conversation) => {
+    const conversationRef = firestore.collection('conversations').doc(conversation.id);
+    batch.set(conversationRef, conversation);
+  });
+
+  console.log('Seeding notifications...');
+  notifications.forEach((notification) => {
+    const notificationRef = firestore.collection('notifications').doc(notification.id);
+    batch.set(notificationRef, notification);
+  });
+
+  console.log('Seeding interests...');
+  interests.forEach((interest) => {
+    const interestRef = firestore.collection('interests').doc(interest.id);
+    batch.set(interestRef, interest);
+  });
+
+  try {
+    await batch.commit();
+    console.log('Database seeded successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error seeding database: ', error);
+    process.exit(1);
+  }
+}
+
+seedDatabase();
