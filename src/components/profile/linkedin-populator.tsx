@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getProfileFromLinkedIn } from "@/lib/actions";
+import { getProfileFromLinkedIn } from "@/lib/client-actions";
 import { Loader2, Linkedin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,7 +25,7 @@ export default function LinkedInPopulator() {
     }
     setIsLoading(true);
     try {
-      const profileData = await getProfileFromLinkedIn(linkedinUrl);
+      const profileData = await getProfileFromLinkedIn({linkedinUrl});
       toast({
         title: "Profile Data Fetched",
         description: (

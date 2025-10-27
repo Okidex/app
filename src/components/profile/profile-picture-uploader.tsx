@@ -4,7 +4,7 @@
 import { useState, useRef } from "react";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { getProfilePictureTags } from "@/lib/actions";
+import { getProfilePictureTags } from "@/lib/client-actions";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Upload, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,8 +74,8 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
     setTags([]);
 
     try {
-        const suggestedTags = await getProfilePictureTags(avatarUrl);
-        setTags(suggestedTags);
+        const result = await getProfilePictureTags({photoDataUri: avatarUrl});
+        setTags(result.tags);
     } catch (error) {
         console.error("Error auto-tagging profile picture:", error);
     } finally {

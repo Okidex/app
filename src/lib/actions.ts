@@ -1,18 +1,20 @@
+
 'use server';
+
+import { initializeAdminApp } from './firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { headers } from 'next/headers';
+
 import {
-  summarizeFinancialData,
-  FinancialDataInput,
+    summarizeFinancialData,
+    FinancialDataInput,
 } from '@/ai/flows/financial-data-summary';
 import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
 import { smartMatch } from '@/ai/flows/smart-matching';
 import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
-import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole, Message } from './types';
-import { initializeAdminApp } from './firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
-import { headers } from 'next/headers';
-import { Auth, getAuth } from 'firebase/auth';
+import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, TalentProfile, TalentSubRole, Message } from './types';
 
 
 // This function is now designed to be called from other server actions
@@ -22,12 +24,16 @@ async function getCurrentUserId(): Promise<string | null> {
     const sessionCookie = headers().get('cookie')?.split('; ').find(c => c.startsWith('__session='));
 
     if (!sessionCookie) {
-        console.log("No session cookie found");
         return null;
     }
 
-    const decodedToken = await auth.verifySessionCookie(sessionCookie.split('=')[1], true);
-    return decodedToken.uid;
+    try {
+        const decodedToken = await auth.verifySessionCookie(sessionCookie.split('=')[1], true);
+        return decodedToken.uid;
+    } catch (error) {
+        console.error("Error verifying session cookie:", error);
+        return null;
+    }
 }
 
 
@@ -36,21 +42,12 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
   const uid = await getCurrentUserId();
   
   if (!uid) {
-    // To maintain functionality for unauthenticated parts of the app or for initial setup,
-    // we fall back to the placeholder method. In a real production scenario with enforced auth,
-    // you might want to return null or throw an error here.
-    const usersCollection = await firestore.collection('users').limit(1).get();
-    if (usersCollection.empty) {
-        return null;
-    }
-    console.warn("Warning: No authenticated user found. Falling back to placeholder user for getCurrentUser().");
-    return usersCollection.docs[0].data() as FullUserProfile;
+    return null;
   }
   
   const userDoc = await firestore.collection('users').doc(uid).get();
 
   if (!userDoc.exists) {
-    console.log("No user found for UID:", uid);
     return null;
   }
 
@@ -165,7 +162,7 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
     const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
     
-    const bucket = storage.bucket(`gs://${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}`);
+    const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
