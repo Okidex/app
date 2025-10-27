@@ -1,6 +1,7 @@
+
 'use client';
 
-import { getCurrentUser, updateUserProfile } from "@/lib/actions";
+import { updateUserProfile } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ import { getDoc, doc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { investmentStages } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/actions";
 
 export default function ProfileEditPage() {
   const { user: authUser } = useUser();
@@ -36,7 +38,7 @@ export default function ProfileEditPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
-  const db = useFirestore();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (authUser) {
@@ -51,11 +53,11 @@ export default function ProfileEditPage() {
   const [startup, setStartup] = useState<Startup | undefined>(undefined);
   
   useEffect(() => {
-    if (user && user.role === 'founder' && db) {
+    if (user && user.role === 'founder' && firestore) {
       const profile = user.profile as FounderProfile;
       if (profile.companyId) {
         const fetchStartup = async () => {
-          const startupDoc = await getDoc(doc(db, 'startups', profile.companyId!));
+          const startupDoc = await getDoc(doc(firestore, 'startups', profile.companyId!));
           if (startupDoc.exists()) {
             setStartup(startupDoc.data() as Startup);
           }
@@ -68,7 +70,7 @@ export default function ProfileEditPage() {
     } else if (user) {
       setLoading(false);
     }
-  }, [user, db]);
+  }, [user, firestore]);
 
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
   const [isVendor, setIsVendor] = useState(false);

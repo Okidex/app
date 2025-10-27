@@ -1,6 +1,5 @@
 
 'use server';
-import admin from 'firebase-admin';
 import {
   summarizeFinancialData,
   FinancialDataInput,
@@ -11,38 +10,52 @@ import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole, Message } from './types';
+import { initializeAdminApp } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { headers } from 'next/headers';
+import { Auth, getAuth } from 'firebase/auth';
 
-// This pattern ensures that the Firebase Admin SDK is initialized only once.
-function initializeAdminApp() {
-    if (admin.apps.length === 0) {
-        if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            admin.initializeApp({
-                credential: admin.credential.applicationDefault(),
-                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-            });
-        } else {
-            admin.initializeApp();
-        }
+
+// This function is now designed to be called from other server actions
+// to get the UID of the currently logged-in user from the session cookie.
+async function getCurrentUserId(): Promise<string | null> {
+    const { auth } = initializeAdminApp();
+    const sessionCookie = headers().get('cookie')?.split('; ').find(c => c.startsWith('__session='));
+
+    if (!sessionCookie) {
+        console.log("No session cookie found");
+        return null;
     }
-    return {
-        auth: admin.auth(),
-        firestore: admin.firestore(),
-        storage: admin.storage()
-    }
+
+    const decodedToken = await auth.verifySessionCookie(sessionCookie.split('=')[1], true);
+    return decodedToken.uid;
 }
 
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { firestore, auth } = initializeAdminApp();
-  // In a real app, you would get the UID from the session.
-  // For this prototype, we will fetch the first user as a placeholder.
-  // THIS IS NOT SECURE FOR PRODUCTION.
-  const usersCollection = await firestore.collection('users').limit(1).get();
-  if (usersCollection.empty) {
+  const { firestore } = initializeAdminApp();
+  const uid = await getCurrentUserId();
+  
+  if (!uid) {
+    // To maintain functionality for unauthenticated parts of the app or for initial setup,
+    // we fall back to the placeholder method. In a real production scenario with enforced auth,
+    // you might want to return null or throw an error here.
+    const usersCollection = await firestore.collection('users').limit(1).get();
+    if (usersCollection.empty) {
+        return null;
+    }
+    console.warn("Warning: No authenticated user found. Falling back to placeholder user for getCurrentUser().");
+    return usersCollection.docs[0].data() as FullUserProfile;
+  }
+  
+  const userDoc = await firestore.collection('users').doc(uid).get();
+
+  if (!userDoc.exists) {
+    console.log("No user found for UID:", uid);
     return null;
   }
-  return usersCollection.docs[0].data() as FullUserProfile;
+
+  return userDoc.data() as FullUserProfile;
 }
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
@@ -153,7 +166,7 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
     const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
     
-    const bucket = storage.bucket();
+    const bucket = storage.bucket(`gs://${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}`);
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
@@ -161,8 +174,9 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
     
     await file.save(buffer, {
         metadata: { contentType: mimeType },
-        public: true,
     });
+    // Make the file public and get the URL
+    await file.makePublic();
     return file.publicUrl();
 }
 
