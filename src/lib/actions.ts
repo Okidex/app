@@ -1,4 +1,3 @@
-
 'use server';
 import {
   summarizeFinancialData,
@@ -349,4 +348,3 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
         return { success: false, error: error.message };
     }
 }
-
