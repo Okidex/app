@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,10 +8,8 @@ import { Check, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { getCurrentUser } from "@/lib/actions";
 import { FounderProfile, FullUserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser } from '@/firebase';
 
 const features = [
   "Showcase your startup's profile to investors, start conversations, and fundraise.",
@@ -23,23 +20,18 @@ const features = [
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
-  const [user, setUser] = useState<FullUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { user: authUser, isUserLoading } = useUser();
+  
+  // Mocked user data for premium status
+  const isPremiumFounder = false;
 
   useEffect(() => {
-    if (!isUserLoading && authUser) {
-      getCurrentUser().then(userProfile => {
-          setUser(userProfile);
-          setLoading(false);
-      });
-    } else if (!isUserLoading && !authUser) {
-      setLoading(false);
-    }
-  }, [authUser, isUserLoading]);
+    // Simulate loading
+    setTimeout(() => setLoading(false), 500);
+  }, []);
   
-  if (loading || !user) {
+  if (loading) {
     return (
         <div className="space-y-6">
             <div>
@@ -50,10 +42,6 @@ export default function BillingPage() {
         </div>
     )
   }
-
-  const isFounder = user.role === 'founder';
-  const isPremiumFounder = isFounder && (user.profile as FounderProfile).isPremium;
-
 
   const handleSubscribe = (plan: 'monthly' | 'yearly') => {
     toast({

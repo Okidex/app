@@ -140,7 +140,7 @@ export default function ThesesPage() {
   const isPremiumFounder = isFounder && (currentUser.profile as FounderProfile).isPremium;
   const isCoFounderTalent = isTalent && (currentUser.profile as TalentProfile).subRole === 'co-founder';
 
-  if (!isInvestor && !isPremiumFounder && !isCoFounderTalent) {
+  if (!currentUser || (!isInvestor && !isPremiumFounder && !isCoFounderTalent)) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
           <Card className="w-full max-w-md p-8">
@@ -152,7 +152,7 @@ export default function ThesesPage() {
                   <CardDescription>
                     {isFounder ? 
                       "This feature is available exclusively for Oki+ members. Upgrade your plan to view investor theses." :
-                      "This feature is available for talent seeking co-founder roles. Update your profile to gain access."
+                      "This feature is available for investors and talent seeking co-founder roles. Update your profile to gain access."
                     }
                   </CardDescription>
               </CardHeader>
