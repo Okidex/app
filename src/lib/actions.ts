@@ -10,7 +10,7 @@ import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populat
 import { financialBreakdown } from '@/ai/flows/financial-breakdown';
 import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, InvestorProfile, TalentProfile, TalentSubRole, Message } from './types';
-import { initializeAdminApp } from './firebase-admin';
+import { initializeAdminApp } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { headers } from 'next/headers';
 import { Auth, getAuth } from 'firebase/auth';

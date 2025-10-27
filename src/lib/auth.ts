@@ -3,7 +3,7 @@
 
 import { initializeFirebase } from '@/firebase';
 import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { initializeAdminApp } from './firebase-admin';
+import { initializeAdminApp } from '@/lib/firebase-admin';
 
 export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
   const { auth } = initializeFirebase();
