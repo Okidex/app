@@ -1,3 +1,4 @@
+
 {
   "hosting": {
     "source": ".",
@@ -15,11 +16,10 @@
       "source": ".firebase/okidex-investment-match/functions",
       "codebase": "firebase-frameworks-okidex-investment-match",
       "runtime": "nodejs20",
-      "package": {
-        "dependencies": {
-          "cors": "^2.8.5"
-        }
-      }
+      "deps": [
+        "cors",
+        "firebase-admin"
+      ]
     }
   ],
   "firestore": {
@@ -29,3 +29,4 @@
     "rules": "storage.rules"
   }
 }
+
