@@ -1,0 +1,12 @@
+# It's recommended to not commit the node_modules directory.
+node_modules
+# It's recommended to not commit the package-lock.json file.
+package-lock.json
+# It's recommended to not commit the .npmrc file.
+.npmrc
+# It's recommended to not commit any local env files.
+.env*.local
+# It's recommended to not commit any Compiled files.
+*.js
+*.js.map
+*.d.ts
