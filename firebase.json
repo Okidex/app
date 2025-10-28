@@ -1,4 +1,3 @@
-
 {
   "hosting": {
     "source": ".",
@@ -10,13 +9,6 @@
       "region": "us-central1"
     }
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "firebase-frameworks-okidex-investment-match",
-      "runtime": "nodejs20"
-    }
-  ],
   "firestore": {
     "rules": "firestore.rules"
   },
