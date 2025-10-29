@@ -188,6 +188,9 @@ export default function FounderRegisterForm() {
                                     <SelectItem value="C-Corp">C-Corp</SelectItem>
                                     <SelectItem value="S-Corp">S-Corp</SelectItem>
                                     <SelectItem value="LLC">LLC</SelectItem>
+                                    <SelectItem value="Private Limited">Private Limited</SelectItem>
+                                    <SelectItem value="Public Limited Company">Public Limited Company</SelectItem>
+                                    <SelectItem value="Charity">Charity</SelectItem>
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>

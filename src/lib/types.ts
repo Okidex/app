@@ -1,3 +1,4 @@
+
 export type UserRole = 'founder' | 'investor' | 'talent';
 export type TalentSubRole = 'co-founder' | 'employee' | 'vendor' | 'fractional-leader';
 
@@ -29,7 +30,7 @@ export interface MonthlyFinancials {
 export interface IncorporationDetails {
   isIncorporated: boolean;
   country?: string;
-  incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'PLT' | 'PLC' | 'OPC' | 'LLPs' | 'Other';
+  incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'PLT' | 'PLC' | 'OPC' | 'LLPs' | 'Private Limited' | 'Public Limited Company' | 'Charity' | 'Other';
   incorporationDate?: string;
   entityNumber?: string;
   taxId?: string;
