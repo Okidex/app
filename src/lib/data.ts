@@ -15,17 +15,3 @@ export const conversations: Conversation[] = mockConversations;
 
 export const getImage = getPlaceholderImage;
 
-// In a real app, you'd fetch this from a server based on the logged-in user.
-// For this prototype, we'll just grab the first user from our mock data.
-export const getCurrentUser = (): FullUserProfile => {
-    return users[0];
-};
-
-export const getUserById = (id: string): FullUserProfile | undefined => {
-    return users.find(user => user.id === id);
-}
-
-export const getStartupById = (id: string): Startup | undefined => {
-    return startups.find(startup => startup.id === id);
-}
-

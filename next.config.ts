@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  serverComponentsExternalPackages: ["dotprompt"],
 };
 
 export default nextConfig;
