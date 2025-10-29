@@ -14,7 +14,7 @@ import UserAvatar from "@/components/shared/user-avatar";
 import SearchBar from "@/components/shared/search-bar";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser } from "@/lib/actions";
 
 
 export default function DashboardPage() {

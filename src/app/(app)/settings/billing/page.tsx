@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { FounderProfile, FullUserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getCurrentUser } from '@/lib/data';
+import { getCurrentUser } from '@/lib/actions';
 
 const features = [
   "Showcase your startup's profile to investors, start conversations, and fundraise.",
@@ -27,9 +27,10 @@ export default function BillingPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const user = getCurrentUser();
-    setUser(user);
-    setLoading(false);
+    getCurrentUser().then(user => {
+      setUser(user);
+      setLoading(false);
+    });
   }, []);
   
   if (loading || !user) {

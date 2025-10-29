@@ -57,7 +57,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
 
     useEffect(() => {
         const fetchInterests = async () => {
-            if (!db) return;
+            if (!db || !currentUser?.id) return;
             // Fetch theses created by investor
             const thesesQuery = query(collection(db, "theses"), where("investorId", "==", currentUser.id));
             const thesesSnap = await getDocs(thesesQuery);
@@ -142,7 +142,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
 
     useEffect(() => {
         const fetchInterests = async () => {
-            if (!db) return;
+            if (!db || !currentUser?.id) return;
             const jobsQuery = query(collection(db, "jobs"), where("founderId", "==", currentUser.id));
             const jobsSnap = await getDocs(jobsQuery);
             const myJobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
