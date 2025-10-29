@@ -75,14 +75,14 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 const thesisInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", myTheses.map(t => t.id)));
                 const thesisInterestsSnap = await getDocs(thesisInterestsQuery);
                 const interestsData = thesisInterestsSnap.docs.map(doc => doc.data() as Interest);
-                setThesisInterests(interestsData.map(i => {
+                interestsData.forEach(i => {
                     if (!allUserIds.includes(i.userId)) allUserIds.push(i.userId);
-                    return {
-                        ...i,
-                        user: undefined,
-                        targetName: myTheses.find(t => t.id === i.targetId)?.title || 'a thesis'
-                    }
-                }));
+                });
+                setThesisInterests(interestsData.map(i => ({
+                    ...i,
+                    user: undefined,
+                    targetName: myTheses.find(t => t.id === i.targetId)?.title || 'a thesis'
+                })));
             }
 
             // Fetch interests for jobs
@@ -90,14 +90,14 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 const jobInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", myJobs.map(j => j.id)));
                 const jobInterestsSnap = await getDocs(jobInterestsQuery);
                 const interestsData = jobInterestsSnap.docs.map(doc => doc.data() as Interest);
-                setJobInterests(interestsData.map(i => {
+                 interestsData.forEach(i => {
                     if (!allUserIds.includes(i.userId)) allUserIds.push(i.userId);
-                    return {
-                        ...i,
-                        user: undefined,
-                        targetName: myJobs.find(j => j.id === i.targetId)?.title || 'a job'
-                    }
-                }));
+                });
+                setJobInterests(interestsData.map(i => ({
+                    ...i,
+                    user: undefined,
+                    targetName: myJobs.find(j => j.id === i.targetId)?.title || 'a job'
+                })));
             }
             
             // Fetch user profiles for all interests
@@ -112,7 +112,9 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
             
             setLoading(false);
         };
-        fetchInterests();
+        if(currentUser?.id) {
+            fetchInterests();
+        }
     }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
@@ -166,7 +168,9 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
             }
             setLoading(false);
         };
-        fetchInterests();
+        if (currentUser?.id) {
+            fetchInterests();
+        }
     }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
@@ -191,7 +195,7 @@ export default function ApplicantsPage() {
         }
     }, [authUser, authLoading]);
 
-    if (loading) {
+    if (loading || authLoading) {
         return <div className="space-y-6">
             <div>
                 <Skeleton className="h-8 w-48 mb-2"/>
@@ -254,5 +258,3 @@ export default function ApplicantsPage() {
         </div>
     );
 }
-
-    

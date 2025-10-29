@@ -1,14 +1,14 @@
 
-import { placeholderImages as data } from '@/lib/placeholder-images-data';
+import placeholderData from './placeholder-images.json';
 
-export type ImagePlaceholder = {
+type ImagePlaceholder = {
   id: string;
   description: string;
   imageUrl: string;
   imageHint: string;
 };
 
-export const placeholderImages: ImagePlaceholder[] = data;
+const placeholderImages: ImagePlaceholder[] = placeholderData.placeholderImages;
 
 export const getImage = (id: string): ImagePlaceholder => {
     const image = placeholderImages.find(img => img.id === id);
@@ -17,7 +17,7 @@ export const getImage = (id: string): ImagePlaceholder => {
         return {
             id: 'default',
             description: 'Default placeholder image',
-            imageUrl: `https://picsum.photos/seed/default-${id}/400/400`,
+            imageUrl: `https://picsum.photos/seed/${id}/400/400`,
             imageHint: 'placeholder'
         };
     }

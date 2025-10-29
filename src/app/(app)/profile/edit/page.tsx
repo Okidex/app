@@ -1,7 +1,7 @@
 
 'use client';
 
-import { updateUserProfile } from "@/lib/actions";
+import { startups, investmentStages, getCurrentUser, getUserById } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,9 +28,8 @@ import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
 import { getDoc, doc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
-import { investmentStages } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser } from "@/lib/actions";
+import { updateUserProfile } from "@/lib/actions";
 
 export default function ProfileEditPage() {
   const { user: authUser } = useUser();
@@ -41,13 +40,11 @@ export default function ProfileEditPage() {
   const firestore = useFirestore();
 
   useEffect(() => {
-    if (authUser) {
-        getCurrentUser().then((user) => {
-          if (user) {
-            setUser(user);
-          }
-        });
-    }
+    const user = getCurrentUser();
+      if (user) {
+        setUser(user);
+      }
+      setLoading(false);
   }, [authUser]);
 
   const [startup, setStartup] = useState<Startup | undefined>(undefined);

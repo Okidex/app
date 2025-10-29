@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { FounderProfile, FullUserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getCurrentUser } from '@/lib/data';
 
 const features = [
   "Showcase your startup's profile to investors, start conversations, and fundraise.",
@@ -20,18 +22,17 @@ const features = [
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [user, setUser] = useState<FullUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  
-  // Mocked user data for premium status
-  const isPremiumFounder = false;
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => setLoading(false), 500);
+    const user = getCurrentUser();
+    setUser(user);
+    setLoading(false);
   }, []);
   
-  if (loading) {
+  if (loading || !user) {
     return (
         <div className="space-y-6">
             <div>
@@ -42,6 +43,9 @@ export default function BillingPage() {
         </div>
     )
   }
+  
+  const isFounder = user.role === 'founder';
+  const isPremiumFounder = isFounder && (user.profile as FounderProfile).isPremium;
 
   const handleSubscribe = (plan: 'monthly' | 'yearly') => {
     toast({

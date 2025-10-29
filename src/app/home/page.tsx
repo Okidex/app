@@ -1,13 +1,14 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Briefcase, Lightbulb, Users } from 'lucide-react';
 import Logo from '@/components/logo';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/actions';
+import { getCurrentUser } from '@/lib/data';
 
-export default async function HomePage() {
-  const user = await getCurrentUser();
+export default function HomePage() {
+  const user = getCurrentUser();
 
   if (user) {
     redirect('/dashboard');

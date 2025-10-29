@@ -73,53 +73,6 @@ export async function getFinancialSummary(input: FinancialDataInput) {
   }
 }
 
-export async function getProfilePictureTags(photoDataUri: string) {
-  try {
-    const result = await profilePictureAutoTagging({ photoDataUri });
-    return result.tags;
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-}
-
-export async function getSmartMatches(user: FullUserProfile) {
-  const { firestore } = initializeAdminApp();
-  const startupsCollection = await firestore.collection('startups').get();
-  const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
-
-  let userProfileDesc = `User is a ${user.role}. Name: ${user.name}. `;
-  // Profile specific descriptions can be added here based on user.profile
-
-  try {
-    const result = await smartMatch({ startupProfile: userProfileDesc });
-    return result;
-  } catch (error) {
-    console.error(error);
-    return { investorMatches: [], talentMatches: [] };
-  }
-}
-
-export async function getProfileFromLinkedIn(linkedinUrl: string) {
-  try {
-    const result = await populateProfileFromLinkedIn({ linkedinUrl });
-    return result;
-  } catch (error) {
-    console.error('Error in getProfileFromLinkedIn:', error);
-    throw new Error('Failed to get profile from LinkedIn.');
-  }
-}
-
-export async function getFinancialBreakdown(metric: string) {
-  try {
-    const result = await financialBreakdown({ metric });
-    return result.breakdown;
-  } catch (error) {
-    console.error('Error in getFinancialBreakdown:', error);
-    return 'Could not generate breakdown. Please try again.';
-  }
-}
-
 export async function getSearchResults(query: string) {
   if (!query) {
     return { startups: [], users: [] };
@@ -345,3 +298,4 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
         return { success: false, error: error.message };
     }
 }
+

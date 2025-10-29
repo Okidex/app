@@ -48,7 +48,7 @@ export default function MonthlyFinancialsForm({ initialData }: MonthlyFinancials
         // In a real app, you would also make an API call to save the data.
         toast({
             title: "Financials Updated",
-            description: `Successfully updated financial data for ${format(new Date(editedData.month), "MMMM yyyy")}.`,
+            description: `Successfully updated financial data for ${format(new Date(editedData.month + '-02'), "MMMM yyyy")}.`,
         });
     };
 
@@ -73,7 +73,7 @@ export default function MonthlyFinancialsForm({ initialData }: MonthlyFinancials
             );
         }
         if (field === 'month') {
-            return <TableCell className="font-medium">{format(new Date(monthData.month), "MMMM yyyy")}</TableCell>
+            return <TableCell className="font-medium">{format(new Date(monthData.month + '-02'), "MMMM yyyy")}</TableCell>
         }
         return <TableCell>{formatCurrency(monthData[field] as number)}</TableCell>;
     };
