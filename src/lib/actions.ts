@@ -1,7 +1,7 @@
 
 'use server';
 
-import { initializeAdminApp } from './firebase-admin';
+import { auth, firestore, storage } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { headers } from 'next/headers';
 
@@ -20,7 +20,6 @@ import { FullUserProfile, Startup, Profile, UserRole, FounderProfile, TalentProf
 // This function is now designed to be called from other server actions
 // to get the UID of the currently logged-in user from the session cookie.
 async function getCurrentUserId(): Promise<string | null> {
-    const { auth } = initializeAdminApp();
     const sessionCookie = headers().get('cookie')?.split('; ').find(c => c.startsWith('__session='));
 
     if (!sessionCookie) {
@@ -38,7 +37,6 @@ async function getCurrentUserId(): Promise<string | null> {
 
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
   const uid = await getCurrentUserId();
   
   if (!uid) {
@@ -55,7 +53,6 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
 }
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
   const userDoc = await firestore.collection('users').doc(userId).get();
   if (userDoc.exists) {
     return userDoc.data() as FullUserProfile;
@@ -78,7 +75,6 @@ export async function getSearchResults(query: string) {
     return { startups: [], users: [] };
   }
 
-  const { firestore } = initializeAdminApp();
   const startupsCollection = await firestore.collection('startups').get();
   const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
   const usersCollection = await firestore.collection('users').get();
@@ -112,7 +108,6 @@ export async function getSearchResults(query: string) {
 }
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
-    const { storage } = initializeAdminApp();
     if (!dataUrl) return "";
     
     const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
@@ -139,7 +134,6 @@ export async function createUserAndProfile(
     avatarFile?: string,
     logoFile?: string,
 ) {
-    const { auth, firestore } = initializeAdminApp();
     try {
         const userRecord = await auth.createUser({
             email,
@@ -211,7 +205,7 @@ export async function createUserAndProfile(
                 companyUrl: profileData.companyUrl,
                 investorType: profileData.investorType,
                 about: profileData.about,
-                investmentInterests: profileData.investmentInterests.split(',').map((s: string) => s.trim()),
+                investmentInterests: profileData.investmentInterests,
                 investmentStages: profileData.investmentStages,
                 portfolio: [],
                 exits: profileData.exits,
@@ -241,7 +235,6 @@ export async function createUserAndProfile(
 }
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
-    const { firestore } = initializeAdminApp();
     try {
         const userRef = firestore.collection("users").doc(userId);
         const existingDoc = await userRef.get();
@@ -259,7 +252,6 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
 }
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
-    const { auth, firestore } = initializeAdminApp();
     try {
         await firestore.collection("users").doc(userId).delete();
         if (role === 'founder' && companyId) {
@@ -281,7 +273,6 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
 }
 
 export async function sendMessage(conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) {
-    const { firestore } = initializeAdminApp();
     try {
         const convoRef = firestore.collection('conversations').doc(conversationId);
         const newMessage: Message = {
@@ -298,4 +289,3 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
         return { success: false, error: error.message };
     }
 }
-
