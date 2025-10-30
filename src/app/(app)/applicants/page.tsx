@@ -75,7 +75,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 const thesisInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", myTheses.map(t => t.id)));
                 const thesisInterestsSnap = await getDocs(thesisInterestsQuery);
                 const interestsData = thesisInterestsSnap.docs.map(doc => doc.data() as Interest);
-                interestsData.forEach(i => {
+                 interestsData.forEach(i => {
                     if (!allUserIds.includes(i.userId)) allUserIds.push(i.userId);
                 });
                 setThesisInterests(interestsData.map(i => ({

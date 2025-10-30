@@ -1,4 +1,5 @@
 
+
 import placeholderData from './placeholder-images.json';
 
 type ImagePlaceholder = {
@@ -23,4 +24,3 @@ export const getImage = (id: string): ImagePlaceholder => {
     }
     return image;
 };
-
