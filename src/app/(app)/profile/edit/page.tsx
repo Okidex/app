@@ -1,7 +1,6 @@
 
 'use client';
 
-import { startups, investmentStages } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,6 +29,7 @@ import { getDoc, doc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateUserProfile, getCurrentUser } from "@/lib/actions";
+import { investmentStages } from "@/lib/data";
 
 export default function ProfileEditPage() {
   const { user: authUser } = useUser();
@@ -45,7 +45,7 @@ export default function ProfileEditPage() {
             if (user) {
                 setUser(user);
             }
-            setLoading(false);
+            // setLoading is handled in the startup fetch effect
         });
     } else {
         setLoading(false);
@@ -59,6 +59,7 @@ export default function ProfileEditPage() {
       const profile = user.profile as FounderProfile;
       if (profile.companyId) {
         const fetchStartup = async () => {
+          setLoading(true);
           const startupDoc = await getDoc(doc(firestore, 'startups', profile.companyId!));
           if (startupDoc.exists()) {
             setStartup(startupDoc.data() as Startup);

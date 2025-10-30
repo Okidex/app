@@ -114,7 +114,7 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
         if (data && data.activePayload && data.activePayload[0]) {
             const metric = data.activePayload[0].payload.metric;
             setSelectedMetric(metric);
-setIsLoadingBreakdown(true);
+            setIsLoadingBreakdown(true);
             const result = await getFinancialBreakdown({metric});
             setBreakdown(result.breakdown);
             setIsLoadingBreakdown(false);
@@ -317,7 +317,7 @@ const InvestorProfileView = ({ user }: { user: FullUserProfile }) => {
                     <CardContent className="space-y-4">
                         {profile.portfolio.map(company => (
                              <div key={company.companyName} className="flex items-center gap-3">
-                                <Image src={company.companyLogoUrl} alt={company.companyName} width={40} height={40} className="w-10 h-10 rounded-md border" />
+                                <Image src={company.companyLogoUrl} alt={company.companyName} width={40} height={40} className="w-10 h-10 rounded-md border" data-ai-hint="logo"/>
                                 <a href={company.companyUrl} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{company.companyName}</a>
                             </div>
                         ))}
