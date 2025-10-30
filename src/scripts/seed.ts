@@ -11,12 +11,10 @@ import {
   interests,
 } from '@/lib/mock-data';
 
-// --- Direct Admin SDK Initialization ---
-// This pattern ensures the SDK is initialized only once and correctly uses
-// the service account credentials specified in the .env file.
+// --- Direct Admin SDK Initialization for Seeding ---
 if (admin.apps.length === 0) {
   if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    throw new Error('The GOOGLE_APPLICATION_CREDENTIALS environment variable must be set. It should point to your service account key file.');
+    throw new Error('The GOOGLE_APPLICATION_CREDENTIALS environment variable must be set for the seed script. It should point to your service account key file.');
   }
   admin.initializeApp({
     credential: admin.credential.applicationDefault(),

@@ -5,8 +5,7 @@ import admin from 'firebase-admin';
 export function initializeAdminApp() {
     if (admin.apps.length === 0) {
       // When deployed to App Hosting, initializeApp() with no arguments
-      // will automatically use the production service account. In local development,
-      // the GOOGLE_APPLICATION_CREDENTIALS environment variable should be set.
+      // will automatically use the production service account.
       admin.initializeApp();
     }
     return {
