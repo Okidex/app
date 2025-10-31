@@ -13,10 +13,11 @@ if (admin.apps.length === 0) {
       credential: admin.credential.applicationDefault(),
       // The projectId is also needed for the local environment
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
   } else {
     // When deployed to App Hosting, initializeApp() with no arguments 
-    // will automatically use the production service account.
+    // will automatically use the production service account, which includes storage bucket info.
     console.log("Initializing Firebase Admin with Application Default Credentials...");
     admin.initializeApp();
   }
