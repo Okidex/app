@@ -111,7 +111,8 @@ export async function getSearchResults(query: string) {
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
     if (!dataUrl) return "";
     
-    const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    // The admin SDK will automatically use the default bucket from its initialization credentials.
+    const bucket = storage.bucket();
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
@@ -290,5 +291,3 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
         return { success: false, error: error.message };
     }
 }
-
-    
