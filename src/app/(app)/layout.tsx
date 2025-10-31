@@ -4,12 +4,12 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import AppHeader from "@/components/layout/app-header";
-import { useUser } from "@/firebase";
+import { useUser, FirebaseClientProvider } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading: loading } = useUser();
   const router = useRouter();
 
@@ -33,15 +33,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  return <>{children}</>;
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppHeader />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-secondary/50">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <FirebaseClientProvider>
+      <AuthWrapper>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <AppHeader />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-secondary/50">
+              {children}
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </AuthWrapper>
+    </FirebaseClientProvider>
   );
 }
