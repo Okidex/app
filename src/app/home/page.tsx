@@ -116,9 +116,6 @@ export default function HomePage() {
                 </div>
             </div>
         </section>
-      </main>
-      <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Okidex. All rights reserved.</p>
       </footer>
     </div>
   );
