@@ -1,13 +1,13 @@
+
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { initializeAdminApp } from '@/lib/firebase-admin';
+import { auth } from '@/lib/firebase-admin';
 
 export default async function RootPage() {
   const cookieStore = cookies();
   const sessionCookie = cookieStore.get('__session');
 
   if (sessionCookie) {
-    const { auth } = initializeAdminApp();
     try {
       // Verify the cookie. If it's valid, redirect to dashboard.
       await auth.verifySessionCookie(sessionCookie.value, true);
