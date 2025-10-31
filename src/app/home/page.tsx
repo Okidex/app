@@ -6,37 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Briefcase, Lightbulb, Users } from 'lucide-react';
 import Logo from '@/components/logo';
-import { redirect } from 'next/navigation';
-import { useUser } from '@/firebase';
-import { useEffect } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function HomePage() {
-  const { user, isUserLoading: loading } = useUser();
-
-  useEffect(() => {
-    if (!loading && user) {
-      redirect('/dashboard');
-    }
-  }, [user, loading]);
-
-  if (loading || user) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-           <Skeleton className="h-8 w-32" />
-           <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-20" />
-            <Skeleton className="h-10 w-24" />
-          </div>
-        </header>
-        <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <Skeleton className="h-[400px] w-full" />
-        </main>
-      </div>
-    )
-  }
-  
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -116,6 +87,9 @@ export default function HomePage() {
                 </div>
             </div>
         </section>
+      </main>
+      <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-muted-foreground">
+        <p>&copy; {new Date().getFullYear()} Okidex. All rights reserved.</p>
       </footer>
     </div>
   );
