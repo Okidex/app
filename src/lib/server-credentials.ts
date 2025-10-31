@@ -1,6 +1,4 @@
 
-"use server"; // Ensure this is also a server-only module
-
 import 'server-only';
 
 export function getServiceAccountCredentials() {
