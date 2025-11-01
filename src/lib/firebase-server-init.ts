@@ -11,12 +11,9 @@ if (admin.apps.length === 0) {
     console.log("Initializing Firebase Admin with service account...");
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
-      // We pass the explicit storageBucket from the shared config file.
       projectId: firebaseConfig.projectId,
       storageBucket: firebaseConfig.storageBucket,
     });
-  } else if (process.env.NODE_ENV !== 'production') {
-      console.warn("GOOGLE_APPLICATION_CREDENTIALS not set. Firebase Admin SDK not initialized for local development.");
   } else {
     // When deployed to App Hosting, initializeApp() with no arguments 
     // will automatically use the production service account.
