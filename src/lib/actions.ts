@@ -111,8 +111,8 @@ export async function getSearchResults(query: string) {
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
     if (!dataUrl) return "";
     
-    // Explicitly specify the bucket name from environment variables
-    const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    // Use the pre-initialized storage instance which is now aware of the correct bucket.
+    const bucket = storage.bucket();
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');

@@ -1,58 +1,34 @@
 
 import 'server-only';
 import admin from 'firebase-admin';
+import { firebaseConfig } from '@/firebase/config';
 
-// This function reads the environment variable and initializes the app.
-// It's designed to be called once and its result re-used.
-
-function getServiceAccount() {
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountKey) {
-    // In a production/deployed environment, we might rely on Application Default Credentials
-    if (process.env.NODE_ENV === 'production') {
-        return undefined;
-    }
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set for local development.');
+// This pattern ensures that the Firebase Admin SDK is initialized only once.
+if (admin.apps.length === 0) {
+  // When running locally, we use a service account key file.
+  // In production (on App Hosting), GOOGLE_APPLICATION_CREDENTIALS is automatically set.
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log("Initializing Firebase Admin with service account...");
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      // We pass the explicit storageBucket from the shared config file.
+      projectId: firebaseConfig.projectId,
+      storageBucket: firebaseConfig.storageBucket,
+    });
+  } else if (process.env.NODE_ENV !== 'production') {
+      console.warn("GOOGLE_APPLICATION_CREDENTIALS not set. Firebase Admin SDK not initialized for local development.");
+  } else {
+    // When deployed to App Hosting, initializeApp() with no arguments 
+    // will automatically use the production service account.
+    console.log("Initializing Firebase Admin with Application Default Credentials...");
+    admin.initializeApp({
+      projectId: firebaseConfig.projectId,
+      storageBucket: firebaseConfig.storageBucket,
+    });
   }
-  try {
-    return JSON.parse(Buffer.from(serviceAccountKey, 'base64').toString('utf8'));
-  } catch (e) {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY", e);
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY is not a valid base64 encoded JSON string.");
-  }
-}
-
-function getStorageBucket() {
-    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-    if (!storageBucket) {
-        throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not set.');
-    }
-    return storageBucket;
-}
-
-if (!admin.apps.length) {
-    const serviceAccount = getServiceAccount();
-    const storageBucket = getStorageBucket();
-
-    if (serviceAccount) {
-        // Used for local development and explicit credential provision
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-            storageBucket: storageBucket,
-        });
-        console.log("Firebase Admin SDK initialized with service account.");
-    } else {
-        // Used for deployed environments (like Firebase App Hosting)
-        // where Application Default Credentials are automatically available.
-        admin.initializeApp({
-             storageBucket: storageBucket,
-        });
-        console.log("Firebase Admin SDK initialized with Application Default Credentials.");
-    }
 }
 
 export const auth = admin.auth();
 export const firestore = admin.firestore();
 export const storage = admin.storage();
 export { admin };
-
