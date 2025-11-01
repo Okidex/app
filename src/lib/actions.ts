@@ -2,7 +2,7 @@
 'use server';
 
 import 'server-only';
-import { auth, firestore, storage } from './firebase-admin';
+import { auth, firestore, storage } from './firebase-server-init';
 import { FieldValue } from 'firebase-admin/firestore';
 import { headers } from 'next/headers';
 
@@ -111,8 +111,8 @@ export async function getSearchResults(query: string) {
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
     if (!dataUrl) return "";
     
-    // The admin SDK will automatically use the default bucket from its initialization credentials.
-    const bucket = storage.bucket();
+    // Explicitly specify the bucket name from environment variables
+    const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
     const file = bucket.file(path);
     
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
