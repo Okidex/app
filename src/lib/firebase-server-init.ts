@@ -5,23 +5,32 @@ import { firebaseConfig } from '@/firebase/config';
 
 // This pattern ensures that the Firebase Admin SDK is initialized only once.
 if (admin.apps.length === 0) {
-  // When running locally, we use a service account key file.
-  // In production (on App Hosting), GOOGLE_APPLICATION_CREDENTIALS is automatically set.
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.log("Initializing Firebase Admin with service account...");
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-      projectId: firebaseConfig.projectId,
-      storageBucket: firebaseConfig.storageBucket,
-    });
+  // When running in a deployed environment (like Firebase App Hosting),
+  // NODE_ENV will be 'production' and GOOGLE_APPLICATION_CREDENTIALS will be set automatically.
+  if (process.env.NODE_ENV === 'production') {
+    admin.initializeApp();
+    console.log("Firebase Admin SDK initialized with Application Default Credentials.");
   } else {
-    // When deployed to App Hosting, initializeApp() with no arguments 
-    // will automatically use the production service account.
-    console.log("Initializing Firebase Admin with Application Default Credentials...");
-    admin.initializeApp({
-      projectId: firebaseConfig.projectId,
-      storageBucket: firebaseConfig.storageBucket,
-    });
+    // For local development, use the service account key from environment variables.
+    try {
+      const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      if (!serviceAccountKey) {
+          throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set for local development.');
+      }
+      const serviceAccount = JSON.parse(
+        Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
+      );
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: firebaseConfig.projectId,
+        storageBucket: firebaseConfig.storageBucket,
+      });
+      console.log("Firebase Admin SDK initialized with service account for local development.");
+    } catch (e: any) {
+        console.error("Firebase Admin SDK local initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY is set correctly in your .env file.", e.message);
+        // Throwing the error is important to prevent the app from running with a misconfigured backend.
+        throw new Error("Firebase Admin SDK local initialization failed.");
+    }
   }
 }
 
