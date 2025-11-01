@@ -3,7 +3,7 @@
 
 import { initializeFirebase } from '@/firebase';
 import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { auth as adminAuth } from './firebase-admin';
+import { auth as adminAuth } from './firebase-server-init';
 
 export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
   const { auth } = initializeFirebase();
@@ -13,7 +13,7 @@ export async function login(email: string, password: string):Promise<{success: b
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     
-    const options = { maxAge: expiresIn, httpOnly: true, secure: true };
+    const options = { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' };
     // This is a simplified way to set cookie, in a real app use a library like 'cookies-next'
     const { cookies } = await import('next/headers');
     cookies().set('__session', sessionCookie, options);

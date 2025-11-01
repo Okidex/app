@@ -1,7 +1,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/firebase-admin';
+import { auth } from '@/lib/firebase-server-init';
 
 export default async function RootPage() {
   const cookieStore = cookies();
