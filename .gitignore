@@ -34,19 +34,16 @@ yarn-error.log*
 # vercel
 .vercel
 
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
 # firebase
-.firebase
-firebase-debug.log
-*-debug.log
+.firebase/
+*firebase-adminsdk*.json
+*service-account*.json
+studio-*-a8d2a659170f.json
 
-# Service account keys
-*.json
-
-# editor
-.idea
-.vscode/
-
-# genkit
-.genkit/cache
-.genkit/log
-.genkit/traces
+# Cache
+.npm/
+.yarn/cache
