@@ -35,8 +35,8 @@ jobs:
           node-version: '20'
           
       - name: Install dependencies and build
-        # FIX: Changed working directory from ./ to ./app based on previous error logs
-        working-directory: ./app
+        # FIX: Reverted working directory to the root path ./ as package.json is in root
+        working-directory: ./
         run: npm ci && npm run build
         
       - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -46,4 +46,3 @@ jobs:
           projectId: studio-8509111427-a45a7
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-
