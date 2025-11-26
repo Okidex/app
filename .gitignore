@@ -18,7 +18,6 @@
 # misc
 .DS_Store
 *.pem
-*.log
 
 # debug
 npm-debug.log*
@@ -26,10 +25,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*.local
 
 # vercel
 .vercel
@@ -38,12 +34,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# firebase
-.firebase/
-*firebase-adminsdk*.json
-*service-account*.json
-studio-*-a8d2a659170f.json
+# Firebase
+/docs/backend.json
 
-# Cache
-.npm/
-.yarn/cache
+# Service Account Keys
+*.json
+studio-8509111427-a45a7-a8d2a659170f.json
+studio-8509111427-a45a7-46f3d0450ac5.json
