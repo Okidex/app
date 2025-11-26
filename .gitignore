@@ -35,9 +35,10 @@ yarn-error.log*
 next-env.d.ts
 
 # Firebase
-/docs/backend.json
+*firebase-debug.log
+*ui-debug.log
+.firebase/
 
-# Service Account Keys
-*.json
-studio-8509111427-a45a7-a8d2a659170f.json
+# Secret files
+okidex-investment-match-6a7027336a84.json
 studio-8509111427-a45a7-46f3d0450ac5.json
