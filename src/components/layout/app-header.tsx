@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -13,11 +12,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import Logo from "@/components/logo";
-import UserAvatar from "@/components/shared/user-avatar";
+import Logo from "../logo";
+import UserAvatar from "../shared/user-avatar";
 import Notifications from "./notifications";
 import { useUser } from "@/firebase";
-import { logout } from "@/lib/auth";
+import { logout } from "@/lib/auth-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AppHeader() {
   const { user, isUserLoading: loading } = useUser();
@@ -38,20 +38,22 @@ export default function AppHeader() {
       </div>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <div className="ml-auto"></div>
-        {user ? (
+        {loading ? (
+            <Skeleton className="h-8 w-8 rounded-full" />
+        ) : user ? (
           <>
             <Notifications />
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="icon" className="rounded-full">
-                <UserAvatar name={user.displayName || ""} avatarUrl={user.photoURL || ""} className="h-8 w-8"/>
+                <UserAvatar name={user.name || ""} avatarUrl={user.avatarUrl || ""} className="h-8 w-8"/>
                 <span className="sr-only">Toggle user menu</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link href="/profile">Profile</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href={`/users/${user.id}`}>Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings/billing">Oki+</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -59,7 +61,7 @@ export default function AppHeader() {
             </DropdownMenuContent>
             </DropdownMenu>
           </>
-        ) : !loading && (
+        ) : (
            <Button asChild>
               <Link href="/login">Log In</Link>
             </Button>
@@ -68,5 +70,3 @@ export default function AppHeader() {
     </header>
   );
 }
-
-    

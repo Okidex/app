@@ -1,59 +1,57 @@
+import 'server-only';
+import admin from 'firebase-admin';
 
-'use server';
-
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const ProfilePictureAutoTaggingInputSchema = z.object({
-  photoDataUri: z
-    .string()
-    .describe(
-      "A profile picture, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-
-export type ProfilePictureAutoTaggingInput = z.infer<
-  typeof ProfilePictureAutoTaggingInputSchema
->;
-
-const ProfilePictureAutoTaggingOutputSchema = z.object({
-  tags: z
-    .array(z.string())
-    .describe(
-      'An array of suggested tags for the profile picture (e.g., professional, friendly, founder, investor).'
-    ),
-});
-
-export type ProfilePictureAutoTaggingOutput = z.infer<
-  typeof ProfilePictureAutoTaggingOutputSchema
->;
-
-export async function profilePictureAutoTagging(
-  input: ProfilePictureAutoTaggingInput
-): Promise<ProfilePictureAutoTaggingOutput> {
-  return profilePictureAutoTaggingFlow(input);
+interface FirebaseAdminServices {
+  auth: admin.auth.Auth;
+  firestore: admin.firestore.Firestore;
+  storage: admin.storage.Storage;
 }
 
-const profilePictureAutoTaggingPrompt = ai.definePrompt({
-  name: 'profilePictureAutoTaggingPrompt',
-  input: {schema: ProfilePictureAutoTaggingInputSchema},
-  output: {schema: ProfilePictureAutoTaggingOutputSchema},
-  prompt: `Analyze the provided profile picture and suggest relevant tags to improve profile discoverability and matching accuracy.
+let adminServices: FirebaseAdminServices | null = null;
 
-  Consider aspects like the person's attire, background, and overall impression to determine appropriate tags such as 'professional', 'friendly', 'founder', 'investor', 'approachable', or other relevant descriptors.
-
-  Photo: {{media url=photoDataUri}}
-  Tags:`,
-});
-
-const profilePictureAutoTaggingFlow = ai.defineFlow(
-  {
-    name: 'profilePictureAutoTaggingFlow',
-    inputSchema: ProfilePictureAutoTaggingInputSchema,
-    outputSchema: ProfilePictureAutoTaggingOutputSchema,
-  },
-  async input => {
-    const {output} = await profilePictureAutoTaggingPrompt(input);
-    return output!;
+function getServiceAccount() {
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountJson) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for server-side operations.");
   }
-);
+  try {
+    return JSON.parse(serviceAccountJson);
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON.', e);
+    throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid JSON string.");
+  }
+}
+
+export function initializeAdminApp(): FirebaseAdminServices {
+  if (adminServices) {
+    return adminServices;
+  }
+
+  if (admin.apps.length === 0) {
+    const serviceAccount = getServiceAccount();
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+       throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in the environment variables.");
+    }
+
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: projectId,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
+      });
+    } catch (e: any) {
+      console.error("Could not initialize Firebase Admin SDK.", e.message);
+      throw new Error("Could not initialize Firebase Admin SDK. There might be an issue with the provided credentials.");
+    }
+  }
+
+  adminServices = {
+    auth: admin.auth(),
+    firestore: admin.firestore(),
+    storage: admin.storage(),
+  };
+
+  return adminServices;
+}

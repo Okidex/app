@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef } from "react";
@@ -74,8 +73,8 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
     setTags([]);
 
     try {
-        const suggestedTags = await getProfilePictureTags(avatarUrl);
-        setTags(suggestedTags);
+        const result = await getProfilePictureTags({photoDataUri: avatarUrl});
+        setTags(result.tags);
     } catch (error) {
         console.error("Error auto-tagging profile picture:", error);
     } finally {
@@ -118,7 +117,7 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
           {isLoading ? "Uploading..." : "Upload"}
         </Button>
-        <Button onClick={handleAutoTag} disabled={isLoadingTags || avatarUrl === initialAvatarUrl}>
+        <Button onClick={handleAutoTag} disabled={isLoadingTags || !avatarUrl || avatarUrl === initialAvatarUrl}>
           {isLoadingTags ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : null}

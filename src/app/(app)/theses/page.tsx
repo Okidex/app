@@ -1,8 +1,6 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,26 +19,18 @@ import TalentInterestPrompt from "@/components/theses/talent-interest-prompt";
 import { useUser, useFirestore } from "@/firebase";
 import { collection, query, getDocs, orderBy, addDoc, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getUsersByIds } from "@/lib/actions";
 
 type ThesisWithAuthor = InvestmentThesis & { author?: FullUserProfile };
 
 export default function ThesesPage() {
-  const { user: authUser, isUserLoading: authLoading } = useUser();
-  const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
+  const { user: currentUser, isUserLoading: authLoading } = useUser();
   const [theses, setTheses] = useState<ThesisWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPostThesisOpen, setIsPostThesisOpen] = useState(false);
   const [showTalentPrompt, setShowTalentPrompt] = useState(false);
   const { toast } = useToast();
   const db = useFirestore();
-
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      getCurrentUser().then(setCurrentUser);
-    } else if (!authLoading && !authUser) {
-      setLoading(false);
-    }
-  }, [authUser, authLoading]);
 
   useEffect(() => {
       const fetchTheses = async () => {
@@ -54,22 +44,18 @@ export default function ThesesPage() {
           const thesesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InvestmentThesis));
 
           const authorIds = [...new Set(thesesData.map(t => t.investorId))];
-          const authors: FullUserProfile[] = [];
           
           if(authorIds.length > 0) {
-            const usersQuery = query(collection(db, "users"), where("id", "in", authorIds));
-            const usersSnap = await getDocs(usersQuery);
-            usersSnap.forEach(doc => {
-              authors.push(doc.data() as FullUserProfile);
-            });
+            const authors = await getUsersByIds(authorIds);
+            const thesesWithAuthors = thesesData.map(thesis => ({
+                ...thesis,
+                author: authors.find(a => a.id === thesis.investorId),
+            }));
+            setTheses(thesesWithAuthors);
+          } else {
+            setTheses(thesesData);
           }
-          
-          const thesesWithAuthors = thesesData.map(thesis => ({
-              ...thesis,
-              author: authors.find(a => a.id === thesis.investorId),
-          }));
 
-          setTheses(thesesWithAuthors);
           setLoading(false);
       };
       fetchTheses();
@@ -140,7 +126,7 @@ export default function ThesesPage() {
   const isPremiumFounder = isFounder && (currentUser.profile as FounderProfile).isPremium;
   const isCoFounderTalent = isTalent && (currentUser.profile as TalentProfile).subRole === 'co-founder';
 
-  if (!isInvestor && !isPremiumFounder && !isCoFounderTalent) {
+  if (!currentUser || (!isInvestor && !isPremiumFounder && !isCoFounderTalent)) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
           <Card className="w-full max-w-md p-8">
@@ -152,7 +138,7 @@ export default function ThesesPage() {
                   <CardDescription>
                     {isFounder ? 
                       "This feature is available exclusively for Oki+ members. Upgrade your plan to view investor theses." :
-                      "This feature is available for talent seeking co-founder roles. Update your profile to gain access."
+                      "This feature is available for investors and talent seeking co-founder roles. Update your profile to gain access."
                     }
                   </CardDescription>
               </CardHeader>

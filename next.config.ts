@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -26,7 +27,7 @@ const nextConfig: NextConfig = {
       },
        {
         protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
+        hostname: 'storage.googleapis.com',
         pathname: '/**',
       }
     ],

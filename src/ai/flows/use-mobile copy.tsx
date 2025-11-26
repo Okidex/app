@@ -1,59 +1,57 @@
+import 'server-only';
+import admin from 'firebase-admin';
 
-'use server';
-
-/**
- * @fileOverview Smart matching flow for connecting founders with investors and talent.
- *
- * - smartMatch - A function that takes a user's profile and returns potential investors and talent matches.
- * - SmartMatchInput - The input type for the smartMatch function.
- * - SmartMatchOutput - The return type for the smartMatch function.
- */
-
-import {ai} from '../genkit';
-import {z} from 'genkit';
-
-const SmartMatchInputSchema = z.object({
-  startupProfile: z.string().describe("A detailed description of the user's profile, including their role, skills, interests, and what they are looking for."),
-});
-export type SmartMatchInput = z.infer<typeof SmartMatchInputSchema>;
-
-const SmartMatchOutputSchema = z.object({
-  investorMatches: z.array(z.string()).describe("A list of descriptive profiles for up to 5 suitable investor matches."),
-  talentMatches: z.array(z.string()).describe("A list of descriptive profiles for up to 5 suitable talent matches."),
-});
-export type SmartMatchOutput = z.infer<typeof SmartMatchOutputSchema>;
-
-export async function smartMatch(input: SmartMatchInput): Promise<SmartMatchOutput> {
-  return smartMatchFlow(input);
+interface FirebaseAdminServices {
+  auth: admin.auth.Auth;
+  firestore: admin.firestore.Firestore;
+  storage: admin.storage.Storage;
 }
 
-const prompt = ai.definePrompt({
-  name: 'smartMatchPrompt',
-  input: {schema: SmartMatchInputSchema},
-  output: {schema: SmartMatchOutputSchema},
-  prompt: `You are a smart matchmaking AI for a platform connecting founders, investors, and talent. Your goal is to find the best potential connections for a given user.
+let adminServices: FirebaseAdminServices | null = null;
 
-User Profile:
-{{{startupProfile}}}
-
-Based on the user's profile, generate a list of plausible, hypothetical matches.
-- If the user is a founder, find potential investors and talent.
-- If the user is an investor, find potential founders.
-- If the user is a talent, find potential founders.
-
-For each match, provide a short, compelling, one-sentence profile. Return up to to 5 of each type of match.
-`,
-});
-
-
-const smartMatchFlow = ai.defineFlow(
-  {
-    name: 'smartMatchFlow',
-    inputSchema: SmartMatchInputSchema,
-    outputSchema: SmartMatchOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+function getServiceAccount() {
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountJson) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for server-side operations.");
   }
-);
+  try {
+    return JSON.parse(serviceAccountJson);
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON.', e);
+    throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid JSON string.");
+  }
+}
+
+export function initializeAdminApp(): FirebaseAdminServices {
+  if (adminServices) {
+    return adminServices;
+  }
+
+  if (admin.apps.length === 0) {
+    const serviceAccount = getServiceAccount();
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+       throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in the environment variables.");
+    }
+
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: projectId,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
+      });
+    } catch (e: any) {
+      console.error("Could not initialize Firebase Admin SDK.", e.message);
+      throw new Error("Could not initialize Firebase Admin SDK. There might be an issue with the provided credentials.");
+    }
+  }
+
+  adminServices = {
+    auth: admin.auth(),
+    firestore: admin.firestore(),
+    storage: admin.storage(),
+  };
+
+  return adminServices;
+}

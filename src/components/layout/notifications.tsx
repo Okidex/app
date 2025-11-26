@@ -54,7 +54,7 @@ export default function Notifications() {
 
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', authUser.uid),
+      where('userId', '==', authUser.id),
       orderBy('timestamp', 'desc')
     );
     const unsubscribe = onSnapshot(q, async (snapshot) => {

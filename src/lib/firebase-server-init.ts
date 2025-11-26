@@ -30,7 +30,11 @@ export function initializeAdminApp(): FirebaseAdminServices {
 
   if (admin.apps.length === 0) {
     const serviceAccount = getServiceAccount();
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'studio-8509111427-a45a7';
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+       throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in the environment variables.");
+    }
 
     try {
       admin.initializeApp({
