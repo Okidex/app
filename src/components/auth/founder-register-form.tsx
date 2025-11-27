@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { investmentStages } from "@/lib/data";
+import { investmentStages } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,11 +16,13 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
-import { createUserAndProfile } from "@/lib/actions";
+import { createUserAndSetSession } from "@/lib/auth-actions";
 import { useToast } from "@/hooks/use-toast";
 import { InvestmentStage } from "@/lib/types";
 import ProfilePhotoUploader from "./profile-photo-uploader";
 import LogoUploader from "./logo-uploader";
+import { initializeFirebase } from "@/firebase/client-init";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 export default function FounderRegisterForm() {
   const router = useRouter();
@@ -34,11 +36,28 @@ export default function FounderRegisterForm() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  useEffect(() => {
+    // Redirect if registration details are not in session storage
+    if (!sessionStorage.getItem('registrationDetails')) {
+      router.push('/register');
+    }
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const registrationDetails = JSON.parse(sessionStorage.getItem('registrationDetails') || '{}');
+    const registrationDetailsString = sessionStorage.getItem('registrationDetails');
+    if (!registrationDetailsString) {
+      toast({
+        title: "Registration Error",
+        description: "Your session has expired. Please start over.",
+        variant: "destructive",
+      });
+      router.push('/register');
+      return;
+    }
+    const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
 
     const profileData = {
@@ -70,27 +89,35 @@ export default function FounderRegisterForm() {
     const avatarDataUrl = await getFileAsDataURL(avatarFile);
     const logoDataUrl = await getFileAsDataURL(logoFile);
 
-    const result = await createUserAndProfile(
-      registrationDetails.email,
-      registrationDetails.password,
-      registrationDetails.name,
-      'founder',
-      profileData,
-      undefined,
-      avatarDataUrl,
-      logoDataUrl
-    );
-    
-    setIsSubmitting(false);
+    try {
+        const { auth } = initializeFirebase();
+        const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
+        const idToken = await userCredential.user.getIdToken();
 
-    if (result.success) {
-      router.push("/dashboard");
-    } else {
-      toast({
-        title: "Registration Failed",
-        description: result.error,
-        variant: "destructive",
-      });
+        const result = await createUserAndSetSession(
+            idToken,
+            registrationDetails.name,
+            'founder',
+            profileData,
+            undefined,
+            avatarDataUrl,
+            logoDataUrl
+        );
+
+        if (result.success) {
+            router.push("/dashboard");
+        } else {
+            throw new Error(result.error || "An unknown error occurred.");
+        }
+
+    } catch (error: any) {
+        toast({
+            title: "Registration Failed",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -188,6 +215,9 @@ export default function FounderRegisterForm() {
                                     <SelectItem value="C-Corp">C-Corp</SelectItem>
                                     <SelectItem value="S-Corp">S-Corp</SelectItem>
                                     <SelectItem value="LLC">LLC</SelectItem>
+                                    <SelectItem value="Private Limited">Private Limited</SelectItem>
+                                    <SelectItem value="Public Limited Company">Public Limited Company</SelectItem>
+                                    <SelectItem value="Charity">Charity</SelectItem>
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>

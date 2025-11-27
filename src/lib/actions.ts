@@ -1,3 +1,4 @@
+
 'use server';
 
 import 'server-only';
@@ -10,36 +11,30 @@ import {
     InvestorProfile,
     TalentProfile,
 } from './types';
-import { ai } from '@/ai/genkit';
 import {
   summarizeFinancialData,
   FinancialDataInput,
-  FinancialDataOutput,
 } from '@/ai/flows/financial-data-summary';
 import {
   profilePictureAutoTagging,
   ProfilePictureAutoTaggingInput,
-  ProfilePictureAutoTaggingOutput,
 } from '@/ai/flows/profile-picture-auto-tagging';
 import {
   populateProfileFromLinkedIn,
   PopulateProfileFromLinkedInInput,
-  PopulateProfileFromLinkedInOutput,
 } from '@/ai/flows/linkedin-profile-populator';
 import {
   financialBreakdown,
   FinancialBreakdownInput,
-  FinancialBreakdownOutput,
 } from '@/ai/flows/financial-breakdown';
 import {
   smartSearch,
-  SmartSearchInput,
-  SmartSearchOutput,
 } from '@/ai/flows/smart-search';
 import { getCurrentUser } from './auth-actions';
 
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
+  if (!userId) return null;
   const { firestore } = initializeAdminApp();
   const userDoc = await firestore.collection('users').doc(userId).get();
   if (userDoc.exists) {
@@ -53,9 +48,21 @@ export async function getUsersByIds(userIds: string[]): Promise<FullUserProfile[
         return [];
     }
     const { firestore } = initializeAdminApp();
-    const snapshot = await firestore.collection('users').where('id', 'in', userIds).get();
+    const uniqueIds = [...new Set(userIds)];
+    const snapshot = await firestore.collection('users').where('id', 'in', uniqueIds).get();
     return snapshot.docs.map(doc => doc.data() as FullUserProfile);
 }
+
+export async function getStartupById(startupId: string): Promise<Startup | null> {
+    if (!startupId) return null;
+    const { firestore } = initializeAdminApp();
+    const startupDoc = await firestore.collection('startups').doc(startupId).get();
+    if (startupDoc.exists) {
+        return startupDoc.data() as Startup;
+    }
+    return null;
+}
+
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
     const { firestore } = initializeAdminApp();
@@ -94,79 +101,16 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
     }
 }
 
-export async function getMatchableUsers(): Promise<{ matches: FullUserProfile[], startups: Startup[] }> {
-    const { firestore } = initializeAdminApp();
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-        return { matches: [], startups: [] };
-    }
-
-    const usersSnap = await firestore.collection("users").get();
-    const allUsers = usersSnap.docs.map(doc => doc.data() as FullUserProfile).filter(u => u.id !== currentUser.id);
-    
-    const startupsSnap = await firestore.collection("startups").get();
-    const allStartups = startupsSnap.docs.map(doc => doc.data() as Startup);
-    
-    const getFilteredUsers = (): FullUserProfile[] => {
-        switch (currentUser.role) {
-            case 'investor':
-                return allUsers.filter(u =>
-                    u.role === 'investor' ||
-                    u.role === 'talent' ||
-                    (u.role === 'founder' && 'isPremium' in u.profile && u.profile.isPremium)
-                );
-            case 'founder':
-                const founderProfile = currentUser.profile as FounderProfile;
-                return allUsers.filter(u => {
-                    if (u.role === 'talent') {
-                        const talentProfile = u.profile as TalentProfile;
-                        if (founderProfile.isSeekingCoFounder) {
-                            return talentProfile.isSeekingCoFounder;
-                        }
-                        return !talentProfile.isSeekingCoFounder;
-                    }
-                    if (u.role === 'founder' && founderProfile.isSeekingCoFounder) {
-                        const otherFounderProfile = u.profile as FounderProfile;
-                        return otherFounderProfile.isSeekingCoFounder && otherFounderProfile.companyId !== founderProfile.companyId;
-                    }
-                    return false;
-                }).filter(u => u.role !== 'founder' || allStartups.some(s => s.id === (u.profile as FounderProfile).companyId));
-            case 'talent':
-                const talentProfile = currentUser.profile as TalentProfile;
-                return allUsers.filter(u => {
-                    if (u.role === 'founder') {
-                         const founderProfile = u.profile as FounderProfile;
-                        if(talentProfile.isSeekingCoFounder) {
-                            return founderProfile.isSeekingCoFounder;
-                        }
-                        return true;
-                    }
-                    if (u.role === 'talent' && talentProfile.isSeekingCoFounder) {
-                        return 'isSeekingCoFounder' in u.profile && u.profile.isSeekingCoFounder;
-                    }
-                    return false;
-                }).filter(u => u.role !== 'founder' || allStartups.some(s => s.id === (u.profile as FounderProfile).companyId));
-            default:
-                return [];
-        }
-    }
-    
-    return { matches: getFilteredUsers(), startups: allStartups };
-}
-
-// AI-related Server Actions
-
-export async function getFinancialSummary(input: FinancialDataInput): Promise<FinancialDataOutput> {
+export async function getFinancialSummary(input: FinancialDataInput) {
     return await summarizeFinancialData(input);
 }
-export async function getProfilePictureTags(input: ProfilePictureAutoTaggingInput): Promise<ProfilePictureAutoTaggingOutput> {
+export async function getProfilePictureTags(input: ProfilePictureAutoTaggingInput) {
     return await profilePictureAutoTagging(input);
 }
-export async function getProfileFromLinkedIn(input: PopulateProfileFromLinkedInInput): Promise<PopulateProfileFromLinkedInOutput> {
+export async function getProfileFromLinkedIn(input: PopulateProfileFromLinkedInInput) {
     return await populateProfileFromLinkedIn(input);
 }
-export async function getFinancialBreakdown(input: FinancialBreakdownInput): Promise<FinancialBreakdownOutput> {
+export async function getFinancialBreakdown(input: FinancialBreakdownInput) {
     return await financialBreakdown(input);
 }
 
@@ -175,25 +119,24 @@ export async function getSearchResults(queryText: string): Promise<{ startups: S
     if (!queryText) {
         return { startups: [], users: [] };
     }
-
-    const lowerCaseQuery = queryText.toLowerCase();
-
-    const startupsCollection = await firestore.collection('startups').get();
-    const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
-    const filteredStartups = allStartups.filter((startup) =>
-        Object.values(startup).some((val) =>
-            typeof val === 'string' && val.toLowerCase().includes(lowerCaseQuery)
-        ) || startup.tagline.toLowerCase().includes(lowerCaseQuery)
-          || startup.description.toLowerCase().includes(lowerCaseQuery)
-    );
-
     const usersCollection = await firestore.collection('users').get();
     const allUsers = usersCollection.docs.map((doc) => doc.data() as FullUserProfile);
-    const filteredUsers = allUsers.filter((user) =>
-        user.name.toLowerCase().includes(lowerCaseQuery) ||
-        user.role.toLowerCase().includes(lowerCaseQuery)
-    );
+    const startupsCollection = await firestore.collection('startups').get();
+    const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
+    
+    const searchableData = JSON.stringify({
+        users: allUsers.map(u => ({id: u.id, name: u.name, role: u.role, profile: u.profile})),
+        startups: allStartups.map(s => ({id: s.id, companyName: s.companyName, industry: s.industry, stage: s.stage, tagline: s.tagline, description: s.description}))
+    });
 
-    return { startups: filteredStartups, users: filteredUsers };
+    try {
+        const result = await smartSearch({query: queryText, searchableData});
+        const filteredStartups = allStartups.filter(s => result.startupIds.includes(s.id));
+        const filteredUsers = allUsers.filter(u => result.userIds.includes(u.id));
+        return { startups: filteredStartups, users: filteredUsers };
+    } catch (error) {
+        console.error("Error performing smart search:", error);
+        return { startups: [], users: [] };
+    }
 }
 

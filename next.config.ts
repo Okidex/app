@@ -27,16 +27,10 @@ const nextConfig: NextConfig = {
       },
        {
         protocol: 'https',
-        hostname: 'storage.googleapis.com',
+        hostname: 'firebasestorage.googleapis.com',
         pathname: '/**',
       }
     ],
-  },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('handlebars');
-    }
-    return config;
   },
 };
 

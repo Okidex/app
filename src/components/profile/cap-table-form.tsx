@@ -11,7 +11,7 @@ import { Pencil, Save, Trash, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { investmentStages } from '@/lib/data';
+import { investmentStages } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 
 interface CapTableFormProps {
@@ -124,21 +124,21 @@ export default function CapTableForm({ initialData }: CapTableFormProps) {
                         <Badge variant="outline">{currentData?.investmentStage}</Badge>
                     )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-right">
                     {isEditMode ? (
                         <Input type="number" name="investment" value={currentData?.investment || 0} onChange={handleInputChange} className="h-8" />
                     ) : (
                         formatCurrency(currentData?.investment || 0)
                     )}
                 </TableCell>
-                 <TableCell>
+                 <TableCell className="text-right">
                     {isEditMode ? (
                         <Input type="number" name="shares" value={currentData?.shares || 0} onChange={handleInputChange} className="h-8" />
                     ) : (
                         (currentData?.shares || 0).toLocaleString()
                     )}
                 </TableCell>
-                 <TableCell>
+                 <TableCell className="text-right">
                     {isEditMode ? (
                         <Input type="number" name="equityPercentage" value={currentData?.equityPercentage || 0} onChange={handleInputChange} className="h-8" step="0.01" />
                     ) : (
@@ -201,9 +201,9 @@ export default function CapTableForm({ initialData }: CapTableFormProps) {
                         <TableRow>
                             <TableHead>Shareholder</TableHead>
                             <TableHead>Stage</TableHead>
-                            <TableHead>Investment</TableHead>
-                            <TableHead>Shares</TableHead>
-                            <TableHead>Equity</TableHead>
+                            <TableHead className="text-right">Investment</TableHead>
+                            <TableHead className="text-right">Shares</TableHead>
+                            <TableHead className="text-right">Equity</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>

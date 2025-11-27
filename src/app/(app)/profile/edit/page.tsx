@@ -1,7 +1,7 @@
-'use client';
 
+import 'server-only';
 import ProfileEditClient from './client';
 
-export default function ProfileEditPage() {
+export default async function ProfileEditPage() {
   return <ProfileEditClient />;
 }

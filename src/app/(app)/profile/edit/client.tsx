@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import ProfilePictureUploader from "@/components/profile/profile-picture-uploader";
 import MonthlyFinancialsForm from "@/components/profile/monthly-financials-form";
-import { FounderProfile, InvestorProfile, Startup, InvestmentStage, TalentProfile, FullUserProfile, Profile } from "@/lib/types";
+import { FounderProfile, InvestorProfile, Startup, TalentProfile, FullUserProfile, Profile } from "@/lib/types";
 import LinkedInPopulator from "@/components/profile/linkedin-populator";
 import BusinessLogoUploader from "@/components/profile/business-logo-uploader";
 import CapTableForm from "@/components/profile/cap-table-form";
@@ -23,55 +24,27 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
-import { useUser, useFirestore } from "@/firebase";
 import { investmentStages } from "@/lib/constants";
 import IncorporationDetailsForm from "@/components/profile/incorporation-details-form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { doc, getDoc } from "firebase/firestore";
-import { updateUserProfile, getUsersByIds } from "@/lib/actions";
+import { updateUserProfile } from "@/lib/actions";
 
+interface ProfileEditClientProps {
+  serverUser: FullUserProfile;
+  serverStartup: Startup | null;
+  serverFounders: FullUserProfile[];
+}
 
-export default function ProfileEditClient() {
-  const { user, isUserLoading: authLoading } = useUser();
-  const db = useFirestore();
-  const [startup, setStartup] = useState<Startup | null>(null);
-  const [founders, setFounders] = useState<FullUserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-
+export default function ProfileEditClient({ serverUser, serverStartup, serverFounders }: ProfileEditClientProps) {
+  const user = serverUser;
+  const [startup, setStartup] = useState<Startup | null>(serverStartup);
+  const [founders, setFounders] = useState<FullUserProfile[]>(serverFounders);
+  
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
   const [isFractionalLeader, setIsFractionalLeader] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-
-  useEffect(() => {
-    const fetchData = async () => {
-        if (authLoading || !user || !db) {
-            if (!authLoading && !user) setLoading(false);
-            return;
-        }
-
-      if (user.role === 'founder') {
-        const founderProfile = user.profile as FounderProfile;
-        if (founderProfile.companyId) {
-          const startupRef = doc(db, 'startups', founderProfile.companyId);
-          const startupSnap = await getDoc(startupRef);
-          if (startupSnap.exists()) {
-            const startupData = startupSnap.data() as Startup;
-            setStartup(startupData);
-            if (startupData.founderIds.length > 0) {
-              const founderUsers = await getUsersByIds(startupData.founderIds);
-              setFounders(founderUsers);
-            }
-          }
-        }
-      }
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [user, authLoading, db]);
-
 
   useEffect(() => {
     if (user) {
@@ -87,7 +60,7 @@ export default function ProfileEditClient() {
     }
   }, [user]);
 
-  if (loading || authLoading || !user) {
+  if (!user) {
      return (
         <div className="space-y-6">
           <div>
@@ -167,7 +140,7 @@ export default function ProfileEditClient() {
         title: "Profile Saved",
         description: "Your general information has been updated.",
       });
-      router.refresh(); // Use router.refresh() to re-fetch server components
+      router.refresh(); 
     } else {
       toast({
         title: "Error",
