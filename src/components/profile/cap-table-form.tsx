@@ -216,3 +216,5 @@ export default function CapTableForm({ initialData }: CapTableFormProps) {
         </Card>
     );
 }
+
+    

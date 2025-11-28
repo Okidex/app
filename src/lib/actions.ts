@@ -10,6 +10,8 @@ import {
     FounderProfile,
     InvestorProfile,
     TalentProfile,
+    Job,
+    InvestmentThesis,
 } from './types';
 import {
   summarizeFinancialData,
@@ -30,8 +32,7 @@ import {
 import {
   smartSearch,
 } from '@/ai/flows/smart-search';
-import { getCurrentUser } from './auth-actions';
-
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
   if (!userId) return null;
@@ -62,7 +63,6 @@ export async function getStartupById(startupId: string): Promise<Startup | null>
     }
     return null;
 }
-
 
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
     const { firestore } = initializeAdminApp();
@@ -138,5 +138,51 @@ export async function getSearchResults(queryText: string): Promise<{ startups: S
         console.error("Error performing smart search:", error);
         return { startups: [], users: [] };
     }
+}
+
+export async function getDashboardData(currentUser: FullUserProfile) {
+    const { firestore } = initializeAdminApp();
+    let data: any = {};
+
+    if (currentUser.role === 'founder') {
+        const q = query(collection(firestore, "users"), where("role", "!=", "founder"), limit(3));
+        const querySnapshot = await getDocs(q);
+        data.matches = querySnapshot.docs.map(doc => doc.data());
+    }
+
+    if (currentUser.role === 'investor') {
+        const thesesQuery = query(collection(firestore, "theses"), where("investorId", "==", currentUser.id));
+        const myThesesSnap = await getDocs(thesesQuery);
+        const myTheses = myThesesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as InvestmentThesis));
+        data.myThesesCount = myTheses.length;
+
+        const myJobsQuery = query(collection(firestore, "jobs"), where("founderId", "==", currentUser.id));
+        const myJobsSnap = await getDocs(myJobsQuery);
+        const myJobs = myJobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+
+        if (myTheses.length > 0) {
+            const thesisInterestsQuery = query(collection(firestore, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", myTheses.map(t => t.id)));
+            const thesisInterestsSnap = await getDocs(thesisInterestsQuery);
+            data.thesisInterestsCount = thesisInterestsSnap.size;
+        } else {
+            data.thesisInterestsCount = 0;
+        }
+
+        if (myJobs.length > 0) {
+            const jobInterestsQuery = query(collection(firestore, "interests"), where("targetType", "==", "job"), where("targetId", "in", myJobs.map(j => j.id)));
+            const jobInterestsSnap = await getDocs(jobInterestsQuery);
+            data.jobInterestsCount = jobInterestsSnap.size;
+        } else {
+             data.jobInterestsCount = 0;
+        }
+    }
+
+    if (currentUser.role === 'talent') {
+        const jobsQuery = query(collection(firestore, "jobs"), limit(3));
+        const jobsSnapshot = await getDocs(jobsQuery);
+        data.recommendedJobs = jobsSnapshot.docs.map(doc => doc.data() as Job);
+    }
+
+    return data;
 }
 

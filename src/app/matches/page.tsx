@@ -1,19 +1,19 @@
 
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser, getUserById } from "@/lib/actions";
 import { FullUserProfile, Startup, FounderProfile, InvestorProfile, TalentProfile, UserRole } from "@/lib/types";
 import { Check, DollarSign, MessageCircle, TrendingUp, X, Briefcase, BrainCircuit, UserCheck } from "lucide-react";
 import UserAvatar from "@/components/shared/user-avatar";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/auth-actions";
 
 const formatCurrency = (value: number) => {
     if (value >= 1000000) {
@@ -140,9 +140,8 @@ const GenericUserCard = ({ user, style, ...props }: { user: FullUserProfile, sty
     );
 };
 
-export default function MatchesPage() {
-    const { user: authUser, isUserLoading: authLoading } = useUser();
-    const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
+function MatchesPageClient() {
+    const { user: currentUser, isUserLoading: authLoading } = useUser();
     const [allMatches, setAllMatches] = useState<FullUserProfile[]>([]);
     const [startups, setStartups] = useState<Startup[]>([]);
     const [loading, setLoading] = useState(true);
@@ -150,29 +149,23 @@ export default function MatchesPage() {
 
     useEffect(() => {
         const fetchInitialData = async () => {
-            if (!authUser || !db) {
-                setLoading(false);
+            if (!currentUser || !db) {
+                if (!authLoading) setLoading(false);
                 return
             };
             setLoading(true);
-            const userProfile = await getCurrentUser();
-            if (!userProfile) {
-                setLoading(false);
-                return;
-            }
-            setCurrentUser(userProfile);
-
+            
             const usersSnap = await getDocs(collection(db, "users"));
-            const allUsers = usersSnap.docs.map(doc => doc.data() as FullUserProfile).filter(u => u.id !== userProfile.id);
+            const allUsers = usersSnap.docs.map(doc => doc.data() as FullUserProfile).filter(u => u.id !== currentUser.id);
             
             const startupsSnap = await getDocs(collection(db, "startups"));
             setStartups(startupsSnap.docs.map(doc => doc.data() as Startup));
 
-            setAllMatches(getMatchableUsers(userProfile, allUsers));
+            setAllMatches(getMatchableUsers(currentUser, allUsers));
             setLoading(false);
         };
         fetchInitialData();
-    }, [authUser, db]);
+    }, [currentUser, db, authLoading]);
 
     const getMatchableUsers = (currentUser: FullUserProfile, allUsers: FullUserProfile[]): FullUserProfile[] => {
         switch (currentUser.role) {
@@ -395,3 +388,13 @@ export default function MatchesPage() {
         </div>
     );
 }
+
+export default function MatchesPage() {
+    return (
+        <Suspense>
+            <MatchesPageClient />
+        </Suspense>
+    );
+}
+
+    

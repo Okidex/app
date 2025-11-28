@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FullUserProfile, Interest, FounderProfile, Job, InvestmentThesis } from "@/lib/types";
@@ -14,6 +13,7 @@ import { Lock } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getUsersByIds } from "@/lib/actions";
 
 type ApplicantItem = Interest & { user: FullUserProfile | undefined; targetName: string };
 
@@ -57,7 +57,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
 
     useEffect(() => {
         const fetchInterests = async () => {
-            if (!db) return;
+            if (!db || !currentUser?.id) return;
             // Fetch theses created by investor
             const thesesQuery = query(collection(db, "theses"), where("investorId", "==", currentUser.id));
             const thesesSnap = await getDocs(thesesQuery);
@@ -75,14 +75,14 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 const thesisInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", myTheses.map(t => t.id)));
                 const thesisInterestsSnap = await getDocs(thesisInterestsQuery);
                 const interestsData = thesisInterestsSnap.docs.map(doc => doc.data() as Interest);
-                setThesisInterests(interestsData.map(i => {
+                 interestsData.forEach(i => {
                     if (!allUserIds.includes(i.userId)) allUserIds.push(i.userId);
-                    return {
-                        ...i,
-                        user: undefined,
-                        targetName: myTheses.find(t => t.id === i.targetId)?.title || 'a thesis'
-                    }
-                }));
+                });
+                setThesisInterests(interestsData.map(i => ({
+                    ...i,
+                    user: undefined,
+                    targetName: myTheses.find(t => t.id === i.targetId)?.title || 'a thesis'
+                })));
             }
 
             // Fetch interests for jobs
@@ -90,29 +90,28 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 const jobInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", myJobs.map(j => j.id)));
                 const jobInterestsSnap = await getDocs(jobInterestsQuery);
                 const interestsData = jobInterestsSnap.docs.map(doc => doc.data() as Interest);
-                setJobInterests(interestsData.map(i => {
+                 interestsData.forEach(i => {
                     if (!allUserIds.includes(i.userId)) allUserIds.push(i.userId);
-                    return {
-                        ...i,
-                        user: undefined,
-                        targetName: myJobs.find(j => j.id === i.targetId)?.title || 'a job'
-                    }
-                }));
+                });
+                setJobInterests(interestsData.map(i => ({
+                    ...i,
+                    user: undefined,
+                    targetName: myJobs.find(j => j.id === i.targetId)?.title || 'a job'
+                })));
             }
             
             // Fetch user profiles for all interests
             if(allUserIds.length > 0) {
-                const usersQuery = query(collection(db, "users"), where("id", "in", allUserIds));
-                const usersSnap = await getDocs(usersQuery);
-                const users = usersSnap.docs.map(doc => doc.data() as FullUserProfile);
-
+                const users = await getUsersByIds(allUserIds);
                 setThesisInterests(prev => prev.map(item => ({...item, user: users.find(u => u.id === item.userId)})));
                 setJobInterests(prev => prev.map(item => ({...item, user: users.find(u => u.id === item.userId)})));
             }
             
             setLoading(false);
         };
-        fetchInterests();
+        if(currentUser?.id) {
+            fetchInterests();
+        }
     }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
@@ -140,7 +139,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
 
     useEffect(() => {
         const fetchInterests = async () => {
-            if (!db) return;
+            if (!db || !currentUser?.id) return;
             const jobsQuery = query(collection(db, "jobs"), where("founderId", "==", currentUser.id));
             const jobsSnap = await getDocs(jobsQuery);
             const myJobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
@@ -153,10 +152,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
                 const userIds = interestsData.map(i => i.userId);
                 
                 if (userIds.length > 0) {
-                    const usersQuery = query(collection(db, "users"), where("id", "in", userIds));
-                    const usersSnap = await getDocs(usersQuery);
-                    const users = usersSnap.docs.map(doc => doc.data() as FullUserProfile);
-
+                    const users = await getUsersByIds(userIds);
                     setJobInterests(interestsData.map(i => ({
                         ...i,
                         user: users.find(u => u.id === i.userId),
@@ -166,7 +162,9 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
             }
             setLoading(false);
         };
-        fetchInterests();
+        if (currentUser?.id) {
+            fetchInterests();
+        }
     }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
@@ -175,23 +173,9 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
 };
 
 export default function ApplicantsPage() {
-    const { user: authUser, isUserLoading: authLoading } = useUser();
-    const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { user: currentUser, isUserLoading: authLoading } = useUser();
 
-
-    useEffect(() => {
-        if (!authLoading && authUser) {
-            getCurrentUser().then(user => {
-                setCurrentUser(user);
-                setLoading(false);
-            });
-        } else if (!authLoading && !authUser) {
-            setLoading(false);
-        }
-    }, [authUser, authLoading]);
-
-    if (loading) {
+    if (authLoading) {
         return <div className="space-y-6">
             <div>
                 <Skeleton className="h-8 w-48 mb-2"/>
@@ -202,7 +186,6 @@ export default function ApplicantsPage() {
     }
 
     if (!currentUser) {
-        // This can be a redirect or a login prompt
         return <div>Please log in to view applicants.</div>;
     }
     

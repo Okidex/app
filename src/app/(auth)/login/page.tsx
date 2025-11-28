@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -25,8 +26,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { login, sendPasswordReset } from "@/lib/auth";
+import { login } from "@/lib/auth-actions";
 import { Loader2 } from "lucide-react";
+import { initializeFirebase } from "@/firebase";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -61,15 +64,28 @@ export default function LoginPage() {
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsLoggingIn(true);
-    const result = await login(values.email, values.password);
-    setIsLoggingIn(false);
+    try {
+      const { auth } = initializeFirebase();
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const idToken = await userCredential.user.getIdToken();
 
-    if (result.success) {
-      router.push("/dashboard");
-    } else {
+      const result = await login(idToken);
+      setIsLoggingIn(false);
+
+      if (result.success) {
+        router.push("/dashboard");
+      } else {
+         toast({
+          title: "Login Failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch(error: any) {
+       setIsLoggingIn(false);
        toast({
         title: "Login Failed",
-        description: result.error,
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -77,21 +93,22 @@ export default function LoginPage() {
   
   const handlePasswordReset = async (values: z.infer<typeof resetSchema>) => {
     setIsResetting(true);
-    const result = await sendPasswordReset(values.resetEmail);
-    setIsResetting(false);
-    
-    if (result.success) {
+    const { auth } = initializeFirebase();
+    try {
+      await sendPasswordResetEmail(auth, values.resetEmail);
       setIsForgotPasswordOpen(false);
       toast({
         title: "Password Reset Email Sent",
         description: "Please check your inbox for instructions to reset your password.",
       });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error,
-        variant: "destructive",
-      });
+    } catch(error: any) {
+        toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsResetting(false);
     }
   };
 
@@ -197,3 +214,4 @@ export default function LoginPage() {
   );
 }
 
+    
