@@ -105,6 +105,7 @@ export default function FounderRegisterForm() {
         );
 
         if (result.success) {
+            sessionStorage.removeItem('registrationDetails');
             router.push("/dashboard");
         } else {
             throw new Error(result.error || "An unknown error occurred.");

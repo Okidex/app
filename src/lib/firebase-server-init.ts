@@ -1,4 +1,6 @@
 
+'use server';
+
 import 'server-only';
 import admin from 'firebase-admin';
 
@@ -23,7 +25,7 @@ function getServiceAccount() {
   }
 }
 
-export function initializeAdminApp(): FirebaseAdminServices {
+export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
   if (adminServices) {
     return adminServices;
   }

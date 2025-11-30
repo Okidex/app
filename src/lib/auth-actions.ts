@@ -4,11 +4,11 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { initializeAdminApp } from './firebase-server-init';
-import { FullUserProfile, FounderProfile, UserRole, Profile, TalentSubRole, Startup } from './types';
+import { FullUserProfile, FounderProfile, UserRole, Profile, TalentSubRole, Startup, InvestorProfile } from './types';
 import { FieldValue } from 'firebase-admin/firestore';
 
 async function createSessionCookie(idToken: string) {
-    const { auth: adminAuth } = initializeAdminApp();
+    const { auth: adminAuth } = await initializeAdminApp();
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
@@ -28,7 +28,7 @@ export async function logout() {
 }
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
-  const { firestore } = initializeAdminApp();
+  const { firestore } = await initializeAdminApp();
   const uid = await getCurrentUserId();
   
   if (!uid) {
@@ -45,7 +45,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
 }
 
 export async function getCurrentUserId(): Promise<string | null> {
-    const { auth } = initializeAdminApp();
+    const { auth } = await initializeAdminApp();
     const sessionCookie = cookies().get('__session');
 
     if (!sessionCookie) {
@@ -64,7 +64,7 @@ export async function getCurrentUserId(): Promise<string | null> {
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
     if (!dataUrl) return "";
     
-    const { storage } = initializeAdminApp();
+    const { storage } = await initializeAdminApp();
     const bucket = storage.bucket();
     const file = bucket.file(path);
     
@@ -87,7 +87,7 @@ export async function createUserAndSetSession(
     avatarDataUrl?: string,
     logoDataUrl?: string,
 ) {
-    const { auth, firestore } = initializeAdminApp();
+    const { auth, firestore } = await initializeAdminApp();
     try {
         const decodedToken = await auth.verifyIdToken(idToken);
         const uid = decodedToken.uid;
@@ -189,7 +189,7 @@ export async function createUserAndSetSession(
 }
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
-    const { auth, firestore } = initializeAdminApp();
+    const { auth, firestore } = await initializeAdminApp();
     try {
         await firestore.collection("users").doc(userId).delete();
         if (role === 'founder' && companyId) {
