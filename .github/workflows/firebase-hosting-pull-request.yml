@@ -9,24 +9,23 @@ permissions:
   pull-requests: write
 jobs:
   build_and_preview:
+    # This condition ensures the secrets are available only for PRs within the same repository
     if: '${{ github.event.pull_request.head.repo.full_name == github.repository }}'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # FIX 1: Explicitly define where the code is checked out.
           path: app
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install dependencies and build
-        # FIX 2: Run the build command from inside the new 'app' directory.
         working-directory: ./app
         run: npm ci && npm run build
         env:
-          # --- ADDED SERVICE_ACCOUNT_JSON HERE ---
+          # --- All references use the standardized secret name ---
           SERVICE_ACCOUNT_JSON: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
-          FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STUDIO8509111427_A45A7 }}'
+          FIREBASE_SERVICE_ACCOUNT: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'studio-8509111427-a45a7'
@@ -37,15 +36,15 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STUDIO8509111427_A45A7 }}'
+          # --- All references use the standardized secret name ---
+          firebaseServiceAccount: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           projectId: studio-8509111427-a45a7
-          # FIX 3: Specify the entry point as the 'app' subdirectory.
           entryPoint: "./app"
-          # FIX 4: Use the correct input name 'force' (boolean), not 'args'.
           force: true
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-          FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STUDIO8509111427_A45A7 }}'
+          # --- All references use the standardized secret name ---
+          FIREBASE_SERVICE_ACCOUNT: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'studio-8509111427-a45a7'
