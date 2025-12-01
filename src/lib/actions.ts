@@ -34,8 +34,9 @@ import {
   smartSearch,
 } from '@/ai/flows/smart-search';
 // --- CHANGE MADE HERE ---
-// Exporting the function directly so that pages importing from "@/lib/actions" can access it.
-export { getCurrentUser } from './auth-actions';
+// Next.js 'use server' requires this verbose syntax to verify the function signature is async
+import { getCurrentUser as importedGetCurrentUser } from './auth-actions';
+export const getCurrentUser = importedGetCurrentUser;
 
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
