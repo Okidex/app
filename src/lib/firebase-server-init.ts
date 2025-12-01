@@ -16,9 +16,13 @@ interface FirebaseAdminServices {
 let adminServices: FirebaseAdminServices | null = null;
 
 function getServiceAccount() {
-  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+  // --- CHANGE MADE HERE ---
+  // Use the new, non-reserved environment variable name
+  const serviceAccountEnv = process.env.SERVICE_ACCOUNT_JSON;
+
   if (!serviceAccountEnv) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for server-side operations.");
+    // Update the error message to reflect the new variable name
+    throw new Error("SERVICE_ACCOUNT_JSON environment variable is not set. This is required for server-side operations.");
   }
 
   // --- Start of FIX: Handle both JSON string and file path inputs ---
@@ -35,8 +39,8 @@ function getServiceAccount() {
       return JSON.parse(fileContent);
     } catch (fileError) {
       // If both attempts fail, log the errors and throw a final error
-      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON string or read file path.', { envParseError: e, fileReadError: fileError });
-      throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid JSON string OR a correct file path.");
+      console.error('Failed to parse SERVICE_ACCOUNT_JSON JSON string or read file path.', { envParseError: e, fileReadError: fileError });
+      throw new Error("Failed to parse SERVICE_ACCOUNT_JSON. Ensure it's a valid JSON string OR a correct file path.");
     }
   }
   // --- End of FIX ---
