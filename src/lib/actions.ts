@@ -1,4 +1,3 @@
-
 'use server';
 
 import 'server-only';
@@ -34,7 +33,9 @@ import {
 import {
   smartSearch,
 } from '@/ai/flows/smart-search';
-import { getCurrentUser } from './auth-actions';
+// --- CHANGE MADE HERE ---
+// Exporting the function directly so that pages importing from "@/lib/actions" can access it.
+export { getCurrentUser } from './auth-actions';
 
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
