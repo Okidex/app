@@ -1,8 +1,11 @@
-
 'use server';
 
 import 'server-only';
 import admin from 'firebase-admin';
+// Import the 'fs' module for file system operations (Node.js built-in)
+import fs from 'fs';
+// Use Node's built-in 'path' module to resolve absolute paths
+import path from 'path';
 
 interface FirebaseAdminServices {
   auth: admin.auth.Auth;
@@ -13,16 +16,30 @@ interface FirebaseAdminServices {
 let adminServices: FirebaseAdminServices | null = null;
 
 function getServiceAccount() {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccountJson) {
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountEnv) {
     throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for server-side operations.");
   }
+
+  // --- Start of FIX: Handle both JSON string and file path inputs ---
   try {
-    return JSON.parse(serviceAccountJson);
+    // Attempt 1: Try parsing the environment variable content as a raw JSON string
+    return JSON.parse(serviceAccountEnv);
   } catch (e) {
-    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON.', e);
-    throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid JSON string.");
+    // If JSON parsing fails, assume the environment variable is a file path
+    try {
+      // Resolve the absolute path to ensure correct file finding
+      const absolutePath = path.resolve(serviceAccountEnv);
+      // Read the file content and parse it as JSON
+      const fileContent = fs.readFileSync(absolutePath, 'utf8');
+      return JSON.parse(fileContent);
+    } catch (fileError) {
+      // If both attempts fail, log the errors and throw a final error
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON string or read file path.', { envParseError: e, fileReadError: fileError });
+      throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid JSON string OR a correct file path.");
+    }
   }
+  // --- End of FIX ---
 }
 
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
