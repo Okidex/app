@@ -38,8 +38,8 @@ jobs:
           projectId: studio-8509111427-a45a7
           # FIX 3: Specify the entry point as the 'app' subdirectory for the deploy action.
           entryPoint: "./app"
-          # FIX 4: Add the --force argument to automatically set the cleanup policy.
-          args: "--force"
+          # FIX 4: Use the correct input name 'force' (boolean), not 'args'.
+          force: true
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STUDIO8509111427_A45A7 }}'
