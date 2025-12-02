@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     # Define job-level environment variables to be available to all steps
     env:
-      SERVICE_ACCOUNT_JSON: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
-      FIREBASE_SERVICE_ACCOUNT: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
+      # These will now point to the locally generated file path during the build step
       NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'studio-8509111427-a45a7'
@@ -26,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Check out code into a specific 'app' directory as you suggested
+          # Check out code into a specific 'app' directory
           path: app
 
       - uses: actions/setup-node@v4
@@ -36,19 +35,28 @@ jobs:
       - name: Install dependencies and build
         # Run the commands from inside the 'app' directory
         working-directory: ./app
-        run: npm ci && npm run build
-        # Environment variables defined at the job level above are automatically available here
+        run: |
+          # 1. Decode the Base64 secret from GitHub into a temporary file
+          echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" | base64 -d > service_account_key.json
+          # 2. Set environment variables to point to the new file path
+          export GOOGLE_APPLICATION_CREDENTIALS=./service_account_key.json
+          export SERVICE_ACCOUNT_JSON=./service_account_key.json
+          # 3. Run the build command
+          npm ci && npm run build
+        # Note: The 'env:' block here is removed as variables are set inline in the 'run' command
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          # Pass the secret securely via this input
+          # Pass the raw secret to the Firebase Action input, it handles the value for deployment
           firebaseServiceAccount: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           channelId: live
           projectId: studio-8509111427-a45a7
           # Specify the base directory where the firebase.json and build output are located
           entryPoint: "./app"
           force: true
-        # Environment variables defined at the job level above are automatically available here
+        env:
+          # Explicitly ensure the DECODED file path is available for the deploy action if needed
+          GOOGLE_APPLICATION_CREDENTIALS: './app/service_account_key.json'
 
