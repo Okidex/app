@@ -14,16 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        # REMOVED: with: path: app (Code now checks out to the default root directory)
-
+        with:
+          path: app
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install dependencies and build
-        # REMOVED: working-directory: ./app (Commands now run from the root)
+        working-directory: ./app
         run: npm ci && npm run build
         env:
+          # --- All references use the standardized secret name ---
           SERVICE_ACCOUNT_JSON: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
@@ -33,17 +33,17 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}'
           NEXT_PUBLIC_FIREBASE_APP_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}'
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}'
-
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          # --- All references use the standardized secret name ---
           firebaseServiceAccount: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           projectId: studio-8509111427-a45a7
-          # UPDATED: The entry point is now the repository root
-          entryPoint: "./"
+          entryPoint: "./app"
           force: true
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+          # --- All references use the standardized secret name ---
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
