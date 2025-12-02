@@ -2,7 +2,7 @@
 
 import 'server-only';
 import admin from 'firebase-admin';
-// Remove fs and path imports
+// No need to import fs or path anymore, the SDK handles reading the file.
 // import fs from 'fs';
 // import path from 'path';
 
@@ -14,22 +14,7 @@ interface FirebaseAdminServices {
 
 let adminServices: FirebaseAdminServices | null = null;
 
-function getServiceAccount() {
-  // Use the env var name we will set in the workflow
-  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_RAW;
-
-  if (!serviceAccountString) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_RAW environment variable is not set.");
-  }
-
-  // ONLY attempt to parse the environment variable content as a raw JSON string
-  try {
-    return JSON.parse(serviceAccountString);
-  } catch (e) {
-    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_RAW JSON string.', e);
-    throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT_RAW. Ensure it's a valid JSON string.");
-  }
-}
+// The custom getServiceAccount function is removed entirely.
 
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
   if (adminServices) {
@@ -37,7 +22,14 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
   }
 
   if (admin.apps.length === 0) {
-    const serviceAccount = getServiceAccount();
+    // The SDK will automatically look for GOOGLE_APPLICATION_CREDENTIALS
+    // when initialized without specific credential arguments.
+    
+    // We add a check just for clarity/better error messaging if the env var is missing
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+       throw new Error("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set. A file path to service account JSON is required.");
+    }
+    
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
     if (!projectId) {
@@ -45,15 +37,17 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
     }
 
     try {
+      // The admin.initializeApp() function will automatically use
+      // the file path provided in GOOGLE_APPLICATION_CREDENTIALS
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+        // credential: admin.credential.cert(...) is no longer necessary
         projectId: projectId,
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
       });
-      console.log("Firebase Admin SDK initialized using raw JSON string.");
+      console.log("Firebase Admin SDK initialized using GOOGLE_APPLICATION_CREDENTIALS.");
     } catch (e: any) {
       console.error("Could not initialize Firebase Admin SDK.", e.message);
-      throw new Error("Could not initialize Firebase Admin SDK. Check the raw JSON credentials format.");
+      throw new Error("Could not initialize Firebase Admin SDK. There might be an issue with the credentials file path.");
     }
   }
 
@@ -65,4 +59,3 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
 
   return adminServices;
 }
-
