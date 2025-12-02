@@ -10,7 +10,7 @@ name: Deploy to Firebase Hosting on merge
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    # Define job-level environment variables to be available to all steps
+    # Define job-level environment variables (public vars and CLI experiments)
     env:
       NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
@@ -20,9 +20,6 @@ jobs:
       NEXT_PUBLIC_FIREBASE_APP_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}'
       NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}'
       FIREBASE_CLI_EXPERIMENTS: webframeworks # Required for Next.js support
-      
-      # Pass the raw JSON string here so the app can read it from env vars directly
-      FIREBASE_SERVICE_ACCOUNT_RAW: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_RAW }}'
 
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +35,9 @@ jobs:
         run: |
           # No file creation needed; the app reads the raw JSON string from an env var
           npm ci && npm run build
+        # CRITICAL FIX: Explicitly define the secret here so 'next build' can access it
+        env:
+          FIREBASE_SERVICE_ACCOUNT_RAW: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_RAW }}'
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
