@@ -34,13 +34,10 @@ jobs:
         run: |
           # Use GITHUB_WORKSPACE (an absolute path) to reference the file correctly
           KEY_FILE_PATH="${GITHUB_WORKSPACE}/app/service_account_key.json"
-          # 1. Decode the Base64 secret (SERVICE_ACCOUNT_B64) into the file
-          echo "${{ secrets.SERVICE_ACCOUNT_B64 }}" | base64 -d > "$KEY_FILE_PATH"
           
-          # --- Re-adding Debugging temporarily to confirm file size ---
-          echo "Inspecting generated key file again:"
-          ls -l "$KEY_FILE_PATH"
-          # ---
+          # 1. Decode the Base64 secret (SERVICE_ACCOUNT_B64) into the file using here-string syntax
+          base64 -d <<< "${{ secrets.SERVICE_ACCOUNT_B64 }}" > "$KEY_FILE_PATH"
+          
           # 2. Set the STANDARD Google environment variable with the ABSOLUTE path
           export GOOGLE_APPLICATION_CREDENTIALS="$KEY_FILE_PATH"
           
