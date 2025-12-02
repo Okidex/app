@@ -1,10 +1,10 @@
+
 'use server';
 
 import 'server-only';
 import admin from 'firebase-admin';
-// No need to import fs or path anymore, the SDK handles reading the file.
-// import fs from 'fs';
-// import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface FirebaseAdminServices {
   auth: admin.auth.Auth;
@@ -14,7 +14,40 @@ interface FirebaseAdminServices {
 
 let adminServices: FirebaseAdminServices | null = null;
 
-// The custom getServiceAccount function is removed entirely.
+function getServiceAccount() {
+  // For local development, use the FIREBASE_SERVICE_ACCOUNT from .env.local
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch (e) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable.', e);
+      throw new Error(
+        "Failed to parse FIREBASE_SERVICE_ACCOUNT from .env.local. Ensure it's a valid, un-escaped JSON string."
+      );
+    }
+  }
+
+  // For production deployment (GitHub Actions), use the created key file.
+  const keyFilePath = path.join(process.cwd(), 'service_account_key.json');
+  if (fs.existsSync(keyFilePath)) {
+    try {
+      const serviceAccount = fs.readFileSync(keyFilePath, 'utf8');
+      if (!serviceAccount) {
+        throw new Error('Service account file is empty.');
+      }
+      return JSON.parse(serviceAccount);
+    } catch (e: any) {
+      console.error(`Failed to read or parse service account file at ${keyFilePath}.`, e);
+      throw new Error(
+        `Could not parse the service account file. Error: ${e.message}`
+      );
+    }
+  }
+
+  throw new Error(
+    "Could not find Firebase credentials. Please make sure either the FIREBASE_SERVICE_ACCOUNT environment variable is set for local development or the service_account_key.json file exists for production builds."
+  );
+}
 
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
   if (adminServices) {
@@ -22,32 +55,22 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
   }
 
   if (admin.apps.length === 0) {
-    // The SDK will automatically look for GOOGLE_APPLICATION_CREDENTIALS
-    // when initialized without specific credential arguments.
-    
-    // We add a check just for clarity/better error messaging if the env var is missing
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-       throw new Error("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set. A file path to service account JSON is required.");
-    }
-    
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const serviceAccount = getServiceAccount();
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id;
 
     if (!projectId) {
-       throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in the environment variables.");
+       throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in the environment variables, and project_id is missing from the service account.");
     }
 
     try {
-      // The admin.initializeApp() function will automatically use
-      // the file path provided in GOOGLE_APPLICATION_CREDENTIALS
       admin.initializeApp({
-        // credential: admin.credential.cert(...) is no longer necessary
+        credential: admin.credential.cert(serviceAccount),
         projectId: projectId,
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
       });
-      console.log("Firebase Admin SDK initialized using GOOGLE_APPLICATION_CREDENTIALS.");
     } catch (e: any) {
       console.error("Could not initialize Firebase Admin SDK.", e.message);
-      throw new Error("Could not initialize Firebase Admin SDK. There might be an issue with the credentials file path.");
+      throw new Error("Could not initialize Firebase Admin SDK. There might be an issue with the provided credentials.");
     }
   }
 
@@ -59,3 +82,4 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
 
   return adminServices;
 }
+
