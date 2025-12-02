@@ -29,19 +29,25 @@ jobs:
         with:
           node-version: '20'
 
+      # NEW STEP: Create the service account file reliably using the raw JSON secret
+      - name: Create service account file
+        uses: peter-evans/create-or-update-file-action@v2
+        with:
+          path: app/service_account_key.json
+          contents: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RAW }}
+          encoding: 'utf-8'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install dependencies and build
         working-directory: ./app
         run: |
-          # Use GITHUB_WORKSPACE (an absolute path) to reference the file correctly
+          # Define the absolute path to the file created in the previous step
           KEY_FILE_PATH="${GITHUB_WORKSPACE}/app/service_account_key.json"
           
-          # 1. Decode the Base64 secret (SERVICE_ACCOUNT_B64) into the file using here-string syntax
-          base64 -d <<< "${{ secrets.SERVICE_ACCOUNT_B64 }}" > "$KEY_FILE_PATH"
-          
-          # 2. Set the STANDARD Google environment variable with the ABSOLUTE path
+          # Set the STANDARD Google environment variable with the ABSOLUTE path
           export GOOGLE_APPLICATION_CREDENTIALS="$KEY_FILE_PATH"
           
-          # 3. Run the build command
+          # Run the build command
           npm ci && npm run build
 
       - name: Deploy to Firebase Hosting
