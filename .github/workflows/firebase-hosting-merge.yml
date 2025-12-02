@@ -20,6 +20,9 @@ jobs:
       NEXT_PUBLIC_FIREBASE_APP_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}'
       NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}'
       FIREBASE_CLI_EXPERIMENTS: webframeworks # Required for Next.js support
+      
+      # Pass the raw JSON string here so the app can read it from env vars directly
+      FIREBASE_SERVICE_ACCOUNT_RAW: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_RAW }}'
 
     steps:
       - uses: actions/checkout@v4
@@ -33,30 +36,14 @@ jobs:
       - name: Install dependencies and build
         working-directory: ./app
         run: |
-          # Use GITHUB_WORKSPACE (an absolute path) to reference the file correctly
-          KEY_FILE_PATH="${GITHUB_WORKSPACE}/app/service_account_key.json"
-
-          # 1. Decode the Base64 secret into the temporary file using the absolute path
-          echo "${{ secrets.SERVICE_ACCOUNT_B64 }}" | base64 -d > "$KEY_FILE_PATH"
-          
-          # --- DEBUGGING LINES ---
-          echo "Inspecting generated key file:"
-          ls -l "$KEY_FILE_PATH"  # Check file size
-          cat "$KEY_FILE_PATH"    # Print file contents to the log (temporarily for debugging!)
-          # -----------------------
-          
-          # 2. Set environment variables using the absolute path
-          export GOOGLE_APPLICATION_CREDENTIALS="$KEY_FILE_PATH"
-          export SERVICE_ACCOUNT_JSON="$KEY_FILE_PATH"
-          
-          # 3. Run the build command
+          # No file creation needed; the app reads the raw JSON string from an env var
           npm ci && npm run build
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          # Use the secret that holds the RAW JSON content for authentication
+          # Use the secret that holds the RAW JSON content for action authentication
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_RAW }}'
           channelId: live
           projectId: studio-8509111427-a45a7
