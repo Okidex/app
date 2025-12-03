@@ -15,16 +15,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       - name: Create service account file
-        run: printf '%s' '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account_key.json
+        run: printf '%s' '${{ secrets.SERVICE_ACCOUNT_JSON }}' > Users/wilfredwong/app/service_account_key.json
       - name: Install dependencies and build
+        working-directory: ./Users/wilfredwong/app
         run: npm ci && npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
           projectId: studio-8509111427-a45a7
+          entryPoint: ./Users/wilfredwong/app
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
 
