@@ -1,3 +1,4 @@
+
 'use server';
 
 import 'server-only';
@@ -11,26 +12,20 @@ interface FirebaseAdminServices {
   storage: admin.storage.Storage;
 }
 
-// Singleton instance to prevent re-initialization
 let adminServices: FirebaseAdminServices | null = null;
 
-/**
- * Retrieves the service account credentials from the appropriate source.
- */
 function getServiceAccount(): admin.ServiceAccount {
-  const keyFilePath = path.join(process.cwd(), 'service_account_key.json');
-  if (fs.existsSync(keyFilePath)) {
+  // Path for GitHub Actions and other environments where the key is at the root
+  const rootKeyPath = path.join(process.cwd(), 'service_account_key.json');
+
+  if (fs.existsSync(rootKeyPath)) {
     try {
-      const serviceAccount = fs.readFileSync(keyFilePath, 'utf8');
-      if (!serviceAccount) {
-        throw new Error('The service_account_key.json file is empty.');
-      }
-      return JSON.parse(serviceAccount);
+      const serviceAccount = JSON.parse(fs.readFileSync(rootKeyPath, 'utf8'));
+      if (!serviceAccount) throw new Error('Service account file is empty.');
+      return serviceAccount;
     } catch (e: any) {
-      console.error(`Failed to read or parse service account file at ${keyFilePath}.`, e);
-      throw new Error(
-        `Could not parse the service account file. Error: ${e.message}`
-      );
+      console.error(`Failed to parse service account file at ${rootKeyPath}.`, e);
+      throw new Error(`Could not parse the service account file. Error: ${e.message}`);
     }
   }
 
@@ -38,26 +33,15 @@ function getServiceAccount(): admin.ServiceAccount {
     try {
       return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     } catch (e) {
-      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT from .env.local.', e);
-      throw new Error(
-        "Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid JSON string."
-      );
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT from environment variable.', e);
+      throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid, un-escaped JSON string.");
     }
   }
   
-  throw new Error(
-    'Could not find Firebase credentials.'
-  );
+  throw new Error('Could not find Firebase credentials. Searched for service_account_key.json in project root and checked FIREBASE_SERVICE_ACCOUNT env var.');
 }
 
-/**
- * Initializes the Firebase Admin SDK if it hasn't been already.
- * This function is a singleton and will only initialize the app once.
- * @returns {Promise<FirebaseAdminServices>} A promise that resolves with the initialized admin services.
- */
-// MODIFIED: Added 'async' keyword and changed return type to Promise<T>
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
-  // Return the existing instance if it's already been initialized.
   if (adminServices) {
     return adminServices;
   }
@@ -68,7 +52,7 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
       const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id;
   
       if (!projectId) {
-         throw new Error("Could not determine Firebase Project ID.");
+         throw new Error("Could not determine Firebase Project ID. Set NEXT_PUBLIC_FIREBASE_PROJECT_ID or ensure project_id is in your service account.");
       }
 
       admin.initializeApp({
@@ -83,8 +67,6 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
     }
   }
 
-  // Store the initialized services in the singleton instance.
-  // We use the non-null assertion operator (!) here as the checks above guarantee initialization
   adminServices = {
     auth: admin.auth(),
     firestore: admin.firestore(),
