@@ -21,7 +21,7 @@ jobs:
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service_account_key.json
           echo "SERVICE_ACCOUNT_KEY_PATH=$(pwd)/service_account_key.json" >> $GITHUB_ENV
       - name: Install dependencies and build
-        working-directory: Users/wilfredwong/app
+        working-directory: ./Users/wilfredwong/app
         run: npm ci && npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
@@ -39,4 +39,3 @@ jobs:
           entryPoint: ./Users/wilfredwong/app
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-
