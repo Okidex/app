@@ -17,14 +17,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Create service account file and export path
-        run: |
-          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service_account_key.json
-          echo "SERVICE_ACCOUNT_KEY_PATH=$(pwd)/service_account_key.json" >> $GITHUB_ENV
+      # --- Remove these steps, as the action handles authentication via input ---
+      # - name: Create service account file and export path
+      #   run: |
+      #     printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service_account_key.json
+      #     echo "SERVICE_ACCOUNT_KEY_PATH=$(pwd)/service_account_key.json" >> $GITHUB_ENV
+      # -------------------------------------------------------------------------
       - name: Install dependencies and build
+        # Specify the correct relative path from the repository root to your app directory
         working-directory: ./Users/wilfredwong/app
         run: npm ci && npm run build
         env:
+          # Define environment variables used during the build phase
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'studio-8509111427-a45a7'
@@ -35,9 +39,13 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          # Pass the service account secret directly here
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
+          # Ensure this path points to the root of your app/project where firebase.json is likely located
           entryPoint: ./Users/wilfredwong/app
         env:
+          # Required for deploying web frameworks like Next.js
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
