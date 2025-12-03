@@ -15,20 +15,32 @@ interface FirebaseAdminServices {
 let adminServices: FirebaseAdminServices | null = null;
 
 function getServiceAccount(): admin.ServiceAccount {
-  // Path for GitHub Actions and other environments where the key is at the root
-  const rootKeyPath = path.join(process.cwd(), 'service_account_key.json');
-
-  if (fs.existsSync(rootKeyPath)) {
+  // Priority 1: GitHub Actions environment variable with absolute path
+  if (process.env.SERVICE_ACCOUNT_KEY_PATH && fs.existsSync(process.env.SERVICE_ACCOUNT_KEY_PATH)) {
     try {
-      const serviceAccount = JSON.parse(fs.readFileSync(rootKeyPath, 'utf8'));
-      if (!serviceAccount) throw new Error('Service account file is empty.');
+      const serviceAccount = JSON.parse(fs.readFileSync(process.env.SERVICE_ACCOUNT_KEY_PATH, 'utf8'));
+      if (!serviceAccount) throw new Error('Service account file from SERVICE_ACCOUNT_KEY_PATH is empty.');
       return serviceAccount;
     } catch (e: any) {
-      console.error(`Failed to parse service account file at ${rootKeyPath}.`, e);
-      throw new Error(`Could not parse the service account file. Error: ${e.message}`);
+      console.error(`Failed to parse service account file from SERVICE_ACCOUNT_KEY_PATH at ${process.env.SERVICE_ACCOUNT_KEY_PATH}.`, e);
+      throw new Error(`Could not parse the service account file from environment variable. Error: ${e.message}`);
     }
   }
 
+  // Priority 2: Local development path from project root as specified by the user.
+  const localKeyPath = path.resolve(process.cwd(), 'wilfredwong/app/service_account_key.json');
+  if (fs.existsSync(localKeyPath)) {
+    try {
+      const serviceAccount = JSON.parse(fs.readFileSync(localKeyPath, 'utf8'));
+      if (!serviceAccount) throw new Error('Local service account file is empty.');
+      return serviceAccount;
+    } catch (e: any) {
+      console.error(`Failed to parse local service account file at ${localKeyPath}.`, e);
+      throw new Error(`Could not parse local service account file. Error: ${e.message}`);
+    }
+  }
+  
+  // Priority 3: Fallback to environment variable for other setups (e.g. Vercel)
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -38,7 +50,7 @@ function getServiceAccount(): admin.ServiceAccount {
     }
   }
   
-  throw new Error('Could not find Firebase credentials. Searched for service_account_key.json in project root and checked FIREBASE_SERVICE_ACCOUNT env var.');
+  throw new Error('Could not find Firebase credentials. Checked SERVICE_ACCOUNT_KEY_PATH, local path, and FIREBASE_SERVICE_ACCOUNT env var.');
 }
 
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {

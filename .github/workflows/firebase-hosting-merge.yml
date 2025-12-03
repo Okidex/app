@@ -17,10 +17,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Create app directory
-        run: mkdir -p Users/wilfredwong/app
-      - name: Create service account file
-        run: printf '%s' '${{ secrets.SERVICE_ACCOUNT_JSON }}' > Users/wilfredwong/app/service_account_key.json
+      - name: Create service account file and export path
+        run: |
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service_account_key.json
+          echo "SERVICE_ACCOUNT_KEY_PATH=$(pwd)/service_account_key.json" >> $GITHUB_ENV
       - name: Install dependencies and build
         working-directory: ./Users/wilfredwong/app
         run: npm ci && npm run build
@@ -35,9 +35,10 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.SERVICE_ACCOUNT_JSON }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
           entryPoint: ./Users/wilfredwong/app
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
