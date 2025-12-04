@@ -36,3 +36,4 @@ jobs:
           entryPoint: .
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
