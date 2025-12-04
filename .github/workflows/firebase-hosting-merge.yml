@@ -24,15 +24,14 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}'
           NEXT_PUBLIC_FIREBASE_APP_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}'
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}'
-        # UPDATED: Use a relative path
-        working-directory: ./app
+        # REMOVED: working-directory has been removed from the build step
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
-          # UPDATED: Use a relative path
+          # KEPT: The deploy action will specifically look for firebase.json inside the 'app' folder
           entryPoint: ./app
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
