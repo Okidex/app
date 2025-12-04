@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
@@ -20,9 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="h-full">
-        <Providers>
-          {children}
-        </Providers>
+        {children}
         <Toaster />
       </body>
     </html>
