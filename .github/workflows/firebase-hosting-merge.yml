@@ -18,23 +18,27 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies and build
-        working-directory: Users/wilfredwong/app
+        # Updated working-directory to a relative path 'app'
+        working-directory: app
         run: npm ci && npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
+          # Standardized project ID
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'studio-8509111427-a45a7'
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: '${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}'
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}'
           NEXT_PUBLIC_FIREBASE_APP_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}'
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}'
-          FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
+          # Added GITHUB_TOKEN for status reporting
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
-          projectId: studio-8509111427-a45a7
+          # Standardized project ID
+          projectId: 'studio-8509111427-a45a7'
+          # Assuming you want to deploy from the root of the repo if entryPoint is '.'
+          # If your app builds into a subdirectory (e.g., 'app'), you might need to adjust your firebase.json 'public' dir.
           entryPoint: .
-
 
