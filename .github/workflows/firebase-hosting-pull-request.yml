@@ -12,10 +12,9 @@ jobs:
     if: '${{ github.event.pull_request.head.repo.full_name == github.repository }}'
     runs-on: ubuntu-latest
     defaults:
-      run:
-      run:
-        # This working directory will apply to all 'run' steps in this job
-        working-directory: 'app/wilfredwong/app'
+         run:
+        # Use GITHUB_WORKSPACE to ensure an absolute path is used, fixing "No such file or directory" errors
+        working-directory: ${{ github.workspace }}/app/wilfredwong/app
     steps:
       - uses: actions/checkout@v4
       

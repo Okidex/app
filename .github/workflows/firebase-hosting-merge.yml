@@ -9,14 +9,13 @@ name: Deploy to Firebase Hosting on merge
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    # Define environment details once at the job level if desired
     environment:
       name: production
       url: https://studio-8509111427-a45a7.web.app
     defaults:
       run:
-        # This working directory will apply to all 'run' steps in this job
-        working-directory: 'app/wilfredwong/app'
+        # Use GITHUB_WORKSPACE to ensure an absolute path is used, fixing "No such file or directory" errors
+        working-directory: ${{ github.workspace }}/app/wilfredwong/app
     steps:
       - uses: actions/checkout@v4
       
@@ -41,9 +40,5 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
-        # The deploy action leverages web frameworks support internally.
-        # This specific environment variable is usually not necessary if your firebase.json
-        # is correctly configured for web frameworks, but leaving it here doesn't hurt.
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-
