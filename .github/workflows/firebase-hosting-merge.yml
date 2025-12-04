@@ -15,7 +15,7 @@ jobs:
     defaults:
       run:
         # --- CORRECTED PATH ---
-        working-directory: wilfredwong/app
+        working-directory: './app/wilfredwong/app'
     steps:
       - uses: actions/checkout@v4
       
