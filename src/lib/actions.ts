@@ -1,3 +1,4 @@
+
 'use server';
 
 import 'server-only';
@@ -33,10 +34,7 @@ import {
 import {
   smartSearch,
 } from '@/ai/flows/smart-search';
-// --- CHANGE MADE HERE ---
-// Next.js 'use server' requires this verbose syntax to verify the function signature is async
-import { getCurrentUser as importedGetCurrentUser } from './auth-actions';
-export const getCurrentUser = importedGetCurrentUser;
+import { getCurrentUser } from './auth-actions';
 
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
@@ -149,8 +147,23 @@ export async function getSearchResults(queryText: string): Promise<{ startups: S
     const allStartups = startupsCollection.docs.map((doc) => doc.data() as Startup);
     
     const searchableData = JSON.stringify({
-        users: allUsers.map(u => ({id: u.id, name: u.name, role: u.role, profile: u.profile})),
-        startups: allStartups.map(s => ({id: s.id, companyName: s.companyName, industry: s.industry, stage: s.stage, tagline: s.tagline, description: s.description}))
+        users: allUsers.map(u => ({
+            id: u.id,
+            name: u.name,
+            role: u.role,
+            profile: u.profile,
+            objectives: (u.profile as FounderProfile).objectives || []
+        })),
+        startups: allStartups.map(s => ({
+            id: s.id,
+            companyName: s.companyName,
+            industry: s.industry,
+            stage: s.stage,
+            tagline: s.tagline,
+            description: s.description,
+            fundraisingGoal: s.fundraisingGoal,
+            founderObjectives: allUsers.find(u => u.id === s.founderIds[0]) ? ((allUsers.find(u => u.id === s.founderIds[0])!.profile as FounderProfile).objectives || []) : []
+        }))
     });
 
     try {
@@ -163,4 +176,3 @@ export async function getSearchResults(queryText: string): Promise<{ startups: S
         return { startups: [], users: [] };
     }
 }
-
