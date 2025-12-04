@@ -13,14 +13,33 @@ jobs:
       name: production
       url: https://okidex-399812.web.app
     steps:
+      # 1. Checkout your repository code
       - uses: actions/checkout@v4
+
+      # 2. Setup the Node.js environment for Next.js build
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use a version compatible with your Next.js project (e.g., 18, 20)
+
+      # 3. Install project dependencies (npm ci is faster/safer for CI/CD)
+      - name: Install dependencies
+        run: npm ci
+      
+      # 4. (Optional but recommended) Run the production build command if your project needs it
+      # The Firebase action usually runs this automatically with Next.js, but
+      # you can explicitly run it here if necessary:
+      # - name: Build application
+      #   run: npm run build
+
+      # 5. Deploy to Firebase Hosting using the framework integration
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
-          # entryPoint removed, as it defaults to the repo root
+          # entryPoint removed, as firebase.json is in the root directory
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
