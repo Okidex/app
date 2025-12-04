@@ -2,8 +2,6 @@
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
   maxInstances: 1
 # Required for Next.js apps
 runtime: nodejs20
@@ -13,8 +11,9 @@ serverActions:
   timeoutSeconds: 120
 
 env:
-  - variable: FIREBASE_SERVICE_ACCOUNT
-    secret: FIREBASE_SERVICE_ACCOUNT_STUDIO8509111427_A45A7
+  # CHANGE THIS LINE: Use a non-reserved name like FIREBASE_ADMIN_KEY
+  - variable: FIREBASE_ADMIN_KEY
+    secret: FIREBASE_ADMIN_KEY
     availability:
       - BUILD
       - RUNTIME

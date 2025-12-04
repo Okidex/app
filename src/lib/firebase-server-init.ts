@@ -1,9 +1,9 @@
-
 'use server';
 
 import 'server-only';
 import admin from 'firebase-admin';
 
+// ... (interfaces and adminServices variable remain the same) ...
 interface FirebaseAdminServices {
   auth: admin.auth.Auth;
   firestore: admin.firestore.Firestore;
@@ -12,21 +12,26 @@ interface FirebaseAdminServices {
 
 let adminServices: FirebaseAdminServices | null = null;
 
+
 function getServiceAccount(): admin.ServiceAccount {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  // CHANGE 1: Use the correct environment variable name
+  const serviceAccountJson = process.env.FIREBASE_ADMIN_KEY;
   if (!serviceAccountJson) {
     throw new Error(
-      "The FIREBASE_SERVICE_ACCOUNT environment variable is not set. This is required for server-side operations."
+      // CHANGE 2: Update the error message for clarity
+      "The FIREBASE_ADMIN_KEY environment variable is not set. This is required for server-side operations."
     );
   }
   try {
     return JSON.parse(serviceAccountJson);
   } catch (e: any) {
-    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON from environment variable.', e);
-    throw new Error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it's a valid, un-escaped JSON string.");
+    // CHANGE 3: Update the error message for clarity
+    console.error('Failed to parse FIREBASE_ADMIN_KEY JSON from environment variable.', e);
+    throw new Error("Failed to parse FIREBASE_ADMIN_KEY. Ensure it's a valid, un-escaped JSON string.");
   }
 }
 
+// ... (the rest of the initializeAdminApp function remains unchanged) ...
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
   if (admin.apps.length > 0) {
     if (adminServices) {
