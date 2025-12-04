@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # UPDATED: Running build commands from the repository root (no path needed)
+      # Running build commands from the repository root
       - name: Install dependencies and build
         run: npm ci && npm run build
         env:
@@ -30,6 +30,7 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: studio-8509111427-a45a7
-          # REMOVED: entryPoint is removed, assuming firebase.json is in the repository root
+          # RESTORED: Specify where firebase.json is for the deploy action
+          entryPoint: ./app
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
