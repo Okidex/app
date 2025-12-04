@@ -20,7 +20,6 @@ function getServiceAccount(): admin.ServiceAccount {
     );
   }
   try {
-    // The service account JSON is passed as a string, so it needs to be parsed.
     return JSON.parse(serviceAccountJson);
   } catch (e: any) {
     console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON from environment variable.', e);
@@ -62,3 +61,4 @@ export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
 
   return adminServices;
 }
+

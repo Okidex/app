@@ -36,5 +36,5 @@ jobs:
           channelId: live
           projectId: studio-8509111427-a45a7
           entryPoint: .
-        env:
-          FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+
