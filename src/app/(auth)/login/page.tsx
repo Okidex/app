@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -170,6 +171,11 @@ export default function LoginPage() {
             </form>
           </Form>
         </CardContent>
+        <CardFooter>
+          <p className="text-xs text-center text-muted-foreground">
+            Okidex is in early access! We value your participation and feedback as you explore. The product is ever-evolving to best suit the dynamic needs of the startup community.
+          </p>
+        </CardFooter>
       </Card>
       
       <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
