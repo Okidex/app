@@ -28,36 +28,43 @@ function getServiceAccount(): admin.ServiceAccount {
 }
 
 export async function initializeAdminApp(): Promise<FirebaseAdminServices> {
-  if (adminServices) {
+  if (admin.apps.length > 0) {
+    if (adminServices) {
+      return adminServices;
+    }
+    const app = admin.app();
+    adminServices = {
+      auth: app.auth(),
+      firestore: app.firestore(),
+      storage: app.storage(),
+    };
     return adminServices;
   }
 
-  if (admin.apps.length === 0) {
-    try {
-      const serviceAccount = getServiceAccount();
-      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id;
+  try {
+    const serviceAccount = getServiceAccount();
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id;
 
-      if (!projectId) {
-         throw new Error("Could not determine Firebase Project ID. Set NEXT_PUBLIC_FIREBASE_PROJECT_ID or ensure project_id is in your service account.");
-      }
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: projectId,
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
-      });
-
-    } catch (e: any) {
-      console.error("Could not initialize Firebase Admin SDK.", e);
-      throw new Error(`Could not initialize Firebase Admin SDK. Original error: ${e.message}`);
+    if (!projectId) {
+       throw new Error("Could not determine Firebase Project ID. Set NEXT_PUBLIC_FIREBASE_PROJECT_ID or ensure project_id is in your service account.");
     }
-  }
 
-  adminServices = {
-    auth: admin.auth(),
-    firestore: admin.firestore(),
-    storage: admin.storage(),
-  };
+    const app = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: projectId,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
+    });
+
+    adminServices = {
+      auth: app.auth(),
+      firestore: app.firestore(),
+      storage: app.storage(),
+    };
+
+  } catch (e: any) {
+    console.error("Could not initialize Firebase Admin SDK.", e);
+    throw new Error(`Could not initialize Firebase Admin SDK. Original error: ${e.message}`);
+  }
 
   return adminServices;
 }

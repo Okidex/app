@@ -7,7 +7,6 @@ import { getStartupById, getUsersByIds } from '@/lib/actions';
 import { FounderProfile } from '@/lib/types';
 import ProfileEditClient from './client';
 import { notFound } from 'next/navigation';
-import { toSerializable } from '@/lib/serialize';
 
 export default async function ProfileEditPage() {
   const user = await getCurrentUser();
