@@ -13,18 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        # --- FIX APPLIED HERE: Set default working directory for all steps ---
-        # Paths must be relative to the root of your repo (e.g., ./wilfredwong/app)
+      run:
+        # This working directory will apply to all 'run' steps in this job
         working-directory: './app/wilfredwong/app'
     steps:
       - uses: actions/checkout@v4
-      
-            # --- START OF DEBUG STEP ADDED ---
-      - name: List files to debug
-        # This command lists all files starting from the root of the workspace
-        # Check the logs for this step to verify the correct path to your 'package.json'
-        run: ls -R $GITHUB_WORKSPACE
-      # --- END OF DEBUG STEP ADDED ---
       
       - run: npm ci && npm run build
         env:
