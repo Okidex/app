@@ -1,5 +1,7 @@
-
 'use server';
+
+// Add this line to force dynamic rendering (SSR) at runtime
+export const dynamic = 'force-dynamic';
 
 import 'server-only';
 import { getCurrentUser } from '@/lib/auth-actions';
@@ -20,7 +22,8 @@ export default async function ProfileEditPage() {
   if (user.role === 'founder') {
     const founderProfile = user.profile as FounderProfile;
     if (founderProfile.companyId) {
-      startup = await getStartupById(founderProfile.companyId);
+      // These functions rely on initializeAdminApp() -> FIREBASE_ADMIN_KEY
+      startup = await getStartupById(founderProfile.companyId); 
       if (startup?.founderIds) {
         founders = await getUsersByIds(startup.founderIds);
       }
