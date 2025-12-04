@@ -13,11 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Users/wilfredwong/app
+        # --- FIX APPLIED HERE: Set default working directory for all steps ---
+        # Paths must be relative to the root of your repo (e.g., ./wilfredwong/app)
+        working-directory: ./wilfredwong/app
     steps:
       - uses: actions/checkout@v4
+      
       - run: npm ci && npm run build
         env:
+          # Note: Build environment variables are now used within the new working directory
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           NEXT_PUBLIC_FIREBASE_API_KEY: '${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}'
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: '${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}'
@@ -26,11 +30,14 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}'
           NEXT_PUBLIC_FIREBASE_APP_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}'
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: '${{ vars.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}'
+          
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: studio-8509111427-a45a7
-          entryPoint: ./Users/wilfredwong/app
+          # --- FIX APPLIED HERE: Remove entryPoint as working-directory handles it ---
+          # The action now automatically operates inside ./wilfredwong/app
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
