@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "source": "Users/wilfredwong/app",
+    "source": "app",
     "ignore": [
       "firebase.json",
       "**/.*",
