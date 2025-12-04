@@ -15,7 +15,7 @@ jobs:
       run:
         # --- FIX APPLIED HERE: Set default working directory for all steps ---
         # Paths must be relative to the root of your repo (e.g., ./wilfredwong/app)
-        working-directory: ./wilfredwong/app
+        working-directory: wilfredwong/app
     steps:
       - uses: actions/checkout@v4
       
