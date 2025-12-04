@@ -4,7 +4,7 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import AppHeader from "@/components/layout/app-header";
-import { useUser, FirebaseClientProvider } from "@/firebase";
+import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,7 +41,6 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <FirebaseClientProvider>
       <AuthWrapper>
         <SidebarProvider>
           <AppSidebar />
@@ -53,6 +52,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarInset>
         </SidebarProvider>
       </AuthWrapper>
-    </FirebaseClientProvider>
   );
 }
