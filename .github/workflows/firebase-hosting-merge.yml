@@ -16,7 +16,7 @@ jobs:
     defaults:
       run:
         # This working directory will apply to all 'run' steps in this job
-        working-directory: './app/wilfredwong/app'
+        working-directory: '/Users/wilfredwong/app'
     steps:
       - uses: actions/checkout@v4
       
