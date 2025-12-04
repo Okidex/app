@@ -11,11 +11,11 @@ jobs:
   build_and_preview:
     if: '${{ github.event.pull_request.head.repo.full_name == github.repository }}'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./Users/wilfredwong/app
+    # The 'defaults: run: working-directory' line was removed.
     steps:
       - uses: actions/checkout@v4
+      # Note: This step runs in the root of the repo now. Ensure your 'app' folder
+      # contains the package.json needed for 'npm ci' and 'npm run build'.
       - run: npm ci && npm run build
         env:
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
@@ -31,6 +31,7 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: studio-8509111427-a45a7
-          entryPoint: ./Users/wilfredwong/app
+          # Set the entryPoint to the 'app' directory within your repo
+          entryPoint: './app'
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
