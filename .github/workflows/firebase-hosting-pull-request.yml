@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+            # --- START OF DEBUG STEP ADDED ---
+      - name: List files to debug
+        # This command lists all files starting from the root of the workspace
+        # Check the logs for this step to verify the correct path to your 'package.json'
+        run: ls -R $GITHUB_WORKSPACE
+      # --- END OF DEBUG STEP ADDED ---
+      
       - run: npm ci && npm run build
         env:
           # Note: Build environment variables are now used within the new working directory
