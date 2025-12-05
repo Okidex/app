@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { initializeAdminApp } from './firebase-server-init';
 import { FullUserProfile, FounderProfile, UserRole, Profile, TalentSubRole, Startup, InvestorProfile } from './types';
 import { FieldValue } from 'firebase-admin/firestore';
+import { toSerializable } from './serialize';
 
 async function createSessionCookie(idToken: string) {
     const { auth: adminAuth } = await initializeAdminApp();
@@ -41,7 +42,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
     return null;
   }
 
-  return userDoc.data() as FullUserProfile;
+  return toSerializable(userDoc.data()) as FullUserProfile;
 }
 
 export async function getCurrentUserId(): Promise<string | null> {
@@ -210,4 +211,3 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
         return { success: false, error: errorMessage };
     }
 }
-

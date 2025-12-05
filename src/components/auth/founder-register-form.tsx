@@ -39,7 +39,6 @@ export default function FounderRegisterForm() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
   useEffect(() => {
-    // Redirect if registration details are not in session storage
     if (!sessionStorage.getItem('registrationDetails')) {
       router.push('/signup');
     }
