@@ -1,4 +1,3 @@
-
 'use server';
 
 import 'server-only';
@@ -10,6 +9,7 @@ import {
     FounderProfile,
     InvestorProfile,
     TalentProfile,
+    MonthlyFinancials,
 } from './types';
 import {
   summarizeFinancialData,
@@ -34,8 +34,14 @@ import {
 import {
   smartSearch,
 } from '@/ai/flows/smart-search';
-import { getCurrentUser } from './auth-actions';
+// This import brings the function in from auth-actions:
+import { getCurrentUser as getCurrentUserFromAuth } from './auth-actions';
 
+
+// You need to export it from THIS file so that search/page.tsx can access it.
+export async function getCurrentUser(): Promise<FullUserProfile | null> {
+    return getCurrentUserFromAuth();
+}
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
   if (!userId) return null;
