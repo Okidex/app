@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from 'next/link';
@@ -44,10 +43,10 @@ export default function RootPage() {
         <Logo />
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild>
-            <Link href="/login">Log In</Link>
+            <Link href="/signin">Log In</Link>
           </Button>
           <Button asChild>
-            <Link href="/register">Sign Up</Link>
+            <Link href="/signup">Sign Up</Link>
           </Button>
         </div>
       </header>
@@ -110,7 +109,7 @@ export default function RootPage() {
                 </div>
                 <div className="text-center mt-12">
                     <Button size="lg" asChild>
-                        <Link href="/register">
+                        <Link href="/signup">
                         Join Okidex <ArrowRight className="ml-2" />
                         </Link>
                     </Button>
@@ -118,9 +117,6 @@ export default function RootPage() {
             </div>
         </section>
       </main>
-      <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Okidex. All rights reserved.</p>
-      </footer>
     </div>
   );
 }

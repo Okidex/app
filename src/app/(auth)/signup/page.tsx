@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import RegisterForm from "@/components/auth/register-form";
 import Link from "next/link";
 
-export default function RegisterPage() {
+export default function SignupPage() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>

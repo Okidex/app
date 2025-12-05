@@ -40,7 +40,7 @@ const resetSchema = z.object({
   resetEmail: z.string().email({ message: "Invalid email address." }),
 });
 
-export default function LoginPage() {
+export default function SigninPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);

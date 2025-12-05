@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -36,7 +37,7 @@ export default function RegisterForm() {
       subRole: role === 'talent' ? subRole : undefined,
     }));
     
-    router.push(`/register/${role}`);
+    router.push(`/signup/${role}`);
   };
 
   return (
@@ -145,7 +146,7 @@ export default function RegisterForm() {
 
       <Button type="submit" className="w-full" disabled={!agreed || isSubmitting}>
         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Create Account
+        Continue
       </Button>
     </form>
   );
