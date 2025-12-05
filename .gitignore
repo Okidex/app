@@ -124,3 +124,7 @@ apphosting.yaml
 
 # Other
 .vscode/
+
+# Ensure package-lock.json is committed for reliable deployments (npm ci)
+# Remove this line which was ignoring it previously
+# package-lock.json
