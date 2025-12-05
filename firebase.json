@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "source": "app",
+    "source": ".", // Change "app" to "." to signify the root of your repository
     "ignore": [
       "firebase.json",
       "**/.*",
