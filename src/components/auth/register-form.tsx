@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -37,7 +36,7 @@ export default function RegisterForm() {
       subRole: role === 'talent' ? subRole : undefined,
     }));
     
-    router.push(`/signup/${role}`);
+    router.push(`/register/${role}`);
   };
 
   return (

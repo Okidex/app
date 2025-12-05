@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -83,7 +82,7 @@ export default function JobsPage() {
                 </div>
                 <Card>
                     <CardContent className="p-8 text-center">
-                        <p>Please <Link href="/signin" className="text-primary underline">log in</Link> to view and apply for jobs.</p>
+                        <p>Please <Link href="/login" className="text-primary underline">log in</Link> to view and apply for jobs.</p>
                     </CardContent>
                 </Card>
             </div>

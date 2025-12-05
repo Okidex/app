@@ -63,7 +63,7 @@ export default function AppHeader() {
           </>
         ) : (
            <Button asChild>
-              <Link href="/login">Log In</Link>
+              <Link href="/login">Login</Link>
             </Button>
         )}
       </div>

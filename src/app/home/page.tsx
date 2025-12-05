@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -43,7 +42,7 @@ export default function HomePage() {
         <Logo />
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild>
-            <Link href="/login">Log In</Link>
+            <Link href="/login">Login</Link>
           </Button>
           <Button asChild>
             <Link href="/register">Sign Up</Link>
@@ -123,5 +122,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

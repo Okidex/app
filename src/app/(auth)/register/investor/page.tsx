@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import InvestorRegisterForm from "@/components/auth/investor-register-form";
 

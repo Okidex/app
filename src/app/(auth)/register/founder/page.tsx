@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import FounderRegisterForm from "@/components/auth/founder-register-form";
 

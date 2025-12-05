@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -15,7 +14,7 @@ export default function ProfilePage() {
       if (currentUser) {
         router.push(`/users/${currentUser.id}`);
       } else {
-        router.push('/signin');
+        router.push('/login');
       }
     }
   }, [currentUser, loading, router]);
