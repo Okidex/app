@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from 'react';
@@ -14,15 +13,14 @@ export default function RootPage() {
     if (!isUserLoading) {
       if (user && (pathname === '/' || pathname === '/home')) {
         redirect('/dashboard');
-      } else if (!user && pathname !== '/home' && !pathname.startsWith('/signin') && !pathname.startsWith('/signup')) {
-        // Allow access to home, signin, signup for unauthenticated users
       } else if (!user && pathname === '/') {
         redirect('/home');
       }
     }
   }, [user, isUserLoading, pathname]);
 
-  if (isUserLoading) {
+  // Render a loading skeleton while checking auth state or if user is logged in
+  if (isUserLoading || (user && (pathname === '/' || pathname === '/home'))) {
      return (
       <div className="flex flex-col min-h-screen">
         <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -39,13 +37,8 @@ export default function RootPage() {
     );
   }
 
-  // This handles the case where the user is not logged in and lands on the root
-  // It redirects them to the home page, which is the public-facing landing page.
-  if (pathname === '/') {
-    redirect('/home');
-  }
-
-  // This component intentionally returns null because its primary job is redirection.
-  // The actual page content is rendered by the target route (e.g., /home, /dashboard).
+  // This component intentionally returns null when no user is found
+  // and the path is not the root, because its primary job is redirection.
+  // The actual page content for /home is rendered by its own component.
   return null;
 }
