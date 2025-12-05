@@ -1,72 +1,62 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import Logo from "../logo";
-import UserAvatar from "../shared/user-avatar";
-import Notifications from "./notifications";
-import { useUser } from "@/firebase";
-import { logout } from "@/lib/auth-actions";
-import { Skeleton } from "@/components/ui/skeleton";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-export default function AppHeader() {
-  const { user, isUserLoading: loading } = useUser();
+interface FounderApplyPromptProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function FounderApplyPrompt({
+  open,
+  onOpenChange,
+}: FounderApplyPromptProps) {
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
+  const handleCreateAccount = () => {
+    router.push('/register/talent');
   };
-  
+
   return (
-    <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-        <div className="md:hidden">
-            <SidebarTrigger />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create a Talent Profile to Apply</DialogTitle>
+          <DialogDescription>
+            To apply for jobs and showcase your skills to startups, you need a
+            separate Talent Profile.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground">
+            Your Founder profile is for managing your startup. A Talent profile
+            lets you present your individual skills and experience to potential
+            employers. You can easily switch between profiles after creation.
+          </p>
         </div>
-      <div className="hidden md:block">
-        <Logo />
-      </div>
-      <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        <div className="ml-auto"></div>
-        {loading ? (
-            <Skeleton className="h-8 w-8 rounded-full" />
-        ) : user ? (
-          <>
-            <Notifications />
-            <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full">
-                <UserAvatar name={user.name || ""} avatarUrl={user.avatarUrl || ""} className="h-8 w-8"/>
-                <span className="sr-only">Toggle user menu</span>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link href={`/users/${user.id}`}>Profile</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/settings/billing">Oki+</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
-            </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        ) : (
-           <Button asChild>
-              <Link href="/login">Login</Link>
-            </Button>
-        )}
-      </div>
-    </header>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Close
+          </Button>
+          <Button type="button" onClick={handleCreateAccount}>
+            Create Talent Profile <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
