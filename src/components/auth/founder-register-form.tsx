@@ -41,7 +41,7 @@ export default function FounderRegisterForm() {
   useEffect(() => {
     // Redirect if registration details are not in session storage
     if (!sessionStorage.getItem('registrationDetails')) {
-      router.push('/register');
+      router.push('/signup');
     }
   }, [router]);
 
@@ -64,7 +64,7 @@ export default function FounderRegisterForm() {
         description: "Your session has expired. Please start over.",
         variant: "destructive",
       });
-      router.push('/register');
+      router.push('/signup');
       return;
     }
     const registrationDetails = JSON.parse(registrationDetailsString);
