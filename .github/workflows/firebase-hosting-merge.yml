@@ -14,6 +14,11 @@ jobs:
       url: https://studio-8509111427-a45a7.web.app
     steps:
       - uses: actions/checkout@v4
+      # Added step to set up a modern Node.js environment
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
       - name: List files in the repository
         run: ls -R
       - run: npm ci && npm run build
