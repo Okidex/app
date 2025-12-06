@@ -1,13 +1,14 @@
 {
   "hosting": {
-    "source": ".", // Change "app" to "." to signify the root of your repository
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "frameworksBackend": {
-      "region": "us-central1"
+      "region": "us-central1",
+      "runtime": "nodejs20"
     }
   },
   "storage": {
