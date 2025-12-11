@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -25,8 +26,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { login, sendPasswordReset } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/firebase";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -43,6 +45,7 @@ export default function LoginPage() {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const auth = useAuth();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -61,15 +64,20 @@ export default function LoginPage() {
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsLoggingIn(true);
-    const result = await login(values.email, values.password);
-    setIsLoggingIn(false);
-
-    if (result.success) {
+    if (!auth) {
+        toast({ title: "Auth service not available", variant: "destructive" });
+        setIsLoggingIn(false);
+        return;
+    }
+    try {
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      // onAuthStateChanged in the provider will handle the redirect
       router.push("/dashboard");
-    } else {
+    } catch(error: any) {
+       setIsLoggingIn(false);
        toast({
         title: "Login Failed",
-        description: result.error,
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -77,21 +85,26 @@ export default function LoginPage() {
   
   const handlePasswordReset = async (values: z.infer<typeof resetSchema>) => {
     setIsResetting(true);
-    const result = await sendPasswordReset(values.resetEmail);
-    setIsResetting(false);
-    
-    if (result.success) {
+    if (!auth) {
+        toast({ title: "Auth service not available", variant: "destructive" });
+        setIsResetting(false);
+        return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, values.resetEmail);
       setIsForgotPasswordOpen(false);
       toast({
         title: "Password Reset Email Sent",
         description: "Please check your inbox for instructions to reset your password.",
       });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error,
-        variant: "destructive",
-      });
+    } catch(error: any) {
+        toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsResetting(false);
     }
   };
 
@@ -148,7 +161,7 @@ export default function LoginPage() {
               />
               <Button type="submit" className="w-full" disabled={isLoggingIn}>
                  {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isLoggingIn ? 'Logging in...' : 'Log In'}
+                {isLoggingIn ? 'Logging in...' : 'Login'}
               </Button>
             </form>
           </Form>
@@ -196,4 +209,3 @@ export default function LoginPage() {
     </>
   );
 }
-

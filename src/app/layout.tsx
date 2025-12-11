@@ -1,10 +1,11 @@
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from "@/firebase";
+import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: "Okidex",
@@ -17,11 +18,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <FirebaseClientProvider>
+    <html lang="en" className={`${inter.variable} h-full`}>
+      <body className="h-full">
+        <Providers>
           {children}
-        </FirebaseClientProvider>
+        </Providers>
         <Toaster />
       </body>
     </html>

@@ -74,8 +74,8 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
     setTags([]);
 
     try {
-        const suggestedTags = await getProfilePictureTags(avatarUrl);
-        setTags(suggestedTags);
+        const result = await getProfilePictureTags({photoDataUri: avatarUrl});
+        setTags(result.tags);
     } catch (error) {
         console.error("Error auto-tagging profile picture:", error);
     } finally {

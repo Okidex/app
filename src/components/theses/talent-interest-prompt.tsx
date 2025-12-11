@@ -15,7 +15,7 @@ export default function TalentInterestPrompt({ open, onOpenChange }: TalentInter
     const router = useRouter();
 
     const handleCreateAccount = () => {
-        router.push('/register/founder');
+        router.push('/signup/founder');
     }
     
     return (

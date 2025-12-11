@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading: loading } = useUser();
   const router = useRouter();
 
@@ -22,7 +22,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (loading || !user) {
     return (
         <div className="flex min-h-screen">
-            <Skeleton className="hidden md:block w-64 h-screen" />
+            <div className="hidden md:block">
+              <Skeleton className="w-64 h-screen" />
+            </div>
             <div className="flex-1 flex flex-col">
                 <Skeleton className="h-16 w-full" />
                 <div className="flex-1 p-8">
@@ -33,15 +35,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  return <>{children}</>;
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppHeader />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-secondary/50">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+      <AuthWrapper>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <AppHeader />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-secondary/50">
+              {children}
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </AuthWrapper>
   );
 }

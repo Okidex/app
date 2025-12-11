@@ -37,7 +37,7 @@ Search Query: "{{query}}"
 Searchable Data (JSON):
 {{{searchableData}}}
 
-Based on the query, identify the most relevant startups and users from the data. Return their IDs in the "startupIds" and "userIds" arrays. Match against all available fields, including names, descriptions, industries, skills, investment interests, etc. Prioritize relevance.
+Based on the query, identify the most relevant startups and users from the data. Return their IDs in the "startupIds" and "userIds" arrays. Match against all available fields, including names, descriptions, industries, skills, investment interests, founder objectives (e.g., fundraising, networking), fundraising goals, and investment stages. Prioritize relevance.
 `,
 });
 

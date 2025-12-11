@@ -1,3 +1,4 @@
+
 export type UserRole = 'founder' | 'investor' | 'talent';
 export type TalentSubRole = 'co-founder' | 'employee' | 'vendor' | 'fractional-leader';
 
@@ -29,13 +30,22 @@ export interface MonthlyFinancials {
 export interface IncorporationDetails {
   isIncorporated: boolean;
   country?: string;
-  incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'PLT' | 'PLC' | 'OPC' | 'LLPs' | 'Other';
+  incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'PLT' | 'PLC' | 'OPC' | 'LLPs' | 'Private Limited' | 'Public Limited Company' | 'Charity' | 'Other';
   incorporationDate?: string;
   entityNumber?: string;
   taxId?: string;
 }
 
 export type InvestmentStage = 'Idea' | 'Pre-seed' | 'Seed' | 'Series A' | 'Series B+';
+
+export type FounderObjective = 'fundraising' | 'networking' | 'seekingCoFounders' | 'seekingProfessionalAdvice' | 'lookingForMentorship' | 'lookingToHire';
+
+export interface StartupInvestor {
+    investorId: string;
+    name: string;
+    avatarUrl: string;
+    isAnonymous: boolean;
+}
 
 export interface Startup {
   id: string;
@@ -51,6 +61,10 @@ export interface Startup {
   monthlyFinancials: MonthlyFinancials[];
   capTable: CapTableEntry[];
   incorporationDetails: IncorporationDetails;
+  fundraisingGoal?: number;
+  fundsRaised?: number;
+  showFundraisingProgress?: boolean;
+  investors?: StartupInvestor[];
 }
 
 export interface FounderProfile {
@@ -60,6 +74,7 @@ export interface FounderProfile {
   title?: string;
   linkedinUrl?: string;
   isSeekingCoFounder?: boolean;
+  objectives?: FounderObjective[];
 }
 
 export interface PortfolioCompany {

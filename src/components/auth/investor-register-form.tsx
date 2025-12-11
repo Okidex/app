@@ -6,17 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { investmentStages } from "@/lib/data";
+import { investmentStages } from "@/lib/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Exit, InvestorProfile } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { createUserAndProfile } from "@/lib/actions";
+import { createUserAndSetSession } from "@/lib/auth-actions";
 import ProfilePhotoUploader from "./profile-photo-uploader";
+import { initializeFirebase } from "@/firebase/client-init";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 export default function InvestorRegisterForm() {
   const router = useRouter();
@@ -28,11 +30,27 @@ export default function InvestorRegisterForm() {
   const [newExit, setNewExit] = useState<Exit>({ companyName: '', companyUrl: '' });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
+  useEffect(() => {
+    if (!sessionStorage.getItem('registrationDetails')) {
+      router.push('/register');
+    }
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const registrationDetails = JSON.parse(sessionStorage.getItem('registrationDetails') || '{}');
+    const registrationDetailsString = sessionStorage.getItem('registrationDetails');
+    if (!registrationDetailsString) {
+      toast({
+        title: "Registration Error",
+        description: "Your session has expired. Please start over.",
+        variant: "destructive",
+      });
+      router.push('/register');
+      return;
+    }
+    const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
     
     const investmentStagesChecked = investmentStages.filter(stage => formData.get(`stage-${stage}`));
@@ -58,26 +76,35 @@ export default function InvestorRegisterForm() {
 
     const avatarDataUrl = await getFileAsDataURL(avatarFile);
 
-    const result = await createUserAndProfile(
-      registrationDetails.email,
-      registrationDetails.password,
-      registrationDetails.name,
-      'investor',
-      profileData,
-      undefined,
-      avatarDataUrl
-    );
-    
-    setIsSubmitting(false);
+    try {
+        const { auth } = initializeFirebase();
+        const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
+        const idToken = await userCredential.user.getIdToken();
 
-    if (result.success) {
-      router.push("/dashboard");
-    } else {
-      toast({
-        title: "Registration Failed",
-        description: result.error,
-        variant: "destructive",
-      });
+        const result = await createUserAndSetSession(
+            idToken,
+            registrationDetails.name,
+            'investor',
+            profileData,
+            undefined,
+            avatarDataUrl
+        );
+        
+        if (result.success) {
+          sessionStorage.removeItem('registrationDetails');
+          router.push("/dashboard");
+        } else {
+          throw new Error(result.error || "An unknown error occurred.");
+        }
+
+    } catch(error: any) {
+        toast({
+            title: "Registration Failed",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 

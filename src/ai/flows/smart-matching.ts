@@ -41,7 +41,7 @@ Based on the user's profile, generate a list of plausible, hypothetical matches.
 - If the user is an investor, find potential founders.
 - If the user is a talent, find potential founders.
 
-For each match, provide a short, compelling, one-sentence profile. Return up to to 5 of each type of match.
+For each match, provide a short, compelling, one-sentence profile. Return up to 5 of each type of match.
 `,
 });
 
@@ -57,3 +57,4 @@ const smartMatchFlow = ai.defineFlow(
     return output!;
   }
 );
+

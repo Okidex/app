@@ -1,37 +1,30 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FullUserProfile, Startup, FounderProfile } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { getUserById } from '@/lib/actions';
 import UserAvatar from '@/components/shared/user-avatar';
 import { Star, Trash, UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 interface FoundersFormProps {
     startup: Startup;
+    initialFounders: FullUserProfile[];
 }
 
-export default function FoundersForm({ startup: initialStartup }: FoundersFormProps) {
+export default function FoundersForm({ startup: initialStartup, initialFounders }: FoundersFormProps) {
     const [startup, setStartup] = useState<Startup>(initialStartup);
-    const [founders, setFounders] = useState<FullUserProfile[]>([]);
+    const [founders, setFounders] = useState<FullUserProfile[]>(initialFounders);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const { toast } = useToast();
     
-    useEffect(() => {
-        const fetchFounders = async () => {
-            const founderProfiles = await Promise.all(startup.founderIds.map(id => getUserById(id)));
-            setFounders(founderProfiles.filter((p): p is FullUserProfile => p !== null));
-        };
-        fetchFounders();
-    }, [startup]);
-
     const [newFounderName, setNewFounderName] = useState('');
     const [newFounderTitle, setNewFounderTitle] = useState('');
     const [newFounderLinkedin, setNewFounderLinkedin] = useState('');
@@ -49,8 +42,6 @@ export default function FoundersForm({ startup: initialStartup }: FoundersFormPr
             return;
         }
 
-        // In a real app, this would invite or create a new user.
-        // For this prototype, we'll just show a success message.
         const newFounderId = `user-new-${Date.now()}`;
         const newFounder: FullUserProfile = {
             id: newFounderId,
@@ -65,15 +56,13 @@ export default function FoundersForm({ startup: initialStartup }: FoundersFormPr
             }
         };
 
-        // Note: This only simulates adding. The new user won't persist.
-        // We'll update the UI temporarily to give feedback.
+        setFounders(prev => [...prev, newFounder]);
         
         toast({
             title: "Co-founder Added",
             description: `${newFounderName} has been added to ${startup.companyName}.`,
         });
 
-        // Reset form and close dialog
         setNewFounderName('');
         setNewFounderTitle('');
         setNewFounderLinkedin('');
@@ -83,11 +72,8 @@ export default function FoundersForm({ startup: initialStartup }: FoundersFormPr
     const handleRemoveFounder = (founderId: string) => {
         const founder = founders.find(u => u.id === founderId);
         if (!founder) return;
-
-        setStartup(prev => ({
-            ...prev,
-            founderIds: prev.founderIds.filter(id => id !== founderId)
-        }));
+        
+        setFounders(prev => prev.filter(f => f.id !== founderId));
 
         toast({
             title: "Founder Removed",
@@ -141,8 +127,8 @@ export default function FoundersForm({ startup: initialStartup }: FoundersFormPr
                                     <UserAvatar name={founder.name} avatarUrl={founder.avatarUrl} className="w-12 h-12" />
                                     <div>
                                         <p className="font-semibold flex items-center gap-1.5">
-                                            {founder.name}
-                                            {profile.isLead && <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-500" title="Lead Founder" />}
+                                            <Link href={`/users/${founder.id}`} className="hover:underline">{founder.name}</Link>
+                                            {profile.isLead && <span title="Lead Founder"><Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-500" /></span>}
                                         </p>
                                         <p className="text-sm text-muted-foreground">{profile.title}</p>
                                     </div>

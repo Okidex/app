@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
-  User,
   MessageSquare,
   Briefcase,
   FileText,
@@ -36,25 +35,25 @@ import {
 } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser, useFirestore } from '@/firebase';
-import { logout } from '@/lib/auth';
-import { getCurrentUser } from '@/lib/actions';
+import { logout } from '@/lib/auth-actions';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { Skeleton } from '../ui/skeleton';
+import UserAvatar from '../shared/user-avatar';
 
 const menuItemsFounder = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/matches', label: 'Mobile', icon: Smartphone, notificationType: 'match' },
+  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match' },
   { href: '/search', label: 'Search', icon: Search },
-  { href: '/profile', label: 'Profile', icon: User },
   { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message' },
+  { href: '/applicants', label: 'Applicants', icon: UsersIcon, notificationType: 'applicant', premium: true },
   { href: '/jobs', label: 'Jobs', icon: Briefcase, premium: true },
   { href: '/theses', label: 'Theses', icon: FileText, premium: true },
 ];
 
 const menuItemsInvestor = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/matches', label: 'Mobile', icon: Smartphone, notificationType: 'match' },
+  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match' },
   { href: '/search', label: 'Search', icon: Search },
-  { href: '/profile', label: 'Profile', icon: User },
   { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message' },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/applicants', label: 'Applicants', icon: UsersIcon, notificationType: 'applicant' },
@@ -63,9 +62,8 @@ const menuItemsInvestor = [
 
 const menuItemsTalent = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/matches', label: 'Mobile', icon: Smartphone, notificationType: 'match' },
+  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match' },
   { href: '/search', label: 'Search', icon: Search },
-  { href: '/profile', label: 'Profile', icon: User },
   { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message' },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
 ];
@@ -73,19 +71,10 @@ const menuItemsTalent = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user: authUser, isUserLoading: authLoading } = useUser();
-  const [user, setUser] = React.useState<FullUserProfile | null>(null);
+  const { user, isUserLoading: authLoading } = useUser();
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const isMobile = useIsMobile();
   const db = useFirestore();
-
-  React.useEffect(() => {
-    if (authUser) {
-      getCurrentUser().then(setUser);
-    } else {
-      setUser(null);
-    }
-  }, [authUser]);
 
   React.useEffect(() => {
     if (!user || !db) return;
@@ -104,25 +93,25 @@ export function AppSidebar() {
     return () => unsubscribe();
   }, [user, db]);
 
-  if (authLoading || !user) {
-    return null;
-  }
-
   const handleLogout = async () => {
     await logout();
     router.push('/');
   };
+  
+  const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
 
-  const isFounder = user.role === 'founder';
-  const isTalent = user.role === 'talent';
-  const isSeekingCoFounder =
-    isTalent && (user.profile as TalentProfile).isSeekingCoFounder;
+  const menuItems = React.useMemo(() => {
+    if (!user) return [];
+    
+    const { role, profile } = user;
 
-  const getMenuItems = () => {
+    const isSeekingCoFounder = (role === 'founder' || role === 'talent') && (profile as FounderProfile | TalentProfile)?.isSeekingCoFounder;
+    const isCoFounderTalent = role === 'talent' && (profile as TalentProfile)?.subRole === 'co-founder';
+    
     let baseItems;
-    switch (user.role) {
+    switch (role) {
       case 'founder':
-        baseItems = menuItemsFounder;
+        baseItems = menuItemsFounder.filter(item => !item.premium || isPremiumFounder);
         break;
       case 'investor':
         baseItems = menuItemsInvestor;
@@ -132,8 +121,8 @@ export function AppSidebar() {
         if (!isSeekingCoFounder) {
           talentItems = talentItems.filter((item) => item.href !== '/matches');
         }
-        if ((user.profile as TalentProfile).subRole === 'co-founder') {
-          talentItems.push({ href: '/theses', label: 'Theses', icon: FileText });
+        if (isCoFounderTalent) {
+          talentItems.push({ href: '/theses', label: 'Theses', icon: FileText, notificationType: 'applicant' });
         }
         baseItems = talentItems;
         break;
@@ -145,9 +134,24 @@ export function AppSidebar() {
       return baseItems.filter((item) => item.href !== '/matches');
     }
     return baseItems;
-  };
+  }, [user, isMobile, isPremiumFounder]);
 
-  const menuItems = getMenuItems();
+  if (authLoading || !user) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="hidden md:flex">
+          <Logo />
+        </SidebarHeader>
+        <SidebarMenu className="p-2 flex-1">
+          {Array.from({ length: 7 }).map((_, i) => (
+             <SidebarMenuItem key={i} className="p-2">
+                <Skeleton className="h-5 w-full" />
+             </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar>
@@ -158,33 +162,31 @@ export function AppSidebar() {
         <Logo />
       </SidebarHeader>
       <SidebarMenu className="p-2 flex-1">
-        {menuItems.map(({ href, label, icon, premium, notificationType }) => {
+        {menuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
           const notificationCount = notifications.filter(
             (n) => n.type === notificationType
           ).length;
-
+          
           return (
             <SidebarMenuItem key={href}>
               <SidebarMenuButton
                 asChild
                 isActive={
-                  pathname.startsWith(href) && (href !== '/profile' || pathname === href)
+                  pathname.startsWith(href) && (href !== '/' || pathname === href)
                 }
                 tooltip={label}
               >
                 <Link href={href}>
-                  <div style={{ display: 'contents' }}>
-                    {React.createElement(icon)}
+                    {Icon && <Icon />}
                     <span>{label}</span>
                     {notificationCount > 0 && (
                       <SidebarMenuBadge>{notificationCount}</SidebarMenuBadge>
                     )}
-                    {isFounder && premium && !notificationCount && (
+                    {user.role === 'founder' && premium && !isPremiumFounder && !notificationCount && (
                       <SidebarMenuBadge className="flex items-center justify-center w-5 h-5 p-0 text-xs">
                         <Plus className="w-3 h-3" />
                       </SidebarMenuBadge>
                     )}
-                  </div>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -207,9 +209,18 @@ export function AppSidebar() {
             <span>Logout</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
+        <SidebarMenuItem>
+            <Link href={`/users/${user.id}`} className='w-full'>
+                <SidebarMenuButton tooltip="Profile" size="lg" className="w-full justify-start mt-2">
+                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="size-8"/>
+                    <div className="flex flex-col items-start text-left">
+                        <span className="font-medium">{user.name}</span>
+                        <span className="text-xs text-muted-foreground -mt-0.5 capitalize">{user.role}</span>
+                    </div>
+                </SidebarMenuButton>
+            </Link>
+        </SidebarMenuItem>
       </SidebarFooter>
     </Sidebar>
   );
 }
-
-    

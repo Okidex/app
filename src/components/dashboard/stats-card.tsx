@@ -23,5 +23,3 @@ export default function StatsCard({ title, value, icon: Icon, description }: Sta
     </Card>
   );
 }
-
-    

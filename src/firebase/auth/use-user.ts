@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useFirebase } from '@/firebase/provider';
-import { type User } from 'firebase/auth';
+import { FullUserProfile } from '@/lib/types';
 
 export interface UserHookResult {
-  user: User | null;
+  user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
 }

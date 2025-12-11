@@ -25,7 +25,7 @@ export default function LinkedInPopulator() {
     }
     setIsLoading(true);
     try {
-      const profileData = await getProfileFromLinkedIn(linkedinUrl);
+      const profileData = await getProfileFromLinkedIn({linkedinUrl});
       toast({
         title: "Profile Data Fetched",
         description: (

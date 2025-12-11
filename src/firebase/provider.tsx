@@ -1,20 +1,15 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
+import { Firestore, doc, getDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-}
+import { FullUserProfile } from '@/lib/types';
 
 interface UserAuthState {
-  user: User | null;
+  user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
 }
@@ -24,7 +19,7 @@ export interface FirebaseContextState {
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
-  user: User | null;
+  user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
 }
@@ -33,12 +28,19 @@ export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  user: User | null;
+  user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
+
+interface FirebaseProviderProps {
+    children: ReactNode;
+    firebaseApp: FirebaseApp;
+    firestore: Firestore;
+    auth: Auth;
+}
 
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -53,15 +55,32 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   });
 
   useEffect(() => {
-    if (!auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+    if (!auth || !firestore) {
+      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth or Firestore service not provided.") });
       return;
     }
 
     const unsubscribe = onAuthStateChanged(
       auth,
-      (firebaseUser) => {
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+      async (firebaseUser) => {
+        if (firebaseUser) {
+            try {
+                // Fetch user profile from Firestore on the client
+                const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    setUserAuthState({ user: userDocSnap.data() as FullUserProfile, isUserLoading: false, userError: null });
+                } else {
+                    setUserAuthState({ user: null, isUserLoading: false, userError: new Error("User document not found.") });
+                }
+            } catch (error) {
+                console.error("FirebaseProvider: Error fetching user document:", error);
+                setUserAuthState({ user: null, isUserLoading: false, userError: error as Error });
+            }
+        } else {
+            setUserAuthState({ user: null, isUserLoading: false, userError: null });
+        }
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
@@ -69,7 +88,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
     return () => unsubscribe();
-  }, [auth]);
+  }, [auth, firestore]);
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);

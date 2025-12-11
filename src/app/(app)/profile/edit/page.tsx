@@ -1,6 +1,6 @@
+
 'use client';
 
-import { getCurrentUser, updateUserProfile } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,70 +9,75 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import ProfilePictureUploader from "@/components/profile/profile-picture-uploader";
 import MonthlyFinancialsForm from "@/components/profile/monthly-financials-form";
-import { FounderProfile, InvestorProfile, Startup, InvestmentStage, TalentProfile, FullUserProfile, Profile } from "@/lib/types";
+import { FounderProfile, InvestorProfile, Startup, TalentProfile, FullUserProfile, Profile } from "@/lib/types";
 import LinkedInPopulator from "@/components/profile/linkedin-populator";
 import BusinessLogoUploader from "@/components/profile/business-logo-uploader";
 import CapTableForm from "@/components/profile/cap-table-form";
 import FoundersForm from "@/components/profile/founders-form";
-import IncorporationDetailsForm from "@/components/profile/incorporation-details-form";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
 import { useState, useEffect } from "react";
 import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
-import { getDoc, doc } from "firebase/firestore";
-import { useFirestore, useUser } from "@/firebase";
-import { investmentStages } from "@/lib/data";
+import { investmentStages } from "@/lib/constants";
+import IncorporationDetailsForm from "@/components/profile/incorporation-details-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { updateUserProfile, getStartupById, getUsersByIds } from "@/lib/actions";
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 
 export default function ProfileEditPage() {
-  const { user: authUser } = useUser();
-  const [user, setUser] = useState<FullUserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-  const router = useRouter();
+  const { user, isUserLoading } = useUser();
   const db = useFirestore();
-
-  useEffect(() => {
-    if (authUser) {
-        getCurrentUser().then((user) => {
-          if (user) {
-            setUser(user);
-          }
-        });
-    }
-  }, [authUser]);
-
-  const [startup, setStartup] = useState<Startup | undefined>(undefined);
-  
-  useEffect(() => {
-    if (user && user.role === 'founder' && db) {
-      const profile = user.profile as FounderProfile;
-      if (profile.companyId) {
-        const fetchStartup = async () => {
-          const startupDoc = await getDoc(doc(db, 'startups', profile.companyId!));
-          if (startupDoc.exists()) {
-            setStartup(startupDoc.data() as Startup);
-          }
-           setLoading(false);
-        };
-        fetchStartup();
-      } else {
-        setLoading(false);
-      }
-    } else if (user) {
-      setLoading(false);
-    }
-  }, [user, db]);
+  const [startup, setStartup] = useState<Startup | null>(null);
+  const [founders, setFounders] = useState<FullUserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
   const [isFractionalLeader, setIsFractionalLeader] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+  
+  useEffect(() => {
+    if (isUserLoading) return;
+    if (!user) {
+      notFound();
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      let tempStartup: Startup | null = null;
+      let tempFounders: FullUserProfile[] = [];
+
+      if (user.role === 'founder') {
+        const founderProfile = user.profile as FounderProfile;
+        if (founderProfile.companyId && db) {
+          const startupRef = doc(db, 'startups', founderProfile.companyId);
+          const startupSnap = await getDoc(startupRef);
+          if (startupSnap.exists()) {
+            tempStartup = startupSnap.data() as Startup;
+            if (tempStartup?.founderIds) {
+               const founderProfiles = await getUsersByIds(tempStartup.founderIds);
+               tempFounders = founderProfiles.filter((p): p is FullUserProfile => p !== null);
+            }
+          }
+        }
+      }
+      setStartup(tempStartup);
+      setFounders(tempFounders);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [user, isUserLoading, db]);
 
   useEffect(() => {
     if (user) {
@@ -88,24 +93,23 @@ export default function ProfileEditPage() {
     }
   }, [user]);
 
-  if (loading || !user) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-48 mb-2"/>
-          <Skeleton className="h-4 w-96"/>
+  if (isUserLoading || loading || !user) {
+     return (
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-5 w-96" />
+          </div>
+          <Separator />
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-1 space-y-8">
+                    <Skeleton className="h-64 w-full rounded-lg" />
+                </div>
+                <div className="md:col-span-2 space-y-6">
+                    <Skeleton className="h-[500px] w-full rounded-lg"/>
+                </div>
+           </div>
         </div>
-        <Separator />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 space-y-8">
-                <Skeleton className="h-48 w-full"/>
-                <Skeleton className="h-48 w-full"/>
-            </div>
-            <div className="md:col-span-2">
-                <Skeleton className="h-[500px] w-full"/>
-            </div>
-        </div>
-      </div>
     )
   }
   
@@ -169,7 +173,7 @@ export default function ProfileEditPage() {
         title: "Profile Saved",
         description: "Your general information has been updated.",
       });
-      router.push('/profile');
+      router.refresh(); 
     } else {
       toast({
         title: "Error",
@@ -416,7 +420,7 @@ export default function ProfileEditPage() {
       {isFounder && startup && (
         <>
             <Separator />
-            <FoundersForm startup={startup} />
+            <FoundersForm startup={startup} initialFounders={founders} />
             {isIncorporated && (
                 <>
                     <Separator />

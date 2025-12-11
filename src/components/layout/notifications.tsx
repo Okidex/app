@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -26,6 +27,7 @@ import {
   writeBatch,
   orderBy,
 } from 'firebase/firestore';
+import { getUsersByIds } from '@/lib/actions';
 
 const getIcon = (type: NotificationType) => {
   switch (type) {
@@ -54,7 +56,7 @@ export default function Notifications() {
 
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', authUser.uid),
+      where('userId', '==', authUser.id),
       orderBy('timestamp', 'desc')
     );
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -70,13 +72,9 @@ export default function Notifications() {
         const newSenders = new Map(senders);
         const idsToFetch = senderIds.filter((id) => !newSenders.has(id));
         if (idsToFetch.length > 0) {
-          const usersQuery = query(
-            collection(db, 'users'),
-            where('id', 'in', idsToFetch)
-          );
-          const usersSnap = await getDocs(usersQuery);
-          usersSnap.forEach((doc) => {
-            newSenders.set(doc.id, doc.data() as FullUserProfile);
+          const users = await getUsersByIds(idsToFetch);
+          users.forEach((user) => {
+            newSenders.set(user.id, user);
           });
           setSenders(newSenders);
         }
@@ -84,7 +82,7 @@ export default function Notifications() {
     });
 
     return () => unsubscribe();
-  }, [authUser, senders, db]);
+  }, [authUser, db]);
 
   const markAllAsRead = async () => {
     if (!authUser || unreadCount === 0 || !db) return;
@@ -113,9 +111,9 @@ export default function Notifications() {
       </PopoverTrigger>
       <PopoverContent className="w-80 md:w-96 p-0" align="end">
         <Card className="border-0">
-          <CardHeader className="flex-row items-center justify-between py-3 px-4">
-            <CardTitle className="text-lg">Notifications</CardTitle>
-            {unreadCount > 0 && (
+            <CardHeader className="flex-row items-center justify-between py-3 px-4">
+                <CardTitle className="text-lg">Notifications</CardTitle>
+                {unreadCount > 0 && (
               <Button
                 variant="link"
                 size="sm"
@@ -125,7 +123,7 @@ export default function Notifications() {
                 Mark all as read
               </Button>
             )}
-          </CardHeader>
+            </CardHeader>
           <Separator />
           <CardContent className="p-0 max-h-96 overflow-y-auto">
             {notifications.length > 0 ? (

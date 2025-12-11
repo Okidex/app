@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrentUser, sendMessage } from "@/lib/actions";
+import { sendMessage } from "@/lib/actions";
+import { getCurrentUser } from "@/lib/auth-actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Send } from "lucide-react";
@@ -227,3 +228,5 @@ export default function MessagesPage() {
         </div>
     );
 }
+
+    

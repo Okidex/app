@@ -1,4 +1,5 @@
-'use client';
+
+"use client";
 
 import {
   Dialog,
@@ -24,7 +25,7 @@ export default function FounderApplyPrompt({
   const router = useRouter();
 
   const handleCreateAccount = () => {
-    router.push('/register/talent');
+    router.push('/signup/talent');
   };
 
   return (

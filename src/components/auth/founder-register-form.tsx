@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { investmentStages } from "@/lib/data";
+import { investmentStages, founderObjectives } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,11 +16,14 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
-import { createUserAndProfile } from "@/lib/actions";
+import { createUserAndSetSession } from "@/lib/auth-actions";
 import { useToast } from "@/hooks/use-toast";
-import { InvestmentStage } from "@/lib/types";
+import { InvestmentStage, FounderObjective } from "@/lib/types";
 import ProfilePhotoUploader from "./profile-photo-uploader";
 import LogoUploader from "./logo-uploader";
+import { initializeFirebase } from "@/firebase/client-init";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function FounderRegisterForm() {
   const router = useRouter();
@@ -30,15 +33,40 @@ export default function FounderRegisterForm() {
   const [isIncorporated, setIsIncorporated] = useState(false);
   const [incorporationDate, setIncorporationDate] = useState<Date | undefined>();
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
+  const [selectedObjectives, setSelectedObjectives] = useState<FounderObjective[]>([]);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!sessionStorage.getItem('registrationDetails')) {
+      router.push('/signup');
+    }
+  }, [router]);
+
+  const handleObjectiveChange = (objective: FounderObjective) => {
+    setSelectedObjectives(prev => 
+      prev.includes(objective) 
+        ? prev.filter(o => o !== objective) 
+        : [...prev, objective]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const registrationDetails = JSON.parse(sessionStorage.getItem('registrationDetails') || '{}');
+    const registrationDetailsString = sessionStorage.getItem('registrationDetails');
+    if (!registrationDetailsString) {
+      toast({
+        title: "Registration Error",
+        description: "Your session has expired. Please start over.",
+        variant: "destructive",
+      });
+      router.push('/signup');
+      return;
+    }
+    const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
 
     const profileData = {
@@ -49,6 +77,8 @@ export default function FounderRegisterForm() {
         stage: formData.get('stage') as InvestmentStage,
         website: formData.get('website') as string,
         description: formData.get('description') as string,
+        objectives: selectedObjectives,
+        fundraisingGoal: Number(formData.get('fundraisingGoal') || 0),
         isSeekingCoFounder,
         isIncorporated,
         country: formData.get('country') as string,
@@ -70,27 +100,35 @@ export default function FounderRegisterForm() {
     const avatarDataUrl = await getFileAsDataURL(avatarFile);
     const logoDataUrl = await getFileAsDataURL(logoFile);
 
-    const result = await createUserAndProfile(
-      registrationDetails.email,
-      registrationDetails.password,
-      registrationDetails.name,
-      'founder',
-      profileData,
-      undefined,
-      avatarDataUrl,
-      logoDataUrl
-    );
-    
-    setIsSubmitting(false);
+    try {
+        const { auth } = initializeFirebase();
+        const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
+        const idToken = await userCredential.user.getIdToken();
 
-    if (result.success) {
-      router.push("/dashboard");
-    } else {
-      toast({
-        title: "Registration Failed",
-        description: result.error,
-        variant: "destructive",
-      });
+        const result = await createUserAndSetSession(
+            idToken,
+            registrationDetails.name,
+            'founder',
+            profileData,
+            undefined,
+            avatarDataUrl,
+            logoDataUrl
+        );
+
+        if (result.success) {
+            router.push("/dashboard");
+        } else {
+            throw new Error(result.error || "An unknown error occurred.");
+        }
+
+    } catch (error: any) {
+        toast({
+            title: "Registration Failed",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -115,6 +153,14 @@ export default function FounderRegisterForm() {
                         <Label htmlFor="title">Your Title</Label>
                         <Input name="title" id="title" placeholder="e.g., CEO & Co-founder" required />
                     </div>
+                </div>
+                 <div className="flex items-center space-x-2 pt-4">
+                    <Switch
+                        id="is-seeking-cofounder"
+                        checked={isSeekingCoFounder}
+                        onCheckedChange={setIsSeekingCoFounder}
+                    />
+                    <Label htmlFor="is-seeking-cofounder">I am actively seeking a co-founder</Label>
                 </div>
             </div>
           
@@ -157,15 +203,36 @@ export default function FounderRegisterForm() {
                 <Label htmlFor="description">Company Description</Label>
                 <Textarea name="description" id="description" placeholder="Describe your company, vision, and product..." required />
             </div>
-            <div className="flex items-center space-x-2 pt-2">
-                <Switch 
-                    id="is-seeking-cofounder" 
-                    checked={isSeekingCoFounder}
-                    onCheckedChange={setIsSeekingCoFounder}
-                />
-                <Label htmlFor="is-seeking-cofounder">Open to Co-founder Opportunities</Label>
+          </div>
+          
+          <Separator />
+          
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">What are you looking for?</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {founderObjectives.map((obj) => (
+                <div key={obj.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`objective-${obj.id}`}
+                    checked={selectedObjectives.includes(obj.id)}
+                    onCheckedChange={() => handleObjectiveChange(obj.id)}
+                  />
+                  <Label htmlFor={`objective-${obj.id}`}>{obj.label}</Label>
+                </div>
+              ))}
             </div>
-             <div className="flex items-center space-x-2 pt-2">
+             {selectedObjectives.includes('fundraising') && (
+              <div className="space-y-2 pt-2">
+                <Label htmlFor="fundraisingGoal">Fundraising Goal (USD)</Label>
+                <Input type="number" id="fundraisingGoal" name="fundraisingGoal" placeholder="e.g., 500000" />
+              </div>
+            )}
+          </div>
+          
+          <Separator />
+
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
                 <Switch id="is-incorporated" name="isIncorporated" checked={isIncorporated} onCheckedChange={setIsIncorporated} />
                 <Label htmlFor="is-incorporated">Is your startup incorporated?</Label>
             </div>
@@ -188,6 +255,9 @@ export default function FounderRegisterForm() {
                                     <SelectItem value="C-Corp">C-Corp</SelectItem>
                                     <SelectItem value="S-Corp">S-Corp</SelectItem>
                                     <SelectItem value="LLC">LLC</SelectItem>
+                                    <SelectItem value="Private Limited">Private Limited</SelectItem>
+                                    <SelectItem value="Public Limited Company">Public Limited Company</SelectItem>
+                                    <SelectItem value="Charity">Charity</SelectItem>
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
