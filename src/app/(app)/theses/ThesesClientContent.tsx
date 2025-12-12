@@ -35,7 +35,7 @@ export default function ThesesClientContent() {
   useEffect(() => {
       const fetchTheses = async () => {
           if (!db) {
-            setLoading(false);
+            if(!authLoading) setLoading(false);
             return;
           };
           setLoading(true);
@@ -59,7 +59,7 @@ export default function ThesesClientContent() {
           setLoading(false);
       };
       fetchTheses();
-  }, [db]);
+  }, [db, authLoading]);
   
   const [newThesis, setNewThesis] = useState({
     title: "",

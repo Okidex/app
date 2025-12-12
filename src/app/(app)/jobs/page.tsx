@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,30 +18,21 @@ import FounderApplyPrompt from "@/components/jobs/founder-apply-prompt";
 import { collection, addDoc, serverTimestamp, query, getDocs, orderBy } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser } from "@/lib/auth-actions";
 
 export default function JobsPage() {
-    const { user: authUser, isUserLoading: authLoading } = useUser();
-    const [currentUser, setCurrentUser] = useState<FullUserProfile | null>(null);
+    const { user: currentUser, isUserLoading: authLoading } = useUser();
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [isPostJobOpen, setIsPostJobOpen] = useState(false);
     const [showFounderPrompt, setShowFounderPrompt] = useState(false);
     const { toast } = useToast();
     const db = useFirestore();
-
-    useEffect(() => {
-        if (!authLoading && authUser) {
-            getCurrentUser().then(setCurrentUser);
-        } else if (!authLoading && !authUser) {
-            setLoading(false);
-        }
-    }, [authUser, authLoading]);
     
     useEffect(() => {
         const fetchJobs = async () => {
             if (!db) {
-                setLoading(false);
+                // Firestore might not be available right away
+                if(!authLoading) setLoading(false);
                 return;
             };
             setLoading(true);
@@ -53,7 +43,7 @@ export default function JobsPage() {
             setLoading(false);
         };
         fetchJobs();
-    }, [db]);
+    }, [db, authLoading]);
 
     const [newJob, setNewJob] = useState({
         title: "",

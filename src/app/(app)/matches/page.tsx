@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const MatchesPageClient = dynamic(() => import('./client'), {
+  ssr: false,
   loading: () => (
     <div className="flex flex-col items-center justify-center h-full p-4 overflow-hidden">
         <Skeleton className="h-10 w-80 mb-6" />
@@ -17,7 +18,6 @@ const MatchesPageClient = dynamic(() => import('./client'), {
         </div>
     </div>
   ),
-  ssr: false,
 });
 
 
