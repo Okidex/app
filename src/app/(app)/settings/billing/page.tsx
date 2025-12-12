@@ -3,6 +3,8 @@
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 
+export const dynamic = 'force-dynamic';
+
 const BillingClient = dynamic(() => import('./client'), {
   ssr: false,
   loading: () => (

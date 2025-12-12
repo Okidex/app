@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -29,6 +28,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+
+export const dynamic = 'force-dynamic';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),

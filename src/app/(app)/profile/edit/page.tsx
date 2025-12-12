@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 
+export const dynamic = 'force-dynamic';
+
 const ProfileEditClient = dynamic(() => import('./client'), {
   ssr: false,
   loading: () => (

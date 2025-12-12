@@ -1,5 +1,17 @@
+"use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import TalentRegisterForm from "@/components/auth/talent-register-form";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export const dynamic = 'force-dynamic';
+
+const TalentRegisterFormClient = dynamic(
+    () => import("@/components/auth/talent-register-form"),
+    {
+      ssr: false,
+      loading: () => <Skeleton className="h-[500px] w-full" />,
+    }
+);
 
 export default function TalentRegisterPage() {
   return (
@@ -11,7 +23,7 @@ export default function TalentRegisterPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <TalentRegisterForm />
+        <TalentRegisterFormClient />
       </CardContent>
     </Card>
   );

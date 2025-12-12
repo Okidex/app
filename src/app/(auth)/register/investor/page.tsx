@@ -1,5 +1,18 @@
+"use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import InvestorRegisterForm from "@/components/auth/investor-register-form";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export const dynamic = 'force-dynamic';
+
+const InvestorRegisterFormClient = dynamic(
+  () => import("@/components/auth/investor-register-form"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[500px] w-full" />,
+  }
+);
+
 
 export default function InvestorRegisterPage() {
   return (
@@ -11,7 +24,7 @@ export default function InvestorRegisterPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <InvestorRegisterForm />
+        <InvestorRegisterFormClient />
       </CardContent>
     </Card>
   );

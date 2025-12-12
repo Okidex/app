@@ -1,8 +1,9 @@
-
 'use client';
 
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
+
+export const dynamic = 'force-dynamic';
 
 const ThesesClientContent = dynamic(() => import('./ThesesClientContent'), {
   ssr: false,

@@ -19,6 +19,8 @@ import { collection, addDoc, serverTimestamp, query, getDocs, orderBy } from "fi
 import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
+export const dynamic = 'force-dynamic';
+
 export default function JobsPage() {
     const { user: currentUser, isUserLoading: authLoading } = useUser();
     const [jobs, setJobs] = useState<Job[]>([]);

@@ -1,9 +1,10 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import RegisterForm from "@/components/auth/register-form";
 import Link from "next/link";
+
+export const dynamic = 'force-dynamic';
 
 export default function RegisterPage() {
   return (

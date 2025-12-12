@@ -1,9 +1,9 @@
-
 "use client";
 
-import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
+
+export const dynamic = 'force-dynamic';
 
 const MatchesPageClient = dynamic(() => import('./client'), {
   ssr: false,
@@ -22,9 +22,5 @@ const MatchesPageClient = dynamic(() => import('./client'), {
 
 
 export default function MatchesPage() {
-    return (
-        <Suspense>
-            <MatchesPageClient />
-        </Suspense>
-    );
+    return <MatchesPageClient />;
 }
