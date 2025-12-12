@@ -1,17 +1,8 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import dynamic from "next/dynamic";
-import { Skeleton } from "@/components/ui/skeleton";
+import FounderRegisterFormClient from "@/components/auth/founder-register-form";
 
 export const dynamic = 'force-dynamic';
-
-const FounderRegisterFormClient = dynamic(
-  () => import("@/components/auth/founder-register-form"),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-[500px] w-full" />,
-  }
-);
 
 export default function FounderRegisterPage() {
   return (

@@ -1,11 +1,11 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import dynamic from "next/dynamic";
+import dynamicClient from "next/dynamic"; // Renamed the import alias
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; // This line is fine
 
-const TalentRegisterFormClient = dynamic(
+const TalentRegisterFormClient = dynamicClient( // Used the new alias
     () => import("@/components/auth/talent-register-form"),
     {
       ssr: false,
