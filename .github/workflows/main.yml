@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 20
           
-      # --- ADDED STEP: Create .env file for Next.js build ---
+      # --- Create .env file for Next.js build ---
       - name: Create .env file for Next.js build
         run: |
           echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env.production
@@ -29,6 +29,13 @@ jobs:
           echo "NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}" >> .env.production
           echo "FIREBASE_SERVICE_ACCOUNT=${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" >> .env.production
+
+      # --- ADDED DEBUG STEP ---
+      - name: Debug Environment Variables
+        run: |
+          # This command lists all environment variables that start with NEXT_PUBLIC_
+          echo "Verifying NEXT_PUBLIC variables are present in the shell environment:"
+          printenv | grep NEXT_PUBLIC_
 
       - run: npm ci && npm run build
         # Removed the large 'env' block from here
