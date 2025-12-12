@@ -1,9 +1,9 @@
+
 'use server';
 
 import 'server-only';
 import { cookies } from 'next/headers';
 import { initializeAdminApp } from './firebase-server-init';
-// FIX 1: Added 'TalentProfile' to the imports list
 import { FullUserProfile, FounderProfile, UserRole, Profile, TalentSubRole, Startup, InvestorProfile, TalentProfile } from './types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { toSerializable } from '@/lib/serialize';
@@ -12,8 +12,7 @@ async function createSessionCookie(idToken: string) {
     const { auth: adminAuth } = await initializeAdminApp();
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-    // FIX 2: Added 'await' before cookies()
-    (await cookies()).set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
+    cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
 }
 
 export async function login(idToken: string):Promise<{success: boolean, error?: string}> {
@@ -26,8 +25,7 @@ export async function login(idToken: string):Promise<{success: boolean, error?: 
 }
 
 export async function logout() {
-    // FIX 3: Added 'await' before cookies()
-    (await cookies()).set('__session', '', { maxAge: 0, path: '/' });
+    cookies().set('__session', '', { maxAge: 0, path: '/' });
 }
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
@@ -49,9 +47,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
 
 export async function getCurrentUserId(): Promise<string | null> {
     const { auth } = await initializeAdminApp();
-    // FIX 4: Added 'await' before cookies()
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('__session');
+    const sessionCookie = cookies().get('__session');
 
     if (!sessionCookie) {
         return null;
@@ -98,8 +94,7 @@ export async function createUserAndSetSession(
         const uid = decodedToken.uid;
         const email = decodedToken.email!;
 
-        // FIX 5: Corrected template literal string interpolation from {uid} to ${uid}
-        let avatarUrl = `picsum.photos{uid}/400/400`;
+        let avatarUrl = `https://picsum.photos/seed/${uid}/400/400`;
         if (avatarDataUrl) {
             avatarUrl = await uploadImage(avatarDataUrl, `avatars/${uid}`);
         }
@@ -120,8 +115,7 @@ export async function createUserAndSetSession(
 
         if (role === 'founder') {
             const startupRef = firestore.collection('startups').doc();
-            // FIX 6: Corrected template literal string interpolation from {startupRef.id} to ${startupRef.id}
-            let companyLogoUrl = `picsum.photos{startupRef.id}/200/200`;
+            let companyLogoUrl = `https://picsum.photos/seed/logo-${startupRef.id}/200/200`;
             if (logoDataUrl) {
                 companyLogoUrl = await uploadImage(logoDataUrl, `logos/${startupRef.id}`);
             }
