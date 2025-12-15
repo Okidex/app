@@ -1,17 +1,8 @@
 "use client";
+export const dynamic = 'force-dynamic';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import dynamicClient from "next/dynamic"; // Renamed the import alias
-import { Skeleton } from "@/components/ui/skeleton";
-
-export const dynamic = 'force-dynamic'; // This line is fine
-
-const InvestorRegisterFormClient = dynamicClient( // Used the new alias
-  () => import("@/components/auth/investor-register-form"),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-[500px] w-full" />,
-  }
-);
+import InvestorRegisterFormClient from "@/components/auth/investor-register-form";
 
 export default function InvestorRegisterPage() {
   return (

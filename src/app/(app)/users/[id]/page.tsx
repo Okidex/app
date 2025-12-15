@@ -1,4 +1,6 @@
+
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { notFound, useParams } from "next/navigation";
 import UserAvatar from "@/components/shared/user-avatar";
@@ -28,9 +30,6 @@ import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star } from "lucide-react";
 import { getFinancialBreakdown, getUserById } from "@/lib/actions";
-
-export const dynamic = 'force-dynamic';
-
 
 const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, currentUser: FullUserProfile | null }) => {
     const profile = user.profile as FounderProfile;
@@ -113,10 +112,10 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     } satisfies ChartConfig;
 
     const handleBarClick = async (data: any) => {
-        if (data && data.activePayload && data.activePayload) {
-            const metric = data.activePayload.payload.metric;
+        if (data && data.activePayload && data.activePayload[0]) {
+            const metric = data.activePayload[0].payload.metric;
             setSelectedMetric(metric);
-            setIsLoadingBreakdown(true);
+setIsLoadingBreakdown(true);
             const result = await getFinancialBreakdown({metric});
             setBreakdown(result.breakdown);
             setIsLoadingBreakdown(false);
@@ -178,28 +177,13 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+                            <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
                                     <BarChart accessibilityLayer data={chartData} onClick={handleBarClick}>
                                         <CartesianGrid vertical={false} />
-                                        <XAxis
-                                            dataKey="metric"
-                                            stroke="#888888"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke="#888888"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={formatYAxis}
-                                        />
-                                        <ChartTooltip
-                                            cursor={false}
-                                            content={<ChartTooltipContent indicator="dashed" />}
-                                        />
-                                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                        <XAxis dataKey="metric" tickLine={false} tickMargin={10} axisLine={false} />
+                                        <YAxis tickFormatter={formatYAxis} />
+                                        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+                                        <Bar dataKey="value" radius={4} style={{ cursor: 'pointer' }}>
                                             {chartData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.fill} />
                                             ))}
@@ -208,101 +192,147 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
                                 </ChartContainer>
                             </CardContent>
                         </Card>
-                        <Dialog open={!!selectedMetric} onOpenChange={() => setSelectedMetric(null)}>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Breakdown: {selectedMetric}</DialogTitle>
-                                    <DialogDescription>Detailed insights into the selected financial metric.</DialogDescription>
-                                </DialogHeader>
-                                {isLoadingBreakdown ? (
-                                    <div className="flex justify-center items-center h-40">
-                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                    </div>
-                                ) : (
-                                    <p className="whitespace-pre-wrap">{breakdown}</p>
-                                )}
-                            </DialogContent>
-                        </Dialog>
+                        <CapTableCard capTable={startup.capTable} />
                     </>
                 )}
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Team & Founders</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-4">
-                            {founders.map(founder => (
-                                <div key={founder.id} className="flex items-center space-x-3">
-                                    <UserAvatar user={founder} className="h-10 w-10" />
-                                    <div>
-                                        <p className="text-sm font-semibold">{founder.displayName}</p>
-                                        <p className="text-xs text-muted-foreground">{founder.profile.role}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
 
+                {isIncorporated && !showFinancials && (
+                    <LockedFinancialsCard />
+                )}
             </div>
             <div className="space-y-6">
                 <Card>
-                    <CardHeader><CardTitle>Details</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center space-x-2">
-                            <Building className="h-4 w-4 text-muted-foreground" />
-                            <p>{startup.location}</p>
+                    <CardHeader><CardTitle>Company Info</CardTitle></CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                        <div className="flex items-center gap-2"><Building className="w-4 h-4 text-muted-foreground" /> <span>Industry: <strong>{startup.industry}</strong></span></div>
+                        <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-muted-foreground" /> <span>Stage: <strong>{startup.stage}</strong></span></div>
+                        <div className="flex items-center gap-2">
+                            {isIncorporated ? <ShieldCheck className="w-4 h-4 text-green-600" /> : <ShieldAlert className="w-4 h-4 text-amber-600" />}
+                            <span>Status: <strong>{isIncorporated ? "Incorporated" : "Not Incorporated"}</strong></span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                            <p>{startup.industry}</p>
-                        </div>
-                         {startup.website && (
-                            <div className="flex items-center space-x-2">
-                                <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                                <a href={startup.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{startup.website}</a>
-                            </div>
-                        )}
-                         {isIncorporated ? (
-                            <Badge variant="default" className="flex items-center"><ShieldCheck className="h-3 w-3 mr-1" /> Incorporated</Badge>
-                        ) : (
-                             <Badge variant="secondary" className="flex items-center"><ShieldAlert className="h-3 w-3 mr-1" /> Not Incorporated</Badge>
-                        )}
-                        
+                        <div className="flex items-center gap-2"><ExternalLink className="w-4 h-4 text-muted-foreground" /> <a href={startup.website} target="_blank" rel="noreferrer" className="text-primary hover:underline"><strong>Visit Website</strong></a></div>
                     </CardContent>
                 </Card>
-                {showFinancials ? (
-                    <>
-                         <CapTableCard startup={startup} />
-                    </>
-                ) : (
-                    <LockedFinancialsCard currentUserRole={currentUser?.role || null} />
-                )}
-               
                 <Card>
-                    <CardHeader><CardTitle>User Profile</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Founders</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                         <div className="flex items-center space-x-2">
-                            <UserCheck className="h-4 w-4 text-muted-foreground" />
-                            <p>{user.displayName}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Star className="h-4 w-4 text-muted-foreground" />
-                            <p>{user.profile.role}</p>
-                        </div>
-                        {user.profile.linkedin && (
-                            <div className="flex items-center space-x-2">
-                                <Linkedin className="h-4 w-4 text-muted-foreground" />
-                                <a href={user.profile.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">LinkedIn Profile</a>
+                        {founders.map(founder => (
+                             <div key={founder.id} className="flex items-center gap-3">
+                                <UserAvatar name={founder.name} avatarUrl={founder.avatarUrl} className="w-10 h-10" />
+                                <div className="flex-1">
+                                    <p className="font-medium flex items-center gap-1.5">
+                                        <Link href={`/users/${founder.id}`} className="hover:underline">{founder.name}</Link>
+                                        {(founder.profile as FounderProfile).isLead && <span title="Lead Founder"><Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-500" /></span>}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">{(founder.profile as FounderProfile).title}</p>
+                                </div>
                             </div>
-                        )}
-                        {user.profile.github && (
-                            <div className="flex items-center space-x-2">
-                                <Github className="h-4 w-4 text-muted-foreground" />
-                                <a href={user.profile.github} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">GitHub Profile</a>
+                        ))}
+                    </CardContent>
+                </Card>
+            </div>
+            <Dialog open={!!selectedMetric} onOpenChange={() => setSelectedMetric(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Detailed Breakdown: {selectedMetric}</DialogTitle>
+                        <DialogDescription>
+                            AI-generated analysis of the selected financial metric.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {isLoadingBreakdown ? (
+                            <div className="flex items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
+                        ) : (
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap">{breakdown}</div>
                         )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+};
+
+const InvestorProfileView = ({ user }: { user: FullUserProfile }) => {
+    const profile = user.profile as InvestorProfile;
+    return (
+        <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+                <Card>
+                    <CardHeader><CardTitle>About</CardTitle></CardHeader>
+                    <CardContent>
+                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{profile.about}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Investment Thesis</CardTitle></CardHeader>
+                    <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{profile.thesis}</p></CardContent>
+                </Card>
+            </div>
+            <div className="space-y-6">
+                {profile.companyName && (
+                    <Card>
+                        <CardHeader><CardTitle>Company Info</CardTitle></CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                             <div className="flex items-center gap-2">
+                                <Building className="w-4 h-4 text-muted-foreground" />
+                                <strong>{profile.companyName}</strong>
+                            </div>
+                            {profile.companyUrl && (
+                                <div className="flex items-center gap-2">
+                                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                                    <a href={profile.companyUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Visit Website</a>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+                {profile.seeking && profile.seeking.length > 0 && (
+                     <Card>
+                        <CardHeader><CardTitle>Actively Seeking</CardTitle></CardHeader>
+                        <CardContent className="flex flex-wrap gap-2">
+                            {profile.seeking.map(item => <Badge key={item}>{item}</Badge>)}
+                        </CardContent>
+                    </Card>
+                )}
+                <Card>
+                    <CardHeader><CardTitle>Focus Areas</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                         <div>
+                            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><HandCoins className="w-4 h-4 text-muted-foreground"/>Industries</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {profile.investmentInterests.map(interest => <Badge key={interest} variant="secondary">{interest}</Badge>)}
+                            </div>
+                        </div>
+                         <div>
+                            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><BarChart2 className="w-4 h-4 text-muted-foreground"/>Stages</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {profile.investmentStages?.map(stage => <Badge key={stage} variant="outline">{stage}</Badge>)}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Portfolio</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {profile.portfolio.map(company => (
+                             <div key={company.companyName} className="flex items-center gap-3">
+                                <Image src={company.companyLogoUrl} alt={company.companyName} width={40} height={40} className="w-10 h-10 rounded-md border" data-ai-hint="logo"/>
+                                <a href={company.companyUrl} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{company.companyName}</a>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader><CardTitle>Exits</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {profile.exits.map(exit => (
+                             <div key={exit.companyName} className="flex items-center gap-3">
+                                <a href={exit.companyUrl} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{exit.companyName}</a>
+                            </div>
+                        ))}
+                         {profile.exits.length === 0 && <p className="text-sm text-muted-foreground">No exits to display.</p>}
                     </CardContent>
                 </Card>
             </div>
@@ -310,57 +340,238 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     );
 };
 
+const TalentProfileView = ({ user }: { user: FullUserProfile }) => {
+    const profile = user.profile as TalentProfile;
+    return (
+        <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+                <Card>
+                    <CardHeader><CardTitle>Experience</CardTitle></CardHeader>
+                    <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{profile.experience}</p></CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader><CardTitle>About</CardTitle></CardHeader>
+                    <CardContent>
+                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{profile.about}</p>
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="space-y-6">
+                 <Card>
+                    <CardHeader><CardTitle>Skills</CardTitle></CardHeader>
+                    <CardContent className="flex flex-wrap gap-2">
+                        {profile.skills?.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Links</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                         {profile.linkedin && <a href={profile.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><Linkedin className="w-4 h-4" /> <span>LinkedIn Profile</span></a>}
+                         {profile.github && <a href={profile.github} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><Github className="w-4 h-4" /> <span>GitHub Profile</span></a>}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+};
 
-const UserProfilePage = () => {
-    const params = useParams();
-    const { user: currentUserRaw } = useUser();
+const UserProfileHeader = ({ user, isOwnProfile, startup }: { user: FullUserProfile, isOwnProfile: boolean, startup?: Startup | null }) => {
+    if (user.role === 'founder') {
+        const profile = user.profile as FounderProfile;
+        if (!startup) return <Card><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>;
+
+        return (
+            <Card>
+                <CardContent className="p-6 flex flex-col sm:flex-row items-start gap-6 relative">
+                    <Image src={startup.companyLogoUrl} alt={startup.companyName} width={96} height={96} className="w-24 h-24 rounded-full border" data-ai-hint="logo" />
+                    <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl font-bold font-headline">{startup.companyName}</h1>
+                             {profile.isSeekingCoFounder && (
+                                <Badge variant="secondary" className="gap-1.5">
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                    Seeking Co-founder
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="text-muted-foreground">{startup.tagline}</p>
+                        
+                        {!isOwnProfile && (
+                            <div className="flex items-center gap-4 mt-4">
+                                <Button>Connect</Button>
+                                <Button variant="outline">Message</Button>
+                            </div>
+                        )}
+                    </div>
+                     {isOwnProfile && (
+                        <div className="absolute top-1/2 right-6 -translate-y-1/2 flex items-center justify-center">
+                            <Button asChild>
+                                <Link href="/profile/edit">
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit Profile
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        )
+    }
+
+    if (user.role === 'investor') {
+        const profile = user.profile as InvestorProfile;
+        return (
+            <Card>
+                <CardContent className="p-6 flex flex-col sm:flex-row items-start gap-6 relative">
+                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="w-24 h-24 text-3xl" />
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold font-headline">{user.name}</h1>
+                            {profile.investorType && <Badge>{profile.investorType}</Badge>}
+                        </div>
+                        <p className="text-muted-foreground capitalize">{user.role}</p>
+                        
+                        {!isOwnProfile && (
+                            <div className="flex items-center gap-4 mt-4">
+                                <Button>Connect</Button>
+                                <Button variant="outline">Message</Button>
+                            </div>
+                        )}
+                    </div>
+                     {isOwnProfile && (
+                        <div className="absolute top-1/2 right-6 -translate-y-1/2 flex items-center justify-center">
+                            <Button asChild>
+                                <Link href="/profile/edit">
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit Profile
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Default for Talent and others
+    const talentProfile = user.profile as TalentProfile;
+    const isSeekingCoFounder = user.role === 'talent' && talentProfile.isSeekingCoFounder;
     
-    // Simulate fetching user data. In a real app, this would be an async call based on params.id
+    return (
+        <Card>
+            <CardContent className="p-6 flex flex-col sm:flex-row items-start gap-6 relative">
+                <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="w-24 h-24 text-3xl" />
+                <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-2xl font-bold font-headline">{user.name}</h1>
+                        {isSeekingCoFounder && (
+                            <Badge variant="secondary" className="gap-1.5">
+                                <UserCheck className="w-3.5 h-3.5" />
+                                Seeking Co-founder
+                            </Badge>
+                        )}
+                    </div>
+                    {talentProfile.headline ? (
+                         <p className="text-lg text-muted-foreground">{talentProfile.headline}</p>
+                    ) : (
+                        <p className="text-muted-foreground capitalize">{user.role}</p>
+                    )}
+                    
+                    {!isOwnProfile && (
+                        <div className="flex items-center gap-4 mt-4">
+                            <Button>Connect</Button>
+                            <Button variant="outline">Message</Button>
+                        </div>
+                    )}
+                </div>
+                 {isOwnProfile && (
+                    <div className="absolute top-1/2 right-6 -translate-y-1/2 flex items-center justify-center">
+                        <Button asChild>
+                            <Link href="/profile/edit">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Profile
+                            </Link>
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+export default function UserProfilePage() {
+    const params = useParams();
+    const id = params.id as string;
+    const { user: currentUser, isUserLoading: authLoading } = useUser();
     const [user, setUser] = useState<FullUserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const db = useFirestore();
 
-     useEffect(() => {
-        const fetchUser = async () => {
-            if (params.id) {
-                const fetchedUser = await getUserById(params.id as string);
-                if (fetchedUser) {
-                    setUser(fetchedUser);
-                } else {
-                    notFound();
-                }
+    useEffect(() => {
+        if (!id || !db) return;
+
+        const fetchUserData = async () => {
+            setLoading(true);
+            const userProfile = await getUserById(id);
+
+            if (!userProfile) {
+                setLoading(false);
+                notFound();
+                return;
             }
+            
+            setUser(userProfile);
             setLoading(false);
         };
-        fetchUser();
-    }, [params.id]);
-    
-    // Simulate fetching current user profile
-    const [currentUserProfile, setCurrentUserProfile] = useState<FullUserProfile | null>(null);
-    useEffect(() => {
-        const fetchCurrentUserProfile = async () => {
-            if (currentUserRaw) {
-                const profile = await getUserById(currentUserRaw.uid);
-                setCurrentUserProfile(profile);
-            }
-        };
-        fetchCurrentUserProfile();
-    }, [currentUserRaw]);
+
+        fetchUserData();
+
+    }, [id, db]);
 
 
-    if (loading) return <Skeleton className="h-screen w-full" />;
-    if (!user) return notFound();
-
-    switch (user.profile.role) {
-        case 'founder':
-            return <FounderProfileView user={user} currentUser={currentUserProfile} />;
-        case 'investor':
-            return <p>Investor profile view is not yet implemented.</p>; // Implement InvestorProfileView
-        case 'talent':
-            return <p>Talent profile view is not yet implemented.</p>; // Implement TalentProfileView
-        default:
-            return notFound();
+    if (loading || authLoading) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-40 w-full" />
+                <div className="grid md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-6">
+                        <Skeleton className="h-64 w-full" />
+                        <Skeleton className="h-64 w-full" />
+                    </div>
+                    <div className="space-y-6">
+                        <Skeleton className="h-48 w-full" />
+                        <Skeleton className="h-48 w-full" />
+                    </div>
+                </div>
+            </div>
+        );
     }
+    
+    if (!user) {
+        notFound();
+        return null;
+    }
+
+    const isOwnProfile = currentUser?.id === user.id;
+    
+    // This is a bit of a hack, but we need to pass the startup to the profile view
+    // if the user is a founder. We can't do this in the header because the startup
+    // is fetched in the FounderProfileView.
+    let startup: Startup | null = null;
+    if (user.role === 'founder') {
+        // This is a placeholder. The actual startup data is fetched inside FounderProfileView
+        startup = { id: (user.profile as FounderProfile).companyId } as Startup;
+    }
+
+
+    return (
+        <div className="space-y-6">
+            <UserProfileHeader user={user} isOwnProfile={isOwnProfile} startup={startup} />
+            {user.role === 'founder' && <FounderProfileView user={user} currentUser={currentUser} />}
+            {user.role === 'investor' && <InvestorProfileView user={user} />}
+            {user.role === 'talent' && <TalentProfileView user={user} />}
+        </div>
+    );
 };
 
-export default UserProfilePage;
+    
