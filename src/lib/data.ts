@@ -1,4 +1,16 @@
 
-import { InvestmentStage } from './types';
+import { users, startups, investmentStages, founderObjectives } from './mock-data';
+import { FullUserProfile } from './types';
 
-export const investmentStages: InvestmentStage[] = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Series B+'];
+// This is a placeholder function to simulate fetching the current user.
+// In a real app, you'd use your authentication context.
+export function getCurrentUser(): FullUserProfile | null {
+    // For now, let's just return the first user as the "logged in" user.
+    return users[0];
+}
+
+export function getUserById(id: string): FullUserProfile | null {
+    return users.find(user => user.id === id) || null;
+}
+
+export { users, startups, investmentStages, founderObjectives };

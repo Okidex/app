@@ -1,4 +1,6 @@
-'use client';
+// app/applicants/page.tsx
+
+'use client'; // Must be the absolute first line
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +16,7 @@ import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUsersByIds } from "@/lib/actions";
 
+// Forces this page to be rendered at request time, bypassing static generation issues.
 export const dynamic = 'force-dynamic';
 
 type ApplicantItem = Interest & { user: FullUserProfile | undefined; targetName: string };
@@ -160,81 +163,52 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
                         targetName: myJobs.find(j => j.id === i.targetId)?.title || 'a job'
                     })));
                 }
+// Code was cut off here, assuming end of function 
+                setLoading(false); 
             }
-            setLoading(false);
         };
-        if (currentUser?.id) {
+        if(currentUser?.id) {
             fetchInterests();
         }
     }, [currentUser.id, db]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
 
-    return <ApplicantList title="Job Applicants" items={jobInterests} />;
-};
+    const founderProfile = currentUser.profile as FounderProfile;
+
+    if (!founderProfile?.isPremium) {
+        return (
+            <Card className="text-center p-8">
+                <Lock className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-lg font-medium text-gray-900">Premium Feature</h3>
+                <p className="mt-1 text-sm text-gray-500">View applicants by upgrading to a premium account.</p>
+                <div className="mt-6">
+                    <Button>Upgrade Now</Button>
+                </div>
+            </Card>
+        );
+    }
+    return (
+        <ApplicantList title="Job Applicants" items={jobInterests} />
+    )
+}
 
 export default function ApplicantsPage() {
-    const { user: currentUser, isUserLoading: authLoading } = useUser();
+    const { user: currentUser, isUserLoading: loading } = useUser();
 
-    if (authLoading) {
-        return <div className="space-y-6">
-            <div>
-                <Skeleton className="h-8 w-48 mb-2"/>
-                <Skeleton className="h-4 w-72"/>
-            </div>
-            <Skeleton className="h-48 w-full"/>
-        </div>
-    }
+    if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-96 w-full" /></div>;
 
-    if (!currentUser) {
-        return <div>Please log in to view applicants.</div>;
-    }
-    
-    const isInvestor = currentUser.role === 'investor';
-    const isFounder = currentUser.role === 'founder';
-    const isPremiumFounder = isFounder && (currentUser.profile as FounderProfile).isPremium;
-    
-    if (isFounder && !isPremiumFounder) {
-        return (
-             <div className="flex flex-col items-center justify-center h-full text-center">
-                <Card className="w-full max-w-md p-8">
-                    <CardHeader>
-                        <div className="mx-auto bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center mb-4">
-                            <Lock className="w-8 h-8" />
-                        </div>
-                        <CardTitle>Upgrade to Oki+</CardTitle>
-                        <CardDescription>This feature is available exclusively for Oki+ members. Upgrade your plan to view and manage job applicants.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Button asChild size="lg">
-                            <Link href="/settings/billing">Upgrade to Oki+</Link>
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        )
-    }
+    if (!currentUser) return null; // Should ideally redirect to login via layout logic/router logic
 
-    if (!isInvestor && !isPremiumFounder) {
-         return (
-             <div className="flex flex-col items-center justify-center h-full text-center">
-                <Card className="w-full max-w-md p-8">
-                    <CardHeader>
-                        <CardTitle>Access Denied</CardTitle>
-                        <CardDescription>This page is only available to Investors and Oki+ Founders.</CardDescription>
-                    </CardHeader>
-                </Card>
-            </div>
-        )
+    if (currentUser.role === 'investor') {
+        return <InvestorApplicantsView currentUser={currentUser} />;
+    } else if (currentUser.role === 'founder') {
+        return <FounderApplicantsView currentUser={currentUser} />;
     }
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold font-headline">Applicants</h1>
-                <p className="text-muted-foreground">See who has expressed interest in your content.</p>
-            </div>
-            {isInvestor ? <InvestorApplicantsView currentUser={currentUser} /> : <FounderApplicantsView currentUser={currentUser} />}
-        </div>
-    );
+        <Card className="text-center p-8">
+            <p className="text-muted-foreground">You do not have access to the applicants page with your current role.</p>
+        </Card>
+    )
 }

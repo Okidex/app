@@ -1,4 +1,9 @@
-'use client';
+// app/profile/page.tsx
+
+'use client'; // <-- MOVED TO THE TOP
+
+// Forces this page to be rendered dynamically at request time, bypassing static generation issues.
+export const dynamic = 'force-dynamic'; 
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
