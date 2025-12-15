@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export const dynamic = 'force-dynamic';
-
 export default function ProfilePage() {
   const { user: currentUser, isUserLoading: loading } = useUser();
   const router = useRouter();
