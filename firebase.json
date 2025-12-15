@@ -1,1 +1,41 @@
-{ "hosting": { "source": ".", "ignore": [ "firebase.json", "/.*", "/node_modules/**" ], "frameworksBackend": { "region": "us-central1" } }, "functions": [ { "source": ".firebase/studio-8509111427-a45a7/functions", "codebase": "firebase-frameworks-studio-8509111427-a45a7", "runtime": "nodejs20", "ignore": [ "node_modules", ".git", "firebase-debug.log", "firebase-debug..log", ".local" ] } ], "storage": { "rules": "storage.rules" }, "emulators": { "auth": { "port": 9099 }, "functions": { "port": 5001 }, "firestore": { "port": 8080 }, "hosting": { "port": 8000 }, "storage": { "port": 9199 }, "ui": { "port": 4000 }, "singleProjectMode": true } }
+{
+  "hosting": {
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "region": "us-central1",
+      "runtime": "nodejs20"
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "hosting": {
+      "port": 8000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "port": 4000
+    },
+    "singleProjectMode": true
+  },
+  "functions": {
+    "source": ".firebase/genkit/functions"
+  }
+}
