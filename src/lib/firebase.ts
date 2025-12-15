@@ -45,5 +45,7 @@ export function initializeFirebase() {
       };
     }
   }
+  // On the server, this will return null, preventing SDK initialization.
+  // On the client, it will return the initialized services.
   return firebaseServices;
 }
