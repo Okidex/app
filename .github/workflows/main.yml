@@ -18,24 +18,23 @@ jobs:
         with:
           node-version: 20
 
-      - name: Build the Next.js application (Hardcoded Config Test)
+      - name: Build the Next.js application (Secure Version)
         run: |
-          # The following variables are HARDCODED FOR TESTING PURPOSES
-          export NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSyCN6uhJT_aUSTj5psl9Ru5viR50M7oyNY8"
-          export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="studio-8509111427-a45a7.firebaseapp.com"
-          export NEXT_PUBLIC_FIREBASE_PROJECT_ID="studio-8509111427-a45a7"
-          export NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="studio-8509111427-a45a7.firebasestorage.app"
-          export NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="866288675038"
-          export NEXT_PUBLIC_FIREBASE_APP_ID="1:866288675038:web:faff2fb1b41f0e10f47a4f"
-          export NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="G-X0QN9FM1BN"
+          # Exporting variables using GitHub Secrets (SECURE METHOD)
+          export NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          export NEXT_PUBLIC_FIREBASE_PROJECT_ID=studio-8509111427-a45a7 # Hardcoded as it is public
+          export NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          export NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          export NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          export NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
           
-          # Run the build command in the same shell session to inherit the exports
+          # Run the build command in the same shell session
           npm ci && npm run build
         env:
-          # This remains a secret because it is highly sensitive
+          # This remains a secret
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-          # CI: false
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
