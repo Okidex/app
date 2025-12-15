@@ -1,3 +1,4 @@
+
 {
   "hosting": {
     "source": ".",
@@ -13,6 +14,13 @@
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "src/ai",
+    "runtime": "nodejs20",
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" ci"
+    ]
   },
   "emulators": {
     "auth": {
@@ -34,8 +42,5 @@
       "port": 4000
     },
     "singleProjectMode": true
-  },
-  "functions": {
-    "source": ".firebase/genkit/functions"
   }
 }
