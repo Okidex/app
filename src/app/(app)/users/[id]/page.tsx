@@ -65,8 +65,8 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     useEffect(() => {
         const fetchFounders = async () => {
             if(startup && db) {
-                const founderProfiles = await Promise.all(startup.founderIds.map(id => getUserById(id)));
-                setFounders(founderProfiles.filter((p): p is FullUserProfile => p !== null));
+               const founderProfiles = await getUsersByIds(startup.founderIds);
+               setFounders(founderProfiles.filter((p): p is FullUserProfile => p !== null));
             }
         };
         fetchFounders();
@@ -553,25 +553,14 @@ export default function UserProfilePage() {
     }
 
     const isOwnProfile = currentUser?.id === user.id;
-    
-    // This is a bit of a hack, but we need to pass the startup to the profile view
-    // if the user is a founder. We can't do this in the header because the startup
-    // is fetched in the FounderProfileView.
-    let startup: Startup | null = null;
-    if (user.role === 'founder') {
-        // This is a placeholder. The actual startup data is fetched inside FounderProfileView
-        startup = { id: (user.profile as FounderProfile).companyId } as Startup;
-    }
-
+    const startup = (user.role === 'founder' && (user.profile as FounderProfile).companyId) ? { id: (user.profile as FounderProfile).companyId! } : null;
 
     return (
         <div className="space-y-6">
-            <UserProfileHeader user={user} isOwnProfile={isOwnProfile} startup={startup} />
+            <UserProfileHeader user={user} isOwnProfile={isOwnProfile} startup={startup as any} />
             {user.role === 'founder' && <FounderProfileView user={user} currentUser={currentUser} />}
             {user.role === 'investor' && <InvestorProfileView user={user} />}
             {user.role === 'talent' && <TalentProfileView user={user} />}
         </div>
     );
 };
-
-    
