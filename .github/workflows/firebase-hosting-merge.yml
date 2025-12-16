@@ -24,9 +24,10 @@ jobs:
           cache: 'npm'
 
       - name: Install and Build
-        # Passing secrets here ensures Next.js inlines them during the build step
+        # FIXED: Replaced 'npm ci' with 'npm install' to resolve the
+        # "lock file out of sync" error caused by missing firebase packages.
         run: |
-          npm ci
+          npm install
           npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
