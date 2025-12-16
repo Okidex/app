@@ -1,8 +1,11 @@
 {
-  "name": "ai",
+  "name": "okidex-ai",
   "version": "1.0.0",
-  "description": "",
+  "description": "Okidex Investment Match AI Logic",
   "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
