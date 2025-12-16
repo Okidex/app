@@ -1,11 +1,10 @@
-
 {
   "name": "okidex",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run clean && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "seed": "node -r ts-node/register/transpile-only src/scripts/seed.ts",
