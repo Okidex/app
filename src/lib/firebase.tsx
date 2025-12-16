@@ -1,11 +1,12 @@
-'use client'; // Important for Next.js to treat this as client-side code where Firebase client SDKs run
+'use client';
 
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { createContext, useContext, useMemo, ReactNode } from 'react';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
-// 1. Firebase Configuration (Keep as is)
+// 1. Configuration (Keep your existing env variables)
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -16,44 +17,45 @@ export const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// --- Recommended Helper Function for Initialization ---
+// 2. Initialization
 function createFirebaseApp() {
-  if (typeof window === 'undefined') return null; // Ensure this only runs client-side
-
-  if (getApps().length > 0) {
-    return getApp();
-  } else {
-    return initializeApp(firebaseConfig);
-  }
+  if (typeof window === 'undefined') return null;
+  return getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 }
 
-// 2. Initialize the App once and export services directly
 export const firebaseApp = createFirebaseApp();
-
-// Conditionally export auth, firestore, etc., only if the app initialized successfully (client-side)
 export const auth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
 export const firestore: Firestore | null = firebaseApp ? getFirestore(firebaseApp) : null;
 export const storage: FirebaseStorage | null = firebaseApp ? getStorage(firebaseApp) : null;
 
+// --- 3. CONTEXT & PROVIDER LOGIC (REPAIR) ---
 
-// 3. Add your React Context Provider code *here* (lines 114-118 from original error report):
+// Define the shape of your context
+interface FirebaseContextType {
+  auth: Auth | null;
+  firestore: Firestore | null;
+  storage: FirebaseStorage | null;
+}
 
-/*
-// Example of the missing code you need to place here in src/firebase.tsx
-const FirebaseContext = createContext({
-  auth,
-  firestore,
-  // ... other services
-});
+// Create the context with a default null value
+const FirebaseContext = createContext<FirebaseContextType | null>(null);
 
-export function FirebaseProvider({ children }) {
+export function FirebaseProvider({ children }: { children: ReactNode }) {
+  // useMemo prevents unnecessary re-renders of child components
   const contextValue = useMemo(() => ({ auth, firestore, storage }), []);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
-      <FirebaseErrorListener />
       {children}
     </FirebaseContext.Provider>
   );
 }
-*/
+
+// 4. Custom hook for consumption
+export const useFirebase = () => {
+  const context = useContext(FirebaseContext);
+  if (!context) {
+    throw new Error("useFirebase must be used within a FirebaseProvider");
+  }
+  return context;
+};
