@@ -1,46 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+# Ensure sub-directory node_modules (like in src/ai) are also ignored
+**/node_modules/
 
-{
-  "hosting": {
-    "source": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "frameworksBackend": {
-      "region": "us-central1",
-      "runtime": "nodejs20"
-    }
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
-  "functions": {
-    "source": "src/ai",
-    "runtime": "nodejs20",
-    "predeploy": [
-      "npm --prefix \"$RESOURCE_DIR\" ci"
-    ]
-  },
-  "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "functions": {
-      "port": 5001
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "hosting": {
-      "port": 8000
-    },
-    "storage": {
-      "port": 9199
-    },
-    "ui": {
-      "port": 4000
-    },
-    "singleProjectMode": true
-  }
-}
+# Next.js
+/.next/
+/out/
+# Next.js build traces
+.next-trace
+
+# Production Build Artifacts
+/build
+/dist
+# Firebase Frameworks temporary directory
+.firebase/
+# Firebase CLI internal state
+.firebaserc
+
+# Logs
+*-debug.log
+database-debug.log
+firebase-debug.log
+firestore-debug.log
+pubsub-debug.log
+storage-debug.log
+ui-debug.log
+*.log
+
+# Local Environment Variables
+.env
+.env*.local
+# Specifically ignore the generated Firebase env files
+.env.production
+.env.staging
+
+# Testing
+/coverage
+.nyc_output
+
+# Misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*.sublime-workspace
+
+# Vercel
+.vercel
