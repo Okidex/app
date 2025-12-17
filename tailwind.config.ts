@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss"
+import animate from "tailwindcss-animate"
+import forms from "@tailwindcss/forms"
 
 const config = {
   darkMode: ["class"],
@@ -7,7 +9,7 @@ const config = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
-	],
+  ],
   prefix: "",
   theme: {
     container: {
@@ -18,10 +20,12 @@ const config = {
       },
     },
     extend: {
-       fontFamily: {
+      fontFamily: {
+        // Standardized to use Inter as the primary sans stack
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-inter)', 'sans-serif'],
         headline: ['var(--font-inter)', 'sans-serif'],
-        code: ['monospace'],
+        code: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -89,14 +93,23 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Prevents the calendar from "jumping" visually during state changes
+        "calendar-fade": {
+          "0%": { opacity: "0", transform: "scale(0.98)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "calendar-fade": "calendar-fade 0.1s ease-out",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    animate,
+    forms({ strategy: 'class' }) // Strategy 'class' ensures it doesn't break Shadcn input global styles
+  ],
 } satisfies Config
 
 export default config

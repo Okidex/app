@@ -45,6 +45,11 @@ export default function FounderRegisterForm() {
   }, [router]);
 
   const handleObjectiveChange = (objective: FounderObjective) => {
+    // Also manage the isSeekingCoFounder state if that objective is toggled
+    if (objective === 'seekingCoFounders') {
+      setIsSeekingCoFounder(prev => !prev);
+    }
+
     setSelectedObjectives(prev => 
       prev.includes(objective) 
         ? prev.filter(o => o !== objective) 
@@ -153,14 +158,6 @@ export default function FounderRegisterForm() {
                         <Label htmlFor="title">Your Title</Label>
                         <Input name="title" id="title" placeholder="e.g., CEO & Co-founder" required />
                     </div>
-                </div>
-                 <div className="flex items-center space-x-2 pt-4">
-                    <Switch
-                        id="is-seeking-cofounder"
-                        checked={isSeekingCoFounder}
-                        onCheckedChange={setIsSeekingCoFounder}
-                    />
-                    <Label htmlFor="is-seeking-cofounder">I am actively seeking a co-founder</Label>
                 </div>
             </div>
           
@@ -310,3 +307,5 @@ export default function FounderRegisterForm() {
     </form>
   );
 }
+
+    
