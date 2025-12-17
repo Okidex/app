@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from "react";
@@ -10,7 +9,6 @@ import { FullUserProfile } from "@/lib/types";
 import { getUserById } from "@/lib/actions";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 
-// Define the shape of the context
 interface FirebaseContextState {
   firebaseApp: FirebaseApp | null;
   auth: Auth | null;
@@ -20,10 +18,8 @@ interface FirebaseContextState {
   userError: Error | null;
 }
 
-// Create the context
 const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-// Custom hook to use the Firebase context
 export const useFirebase = () => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
@@ -33,13 +29,17 @@ export const useFirebase = () => {
 };
 
 export const useUser = () => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
+  const context = useFirebase();
+  return { user: context.user, isUserLoading: context.isUserLoading, userError: context.userError };
 }
 
-// The provider component
 function FirebaseProvider({ children }: { children: ReactNode }) {
-  const services = initializeFirebase();
+  // 1. Prevent multiple initializations using useMemo
+  const services = useMemo(() => initializeFirebase(), []);
+  
+  // 2. Add a mounting state to prevent hydration mismatches and early setState calls
+  const [mounted, setMounted] = useState(false);
+  
   const [userAuthState, setUserAuthState] = useState<{
     user: FullUserProfile | null;
     isUserLoading: boolean;
@@ -51,8 +51,10 @@ function FirebaseProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    setMounted(true); // Confirm component is mounted on client
+
     if (!services?.auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not available.") });
+      setUserAuthState(prev => ({ ...prev, isUserLoading: false }));
       return;
     }
 
@@ -84,6 +86,10 @@ function FirebaseProvider({ children }: { children: ReactNode }) {
     ...userAuthState,
   }), [services, userAuthState]);
 
+  // 3. Return null until mounted to ensure child hooks (like useFirebase in RootPage) 
+  // only execute once the Provider is fully ready in the DOM.
+  if (!mounted) return null;
+
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />
@@ -92,7 +98,6 @@ function FirebaseProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// The main export for your layout.tsx
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <FirebaseProvider>
