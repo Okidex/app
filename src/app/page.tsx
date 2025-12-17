@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -6,21 +5,33 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Briefcase, Lightbulb, Users } from 'lucide-react';
 import Logo from '@/components/logo';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Use useRouter instead of redirect
 import { useUser } from '@/firebase';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RootPage() {
-  const { user, isUserLoading: loading } = useUser();
+  const router = useRouter();
+  const userContext = useUser();
+  const [mounted, setMounted] = useState(false);
+
+  // Fix 1: Handle potential null context during initial hydration
+  const user = userContext?.user;
+  const loading = userContext?.isUserLoading;
 
   useEffect(() => {
-    if (!loading && user) {
-      redirect('/dashboard');
-    }
-  }, [user, loading]);
+    setMounted(true);
+  }, []);
 
-  if (loading || user) {
+  useEffect(() => {
+    // Fix 2: Use router.replace inside useEffect to avoid "Bad setState" while rendering
+    if (mounted && !loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, mounted, router]);
+
+  // Loading state / Skeleton
+  if (!mounted || loading || user) {
     return (
       <div className="flex flex-col min-h-screen">
         <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -34,7 +45,7 @@ export default function RootPage() {
           <Skeleton className="h-[400px] w-full" />
         </main>
       </div>
-    )
+    );
   }
   
   return (
