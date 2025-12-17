@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
+      # Dynamic URL using project ID secret
       url: https://${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}.web.app
     steps:
       - name: Checkout Repository
@@ -23,12 +24,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 24 is the Active LTS "Krypton" as of late 2025
+          # Node 24 is the Active LTS as of late 2025
           node-version: 24
           cache: 'npm'
 
+      # Standard 2025 Next.js Optimization: Persist build cache across deployments
+      - name: Restore Next.js Build Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
       - name: Install and Build
-        # Uses npm install to ensure local Tailwind plugins are synced
+        # Force clean install and build with full environment context
         run: |
           npm install
           npm run build
@@ -50,4 +61,5 @@ jobs:
           projectId: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
           entryPoint: .
         env:
+          # Ensure latest Firebase CLI features are enabled
           FIREBASE_CLI_EXPERIMENTS: webframeworks
