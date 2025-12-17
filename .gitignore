@@ -1,60 +1,85 @@
-# Dependencies
+# 2025 Standard Next.js + Firebase + IDX Gitignore
+
+# --- Dependencies ---
 node_modules/
+**/node_modules/
 .pnp
 .pnp.js
-# Ensure sub-directory node_modules (like in src/ai) are also ignored
-**/node_modules/
 
-# Next.js
+# --- Next.js ---
+# Ignore build output and traces
 /.next/
 /out/
-# Next.js build traces
 .next-trace
+# Next.js 15+ cache
+.next/cache/
 
-# Production Build Artifacts
-/build
-/dist
-# Firebase Frameworks temporary directory
+# --- Firebase & Hosting ---
+# Ignore local CLI state and temporary framework builds
 .firebase/
-# Firebase CLI internal state
 .firebaserc
+# Keep hosting configs tracked
+!firebase.json
+!apphosting.yaml
+!storage.rules
+!firestore.rules
+!firestore.indexes.json
 
-# Logs
-*-debug.log
-database-debug.log
-firebase-debug.log
-firestore-debug.log
-pubsub-debug.log
-storage-debug.log
-ui-debug.log
-*.log
+# --- Development Environments (Firebase Studio / Project IDX) ---
+# MUST be tracked to sync Node 22 + Tailwind plugin setup
+!.idx/
+!.idx/dev.nix
+# Ignore local environment overrides
+.idx/dev.local.nix
 
-# Local Environment Variables
+# --- Local Environment Variables (Secrets) ---
+# Strictly ignore all local secrets
 .env
-.env*.local
-# Specifically ignore the generated Firebase env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Ignore specific Firebase secret files
 .env.production
 .env.staging
 
-# Testing
+# --- Logs ---
+*.log
+*-debug.log
+firebase-debug.log
+ui-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Production Build Artifacts ---
+/build
+/dist
+
+# --- Testing ---
 /coverage
 .nyc_output
 
-# Misc
-.DS_Store
-*.pem
-Thumbs.db
-
-# Editor directories and files
-.idea/
+# --- IDEs & Editors ---
+# Keep shared VS Code settings but ignore local workspace state
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.idea/
 *.swp
 *.swo
 *.sublime-workspace
 
-# Vercel
+# --- OS Specific ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- Infrastructure ---
 .vercel
+.turbo
