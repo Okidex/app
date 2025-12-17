@@ -10,11 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { investmentStages, founderObjectives } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
+import { Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { createUserAndSetSession } from "@/lib/auth-actions";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +20,7 @@ import LogoUploader from "./logo-uploader";
 import { initializeFirebase } from "@/firebase/client-init";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateInput } from "../ui/date-input";
 
 export default function FounderRegisterForm() {
   const router = useRouter();
@@ -31,7 +28,7 @@ export default function FounderRegisterForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [isIncorporated, setIsIncorporated] = useState(false);
-  const [incorporationDate, setIncorporationDate] = useState<Date | undefined>();
+  const [incorporationDate, setIncorporationDate] = useState<string>('');
   const [isSeekingCoFounder, setIsSeekingCoFounder] = useState(false);
   const [selectedObjectives, setSelectedObjectives] = useState<FounderObjective[]>([]);
 
@@ -88,7 +85,7 @@ export default function FounderRegisterForm() {
         isIncorporated,
         country: formData.get('country') as string,
         incorporationType: formData.get('incorporation-type') as string,
-        incorporationDate: incorporationDate?.toISOString(),
+        incorporationDate: incorporationDate ? new Date(incorporationDate).toISOString() : undefined,
         entityNumber: formData.get('entity-number') as string,
         taxId: formData.get('tax-id') as string,
     };
@@ -262,29 +259,11 @@ export default function FounderRegisterForm() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="incorporation-date">Date of Incorporation</Label>
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !incorporationDate && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {incorporationDate ? format(incorporationDate, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={incorporationDate}
-                                        onSelect={setIncorporationDate}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                            <DateInput 
+                                label="Date of Incorporation"
+                                value={incorporationDate}
+                                onChange={(e) => setIncorporationDate(e.target.value)}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="entity-number">Unique Entity Number (UEN)</Label>
@@ -307,5 +286,3 @@ export default function FounderRegisterForm() {
     </form>
   );
 }
-
-    
