@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { DateInput } from '@/components/ui/date-input'; // Import the new component
+import { DateInput } from '@/components/ui/date-input';
 
 interface IncorporationDetailsFormProps {
     initialData: IncorporationDetails;
@@ -28,7 +28,7 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
     };
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const dateValue = e.target.value; // Format: YYYY-MM-DD
+        const dateValue = e.target.value;
         setDetails(prev => ({ ...prev, incorporationDate: dateValue }));
     };
     
@@ -53,11 +53,19 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="country">Country of Incorporation</Label>
-                                <Input id="country" value={details.country || ''} onChange={e => setDetails({ ...details, country: e.target.value })} placeholder="e.g., USA" />
+                                <Input 
+                                    id="country" 
+                                    value={details.country || ''} 
+                                    onChange={e => setDetails({ ...details, country: e.target.value })} 
+                                    placeholder="e.g., USA" 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="incorporation-type">Incorporation Type</Label>
-                                <Select value={details.incorporationType || ''} onValueChange={value => setDetails({ ...details, incorporationType: value as IncorporationDetails['incorporationType'] })}>
+                                <Select 
+                                    value={details.incorporationType || ''} 
+                                    onValueChange={value => setDetails({ ...details, incorporationType: value as IncorporationDetails['incorporationType'] })}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
@@ -75,7 +83,6 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                {/* Fixed: Replaced Popover/Calendar with manual DateInput */}
                                 <DateInput 
                                     label="Date of Incorporation"
                                     id="incorporation-date"
@@ -85,12 +92,19 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                             </div>
                             <div className="space-y-2">
                                 Unique Entity Number (UEN)</Label>
-                                 setDetails({ ...details, entityNumber: e.target.value })} placeholder="e.g., 123456789" />
+                                 setDetails({ ...details, entityNumber: e.target.value })} 
+                                    placeholder="e.g., 123456789" 
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tax-id">Business Tax ID / EIN</Label>
-                            <Input id="tax-id" value={details.taxId || ''} onChange={e => setDetails({ ...details, taxId: e.target.value })} placeholder="e.g., 98-7654321" />
+                            <Input 
+                                id="tax-id" 
+                                value={details.taxId || ''} 
+                                onChange={e => setDetails({ ...details, taxId: e.target.value })} 
+                                placeholder="e.g., 98-7654321" 
+                            />
                         </div>
                     </div>
                 )}
