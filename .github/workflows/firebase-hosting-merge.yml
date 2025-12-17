@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      # Dynamic URL using project ID secret
-      url: https://${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}.web.app
+      # Direct URL based on your confirmed project ID
+      url: https://studio-8509111427-a45a7.web.app
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -24,11 +24,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 24 is the Active LTS as of late 2025
+          # Node 24 is the Active LTS "Krypton" as of late 2025
           node-version: 24
           cache: 'npm'
 
-      # Standard 2025 Next.js Optimization: Persist build cache across deployments
+      # 2025 Next.js Optimization: Cache the .next/cache folder to avoid SSR build timeouts
       - name: Restore Next.js Build Cache
         uses: actions/cache@v4
         with:
@@ -39,27 +39,28 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Install and Build
-        # Force clean install and build with full environment context
-        run: |
-          npm install
-          npm run build
+        # Passing env at the step level ensures Next.js correctly bundles client-side keys
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: studio-8509111427-a45a7
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
+        run: |
+          npm install
+          npm run build
 
       - name: Deploy to Live Channel
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
+          # Ensure this secret is re-initialized if "No OAuth tokens" error persists
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
-          projectId: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          projectId: studio-8509111427-a45a7
           entryPoint: .
         env:
-          # Ensure latest Firebase CLI features are enabled
           FIREBASE_CLI_EXPERIMENTS: webframeworks
