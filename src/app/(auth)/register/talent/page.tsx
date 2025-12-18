@@ -1,8 +1,9 @@
-"use client";
-export const dynamic = 'force-dynamic';
 
+"use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TalentRegisterFormClient from "@/components/auth/talent-register-form";
+
+export const dynamic = 'force-dynamic';
 
 export default function TalentRegisterPage() {
   return (

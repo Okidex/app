@@ -1,12 +1,13 @@
 
 "use client";
-export const dynamic = 'force-dynamic';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import RegisterForm from "@/components/auth/register-form";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+
+export const dynamic = 'force-dynamic';
 
 export default function RegisterPage() {
   return (
@@ -28,7 +29,7 @@ export default function RegisterPage() {
       <Alert className="mt-4">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-xs text-muted-foreground">
-          <strong>Okidex is in early access.</strong> We&apos;re working to a full release and are actively developing new features, so things may change. Your feedback is invaluable—please{' '}
+          <strong>Okidex is in early access.</strong> We're working to a full release and are actively developing new features, so things may change. Your feedback is invaluable—please{' '}
           <a href="mailto:wilfred@okidex.com" className="underline">
             share your thoughts with us
           </a>
