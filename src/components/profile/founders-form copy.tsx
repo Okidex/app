@@ -1,7 +1,7 @@
-
+cat << 'EOF' > src/components/profile/incorporation-details-form.tsx
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -10,13 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Calendar } from '@/components/ui/calendar';
-import { DateInput } from '../ui/date-input';
-
+import { DateInput } from '@/components/ui/date-input';
 
 interface IncorporationDetailsFormProps {
     initialData: IncorporationDetails;
@@ -34,12 +28,11 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
         });
     };
 
-    const handleDateSelect = (date: Date | undefined) => {
-        if (date) {
-            setDetails(prev => ({ ...prev, incorporationDate: date.toISOString() }));
-        }
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const dateValue = e.target.value;
+        setDetails(prev => ({ ...prev, incorporationDate: dateValue }));
     };
-    
+
     return (
         <Card>
             <CardHeader>
@@ -61,11 +54,19 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="country">Country of Incorporation</Label>
-                                <Input id="country" value={details.country || ''} onChange={e => setDetails({ ...details, country: e.target.value })} placeholder="e.g., USA" />
+                                <Input 
+                                    id="country" 
+                                    value={details.country || ''} 
+                                    onChange={e => setDetails({ ...details, country: e.target.value })} 
+                                    placeholder="e.g., USA" 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="incorporation-type">Incorporation Type</Label>
-                                <Select value={details.incorporationType || ''} onValueChange={value => setDetails({ ...details, incorporationType: value as IncorporationDetails['incorporationType'] })}>
+                                <Select 
+                                    value={details.incorporationType || ''} 
+                                    onValueChange={value => setDetails({ ...details, incorporationType: value as IncorporationDetails['incorporationType'] })}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
@@ -85,18 +86,26 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                             <div className="space-y-2">
                                 <DateInput 
                                     label="Date of Incorporation"
-                                    value={details.incorporationDate ? format(parseISO(details.incorporationDate), 'yyyy-MM-dd') : ''}
-                                    onChange={(e) => setDetails({ ...details, incorporationDate: e.target.value ? new Date(e.target.value).toISOString() : ''})}
+                                    id="incorporation-date"
+                                    value={details.incorporationDate || ''} 
+                                    onChange={handleDateChange}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="entity-number">Unique Entity Number (UEN)</Label>
-                                <Input id="entity-number" value={details.entityNumber || ''} onChange={e => setDetails({ ...details, entityNumber: e.target.value })} placeholder="e.g., 123456789" />
+                                Unique Entity Number (UEN)</Label>
+                                 setDetails({ ...details, entityNumber: e.target.value })} 
+                                    placeholder="e.g., 123456789" 
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tax-id">Business Tax ID / EIN</Label>
-                            <Input id="tax-id" value={details.taxId || ''} onChange={e => setDetails({ ...details, taxId: e.target.value })} placeholder="e.g., 98-7654321" />
+                            <Input 
+                                id="tax-id" 
+                                value={details.taxId || ''} 
+                                onChange={e => setDetails({ ...details, taxId: e.target.value })} 
+                                placeholder="e.g., 98-7654321" 
+                            />
                         </div>
                     </div>
                 )}
@@ -105,3 +114,4 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
         </Card>
     );
 }
+EOF
