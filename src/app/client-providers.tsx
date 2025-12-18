@@ -1,19 +1,33 @@
-'use client'; // This directive is mandatory for this wrapper
+'use client';
 
 import dynamic from 'next/dynamic';
 import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Dynamically import the main Providers from your existing file
-// ssr: false prevents the "useFirebase must be used within a FirebaseProvider" error 
-// that occurs if Next.js tries to render this on the server.
-const DynamicProviders = dynamic(
-  () => import('./providers').then((mod) => mod.Providers),
+// Define the loading skeleton component separately for readability
+const ProviderSkeleton = () => (
+  <div className="flex flex-col min-h-screen">
+    <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+       <Skeleton className="h-8 w-32" />
+       <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-24" />
+      </div>
+    </header>
+    <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <Skeleton className="h-[400px] w-full" />
+    </main>
+  </div>
+);
+
+const FirebaseProvider = dynamic(
+  () => import('@/firebase/client-provider').then((mod) => mod.FirebaseClientProvider),
   { 
     ssr: false,
-    loading: () => <div className="h-full w-full bg-background" /> // Optional loading state
+    loading: ProviderSkeleton
   }
 );
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
-  return <DynamicProviders>{children}</DynamicProviders>;
+  return <FirebaseProvider>{children}</FirebaseProvider>;
 }
