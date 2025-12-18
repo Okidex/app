@@ -1,7 +1,7 @@
 # To learn more about how to use Nix to configure your environment
 # visit: developers.google.com
 { pkgs, ... }: {
-  # Which nixpkgs channel to use.
+  # Which nixpkgs channel to use. 24.11 is the current stable 2025 target.
   channel = "stable-24.11";
 
   # Use packages from the nixpkgs channel defined above
@@ -14,6 +14,8 @@
   # Sets environment variables in the workspace and terminal
   env = {
     NODE_VERSION = "22";
+    
+    # Client-side Firebase Keys
     NEXT_PUBLIC_FIREBASE_API_KEY = "AIzaSyCN6uhJT_aUSTj5psl9Ru5viR50M7oyNY8";
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "studio-8509111427-a45a7.firebaseapp.com";
     NEXT_PUBLIC_FIREBASE_PROJECT_ID = "studio-8509111427-a45a7";
@@ -21,7 +23,11 @@
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = "866288675038";
     NEXT_PUBLIC_FIREBASE_APP_ID = "1:866288675038:web:faff2fb1b41f0e10f47a4f";
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID = "G-X0QN9FM1BN";
+
+    # Server-side / Admin Keys (Required for Auth registration & AI)
     GEMINI_API_KEY = "AIzaSyAjCDoDVGkooArsyAw_LLifuxrbx1fL-Cs";
+    FIREBASE_PROJECT_ID = "studio-8509111427-a45a7";
+    FIREBASE_CLIENT_EMAIL = "firebase-adminsdk-fbsvc@studio-8509111427-a45a7.iam.gserviceaccount.com";
   };
 
   idx = {
@@ -41,17 +47,20 @@
       };
       # Runs when a workspace is (re)started
       onStart = {
-        # Automatically sync Nix env to .env.local for Next.js preview
+        # 2025 Smart Script: Automatically sync Nix env to .env.local for Next.js
         sync-env = ''
           echo "NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY" > .env.local
           echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" >> .env.local
           echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID" >> .env.local
           echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" >> .env.local
-          echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" >> .env.local
+          echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" >> .local
           echo "NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID" >> .env.local
           echo "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID" >> .env.local
           echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env.local
+          echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env.local
+          echo "FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL" >> .env.local
         '';
+        # Ensure packages are always fresh on start
         npm-install = "npm install";
       };
     };
@@ -61,6 +70,7 @@
       enable = true;
       previews = {
         web = {
+          # Use $PORT provided by IDX
           command = ["npm" "run" "dev" "--" "--port" "$PORT" "--hostname" "0.0.0.0"];
           manager = "web";
         };
