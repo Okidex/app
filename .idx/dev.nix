@@ -6,14 +6,14 @@
 
   # Use packages from the nixpkgs channel defined above
   packages = [
-    pkgs.nodejs_24 # Updated to Node 24 for 2025 stability
+    pkgs.nodejs_22 # Fixed: Node 22 is the current stable LTS in this channel
     pkgs.firebase-tools
     pkgs.gh
   ];
 
   # Sets environment variables in the workspace and terminal
   env = {
-    NODE_VERSION = "24";
+    NODE_VERSION = "22"; # Aligned with the package version
     NEXT_PUBLIC_FIREBASE_API_KEY = "AIzaSyCN6uhJT_aUSTj5psl9Ru5viR50M7oyNY8";
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "studio-8509111427-a45a7.firebaseapp.com";
     NEXT_PUBLIC_FIREBASE_PROJECT_ID = "studio-8509111427-a45a7";
@@ -25,7 +25,7 @@
   };
 
   idx = {
-    # Search for the extensions you want on open-vsx.org
+    # Extensions for development productivity
     extensions = [
       "bradlc.vscode-tailwindcss"
       "esbenp.prettier-vscode"
@@ -35,9 +35,11 @@
 
     # Workspace lifecycle hooks
     workspace = {
+      # Runs when a workspace is first created
       onCreate = {
         npm-install = "npm install";
       };
+      # Runs when a workspace is (re)started
       onStart = {
         # 2025 Smart Script: Automatically sync Nix env to .env.local for Next.js preview
         sync-env = ''
