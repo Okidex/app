@@ -6,14 +6,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    // 2025 Fix: Allows Project IDX / Firebase Studio preview domains
-    allowedDevOrigins: [
-      '*.cloudworkstations.dev',
-      '*.idxdev.google.com.au',
-      '*.firebase.google.com'
-    ],
-  },
   images: {
     remotePatterns: [
       {

@@ -24,8 +24,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 24 is the Active LTS "Krypton" as of late 2025
-          node-version: 24
+          # Use Node.js 20, a supported LTS version for Firebase Functions
+          node-version: 20
           cache: 'npm'
 
       # 2025 Next.js Optimization: Cache the .next/cache folder to avoid SSR build timeouts
