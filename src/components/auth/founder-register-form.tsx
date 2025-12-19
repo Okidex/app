@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -25,11 +24,49 @@ export default function TalentRegisterFormClient() {
   const firestore = useFirestore();
 
   useEffect(() => {
-    // Redirect if registration details are not in session storage
     if (!sessionStorage.getItem('registrationDetails')) {
       router.push('/register');
     }
   }, [router]);
+
+  /**
+   * DEBUGGER SCRIPT: Detailed Error Reporting
+   * Captures the exact state of Auth and Firestore during a failure.
+   */
+  const executeDebuggableWrite = async (docRef: any, data: any, currentUser: any) => {
+    console.log("[DEBUGGER] Checking Auth State before write:", {
+      uid: currentUser?.uid,
+      email: currentUser?.email,
+      isAnonymous: currentUser?.isAnonymous
+    });
+
+    try {
+      // 2025 Latency Buffer: Prevents "insufficient permissions" caused by 
+      // Firestore not yet recognizing the fresh Auth token.
+      await new Promise(resolve => setTimeout(resolve, 800)); 
+      
+      await setDoc(docRef, data, { merge: true });
+      console.log("[DEBUGGER] Firestore Write Successful to:", docRef.path);
+    } catch (error: any) {
+      console.error("[DEBUGGER] Permission Failure Detected:", error);
+
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: data,
+        authContext: {
+            uid: currentUser?.uid,
+            tokenExists: !!(await currentUser?.getIdToken())
+        },
+        errorCode: error.code,
+        errorMessage: error.message
+      });
+
+      // Send detailed report to the error dashboard
+      errorEmitter.emit('permission-error', permissionError);
+      throw error; // Re-throw to be caught by main handler
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,16 +82,18 @@ export default function TalentRegisterFormClient() {
       router.push('/register');
       return;
     }
+    
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
     
     if (!auth || !firestore) {
-        toast({ title: "Auth service not available", variant: "destructive" });
+        toast({ title: "Services unavailable", variant: "destructive" });
         setIsSubmitting(false);
         return;
     }
 
     try {
+        // 1. Create Auth User
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
@@ -84,16 +123,10 @@ export default function TalentRegisterFormClient() {
         
         const userDocRef = doc(firestore, 'users', user.uid);
         
-        setDoc(userDocRef, fullUser, { merge: true }).catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'create',
-                requestResourceData: fullUser,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        });
+        // 2. Execute debuggable write to Firestore
+        await executeDebuggableWrite(userDocRef, fullUser, user);
 
-        // Call server action to set session cookie
+        // 3. Set Session Cookie via Server Action
         const idToken = await user.getIdToken();
         const result = await createUserAndSetSession(idToken);
 
@@ -101,16 +134,17 @@ export default function TalentRegisterFormClient() {
             sessionStorage.removeItem('registrationDetails');
             router.push("/dashboard");
         } else {
-            throw new Error(result.error || "An unknown error occurred.");
+            throw new Error(result.error || "Session creation failed.");
         }
     } catch(error: any) {
-        if (!error.request) {
-          toast({
-              title: "Registration Failed",
-              description: error.message,
-              variant: "destructive",
-          });
-        }
+        console.error("Final catch block:", error);
+        toast({
+            title: "Registration Failed",
+            description: error.code === 'permission-denied' 
+                ? "Debugger: Security rules rejected this write. Check errorEmitter logs." 
+                : error.message,
+            variant: "destructive",
+        });
     } finally {
         setIsSubmitting(false);
     }
@@ -144,20 +178,20 @@ export default function TalentRegisterFormClient() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="experience">Experience</Label>
-                    <Textarea id="experience" name="experience" placeholder="Summarize your professional experience, goals, and what you're looking for..." required />
+                    <Textarea id="experience" name="experience" placeholder="Professional summary..." required />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="education">Education & Certifications</Label>
-                    <Textarea id="education" name="education" placeholder="e.g., B.S. in Computer Science from University of Example, AWS Certified Developer" />
+                    <Label htmlFor="education">Education</Label>
+                    <Textarea id="education" name="education" placeholder="University, degree..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="linkedin">LinkedIn Profile URL</Label>
-                        <Input id="linkedin" name="linkedin" type="url" placeholder="https://linkedin.com/in/..." required />
+                        <Label htmlFor="linkedin">LinkedIn URL</Label>
+                        <Input id="linkedin" name="linkedin" type="url" required />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="github">GitHub Profile URL (Optional)</Label>
-                        <Input id="github" name="github" type="url" placeholder="https://github.com/..." />
+                        <Label htmlFor="github">GitHub URL (Optional)</Label>
+                        <Input id="github" name="github" type="url" />
                     </div>
                 </div>
             </div>

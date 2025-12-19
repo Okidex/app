@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -39,6 +38,43 @@ export default function InvestorRegisterFormClient() {
     }
   }, [router]);
 
+  /**
+   * DEBUGGER SCRIPT: Detailed Permission Error Reporting
+   * Specifically designed to catch race conditions during new user creation.
+   */
+  const executeDebuggableWrite = async (docRef: any, data: any, currentUser: any) => {
+    console.log("[DEBUGGER] Verifying Session before Firestore Write:", {
+      uid: currentUser?.uid,
+      path: docRef.path
+    });
+
+    try {
+      // 2025 Buffer: Give Firebase Security Rules time to sync with the new Auth Token
+      await new Promise(resolve => setTimeout(resolve, 800)); 
+      
+      await setDoc(docRef, data, { merge: true });
+      console.log("[DEBUGGER] Success: Profile persisted to Firestore.");
+    } catch (error: any) {
+      console.error("[DEBUGGER] CRITICAL PERMISSION ERROR:", error);
+
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: data,
+        authContext: {
+            uid: currentUser?.uid,
+            token: !!(await currentUser?.getIdToken())
+        },
+        errorCode: error.code,
+        errorMessage: error.message
+      });
+
+      // Emit to your global error monitor/dashboard
+      errorEmitter.emit('permission-error', permissionError);
+      throw error; 
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -53,21 +89,22 @@ export default function InvestorRegisterFormClient() {
       router.push('/register');
       return;
     }
+    
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
 
     if (!auth || !firestore) {
-        toast({ title: "Auth service not available", variant: "destructive" });
+        toast({ title: "Auth/Firestore unavailable", variant: "destructive" });
         setIsSubmitting(false);
         return;
     }
 
     try {
+        // 1. Authenticate User
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
         const avatarUrl = 'https://picsum.photos/seed/new-investor-avatar/400/400';
-        
         const investmentStagesChecked = investmentStages.filter(stage => formData.get(`stage-${stage}`));
         
         const profile: InvestorProfile = {
@@ -92,16 +129,10 @@ export default function InvestorRegisterFormClient() {
 
         const userDocRef = doc(firestore, 'users', user.uid);
         
-        setDoc(userDocRef, fullUser, { merge: true }).catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'create',
-                requestResourceData: fullUser,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        });
+        // 2. Execute Debuggable Firestore Write
+        await executeDebuggableWrite(userDocRef, fullUser, user);
 
-        // Call server action to set session cookie
+        // 3. Create Server-Side Session
         const idToken = await user.getIdToken();
         const result = await createUserAndSetSession(idToken);
         
@@ -109,17 +140,17 @@ export default function InvestorRegisterFormClient() {
           sessionStorage.removeItem('registrationDetails');
           router.push("/dashboard");
         } else {
-          throw new Error(result.error || "An unknown error occurred.");
+          throw new Error(result.error || "Failed to establish session.");
         }
 
     } catch(error: any) {
-        if (!error.request) {
-          toast({
-              title: "Registration Failed",
-              description: error.message,
-              variant: "destructive",
-          });
-        }
+        toast({
+            title: "Registration Failed",
+            description: error.code === 'permission-denied' 
+                ? "Debugger: Firestore permission denied. Check terminal/error logs." 
+                : error.message,
+            variant: "destructive",
+        });
     } finally {
         setIsSubmitting(false);
     }
@@ -128,11 +159,7 @@ export default function InvestorRegisterFormClient() {
   const handleAddExit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExit.companyName || !newExit.companyUrl) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide a company name and URL.",
-        variant: "destructive",
-      });
+      toast({ title: "Missing Info", variant: "destructive" });
       return;
     }
     setExits([...exits, newExit]);
@@ -143,7 +170,6 @@ export default function InvestorRegisterFormClient() {
   const handleRemoveExit = (companyName: string) => {
     setExits(exits.filter(p => p.companyName !== companyName));
   };
-
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -160,15 +186,13 @@ export default function InvestorRegisterFormClient() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="investorCompanyUrl">Company URL</Label>
-                        <Input name="investorCompanyUrl" id="investorCompanyUrl" placeholder="https://smith.ventures" type="url" />
+                        <Input name="investorCompanyUrl" id="investorCompanyUrl" placeholder="https://..." type="url" />
                     </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="investorType">Investor Type</Label>
                     <Select name="investorType">
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select your investor type" />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="GP">General Partner (GP)</SelectItem>
                             <SelectItem value="LP">Limited Partner (LP)</SelectItem>
@@ -178,64 +202,51 @@ export default function InvestorRegisterFormClient() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="about">About Me</Label>
-                    <Textarea name="about" id="about" placeholder="Write a brief professional bio..." required/>
+                    <Textarea name="about" id="about" placeholder="Bio..." required/>
                 </div>
                 <div className="space-y-2">
                     <Label>Investment Interests</Label>
-                    <Input name="investmentInterests" placeholder="Add interests as comma separated values (e.g., AI, Fintech, SaaS)" />
-                    <p className="text-xs text-muted-foreground">Separate interests with a comma.</p>
+                    <Input name="investmentInterests" placeholder="AI, Fintech, SaaS" />
                 </div>
                  <div className="space-y-2">
                     <div className="flex justify-between items-center mb-2">
                         <Label>Exits</Label>
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button type="button" variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Exit</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Add an Exit</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleAddExit} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="exit-company-name">Company Name</Label>
-                                        <Input id="exit-company-name" value={newExit.companyName} onChange={e => setNewExit({...newExit, companyName: e.target.value})} placeholder="e.g. Innovate Inc." required/>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="exit-company-url">Company URL</Label>
-                                        <Input id="exit-company-url" value={newExit.companyUrl} onChange={e => setNewExit({...newExit, companyUrl: e.target.value})} placeholder="https://innovate.com" type="url" required />
-                                    </div>
-                                    <Button type="submit" className="w-full">Add Exit</Button>
-                                </form>
-                            </DialogContent>
+                          <DialogTrigger asChild>
+                            <Button type="button" variant="outline" size="sm"><PlusCircle className="h-4 w-4 mr-2" />Add Exit</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader><DialogTitle>Add Exit</DialogTitle></DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Company Name</Label>
+                                    <Input value={newExit.companyName} onChange={(e) => setNewExit({...newExit, companyName: e.target.value})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Company URL</Label>
+                                    <Input value={newExit.companyUrl} onChange={(e) => setNewExit({...newExit, companyUrl: e.target.value})} />
+                                </div>
+                                <Button onClick={handleAddExit} className="w-full">Add</Button>
+                            </div>
+                          </DialogContent>
                         </Dialog>
                     </div>
-                    
-                    <Card className="p-3 space-y-2">
-                         {exits.length > 0 ? (
-                            exits.map((exit, index) => (
-                                <div key={index} className="flex items-center justify-between text-sm">
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">{exit.companyName}</span>
-                                      <span className="text-muted-foreground text-xs">{exit.companyUrl}</span>
-                                    </div>
-                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleRemoveExit(exit.companyName)}>
-                                        <Trash className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center">No exits added yet.</p>
-                        )}
-                    </Card>
+                    <div className="grid grid-cols-1 gap-2">
+                        {exits.map((exit) => (
+                            <Card key={exit.companyName} className="p-3 flex justify-between items-center">
+                                <span>{exit.companyName}</span>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveExit(exit.companyName)}><Trash className="h-4 w-4 text-destructive" /></Button>
+                            </Card>
+                        ))}
+                    </div>
                 </div>
                 <div className="space-y-2">
                     <Label>Investment Stages</Label>
-                    <div className="flex flex-wrap gap-4 pt-2">
-                        {investmentStages.map(stage => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+                        {investmentStages.map((stage) => (
                             <div key={stage} className="flex items-center space-x-2">
-                                <Checkbox name={`stage-${stage}`} id={`stage-${stage}`} />
-                                <Label htmlFor={`stage-${stage}`}>{stage}</Label>
+                                <Checkbox id={`stage-${stage}`} name={`stage-${stage}`} />
+                                <Label htmlFor={`stage-${stage}`} className="text-sm font-normal cursor-pointer capitalize">{stage}</Label>
                             </div>
                         ))}
                     </div>
