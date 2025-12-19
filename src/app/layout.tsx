@@ -7,7 +7,7 @@ import { ClientProviders } from "./client-providers";
 const inter = Inter({ 
   subsets: ["latin"], 
   variable: '--font-inter',
-  display: 'swap', // Optimization for 2025: Ensures text remains visible during font load
+  display: 'swap', 
 });
 
 export const metadata: Metadata = {
@@ -21,10 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // suppressHydrationWarning is added to <html> because Next.js and 
-    // Firebase Auth can cause initial mismatched classes on root tags.
     <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="h-full antialiased">
+        {/* ClientProviders must wrap the entire tree to share the same Firebase instance */}
         <ClientProviders>
           {children}
         </ClientProviders>
