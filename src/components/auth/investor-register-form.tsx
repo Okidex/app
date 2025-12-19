@@ -10,17 +10,18 @@ import { investmentStages } from "@/lib/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
-import { Exit, InvestorProfile } from "@/lib/types";
+import { Exit, InvestorProfile, FullUserProfile } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { createUserAndSetSession } from "@/lib/auth-actions";
 import ProfilePhotoUploader from "./profile-photo-uploader";
-import { initializeFirebase } from "@/firebase/client-init";
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
-export default function InvestorRegisterForm() {
+export default function InvestorRegisterFormClient() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,6 +30,8 @@ export default function InvestorRegisterForm() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newExit, setNewExit] = useState<Exit>({ companyName: '', companyUrl: '' });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (!sessionStorage.getItem('registrationDetails')) {
@@ -52,43 +55,55 @@ export default function InvestorRegisterForm() {
     }
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
-    
-    const investmentStagesChecked = investmentStages.filter(stage => formData.get(`stage-${stage}`));
 
-    const profileData = {
-        companyName: formData.get('investorCompanyName') as string,
-        companyUrl: formData.get('investorCompanyUrl') as string,
-        investorType: formData.get('investorType') as InvestorProfile['investorType'],
-        about: formData.get('about') as string,
-        investmentInterests: (formData.get('investmentInterests') as string).split(',').map((s: string) => s.trim()),
-        investmentStages: investmentStagesChecked,
-        exits: exits,
-    };
-    
-    const getFileAsDataURL = async (file: File | null): Promise<string | undefined> => {
-        if (!file) return undefined;
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const avatarDataUrl = await getFileAsDataURL(avatarFile);
+    if (!auth || !firestore) {
+        toast({ title: "Auth service not available", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
 
     try {
-        const { auth } = initializeFirebase();
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
-        const idToken = await userCredential.user.getIdToken();
+        const { user } = userCredential;
+        
+        const avatarUrl = 'https://picsum.photos/seed/new-investor-avatar/400/400';
+        
+        const investmentStagesChecked = investmentStages.filter(stage => formData.get(`stage-${stage}`));
+        
+        const profile: InvestorProfile = {
+            companyName: formData.get('investorCompanyName') as string,
+            companyUrl: formData.get('investorCompanyUrl') as string,
+            investorType: formData.get('investorType') as InvestorProfile['investorType'],
+            about: formData.get('about') as string,
+            investmentInterests: (formData.get('investmentInterests') as string).split(',').map((s: string) => s.trim()),
+            investmentStages: investmentStagesChecked,
+            exits: exits,
+            portfolio: [],
+        };
+        
+        const fullUser: FullUserProfile = {
+            id: user.uid,
+            email: user.email!,
+            name: registrationDetails.name,
+            role: 'investor',
+            avatarUrl,
+            profile,
+        };
 
-        const result = await createUserAndSetSession(
-            idToken,
-            registrationDetails.name,
-            'investor',
-            profileData,
-            undefined,
-            avatarDataUrl
-        );
+        const userDocRef = doc(firestore, 'users', user.uid);
+        
+        setDoc(userDocRef, fullUser, { merge: true }).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: fullUser,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+
+        // Call server action to set session cookie
+        const idToken = await user.getIdToken();
+        const result = await createUserAndSetSession(idToken);
         
         if (result.success) {
           sessionStorage.removeItem('registrationDetails');

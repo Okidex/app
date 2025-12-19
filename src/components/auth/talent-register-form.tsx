@@ -11,19 +11,23 @@ import { createUserAndSetSession } from "@/lib/auth-actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import ProfilePhotoUploader from "./profile-photo-uploader";
-import { initializeFirebase } from "@/firebase/client-init";
+import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { TalentProfile, FullUserProfile } from "@/lib/types";
+import { doc, setDoc } from "firebase/firestore";
 
-export default function TalentRegisterForm() {
+export default function TalentRegisterFormClient() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   useEffect(() => {
     // Redirect if registration details are not in session storage
     if (!sessionStorage.getItem('registrationDetails')) {
-      router.push('/signup');
+      router.push('/register');
     }
   }, [router]);
 
@@ -38,47 +42,60 @@ export default function TalentRegisterForm() {
         description: "Your session has expired. Please start over.",
         variant: "destructive",
       });
-      router.push('/signup');
+      router.push('/register');
       return;
     }
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
     
-    const profileData = {
-      headline: formData.get('headline') as string,
-      about: formData.get('about') as string,
-      skills: (formData.get('skills') as string).split(',').map(s => s.trim()),
-      organization: formData.get('organization') as string,
-      experience: formData.get('experience') as string,
-      education: formData.get('education') as string,
-      linkedin: formData.get('linkedin') as string,
-      github: formData.get('github') as string,
-    };
-    
-     const getFileAsDataURL = async (file: File | null): Promise<string | undefined> => {
-        if (!file) return undefined;
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const avatarDataUrl = await getFileAsDataURL(avatarFile);
+    if (!auth || !firestore) {
+        toast({ title: "Auth service not available", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
 
     try {
-        const { auth } = initializeFirebase();
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
-        const idToken = await userCredential.user.getIdToken();
+        const { user } = userCredential;
+        
+        const avatarUrl = 'https://picsum.photos/seed/new-talent-avatar/400/400';
 
-        const result = await createUserAndSetSession(
-            idToken,
-            registrationDetails.name,
-            'talent',
-            profileData,
-            registrationDetails.subRole,
-            avatarDataUrl
-        );
+        const profile: TalentProfile = {
+          subRole: registrationDetails.subRole,
+          headline: formData.get('headline') as string,
+          skills: (formData.get('skills') as string).split(',').map(s => s.trim()),
+          experience: formData.get('experience') as string,
+          linkedin: formData.get('linkedin') as string,
+          github: formData.get('github') as string,
+          about: formData.get('about') as string,
+          organization: formData.get('organization') as string,
+          education: formData.get('education') as string,
+          isSeekingCoFounder: registrationDetails.subRole === 'co-founder',
+        };
+
+        const fullUser: FullUserProfile = {
+            id: user.uid,
+            email: user.email!,
+            name: registrationDetails.name,
+            role: 'talent',
+            avatarUrl,
+            profile,
+        };
+        
+        const userDocRef = doc(firestore, 'users', user.uid);
+        
+        setDoc(userDocRef, fullUser, { merge: true }).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: fullUser,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+
+        // Call server action to set session cookie
+        const idToken = await user.getIdToken();
+        const result = await createUserAndSetSession(idToken);
 
         if (result.success) {
             sessionStorage.removeItem('registrationDetails');

@@ -14,15 +14,17 @@ import { Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { createUserAndSetSession } from "@/lib/auth-actions";
 import { useToast } from "@/hooks/use-toast";
-import { InvestmentStage, FounderObjective } from "@/lib/types";
+import { InvestmentStage, FounderObjective, Startup, FounderProfile, FullUserProfile } from "@/lib/types";
 import ProfilePhotoUploader from "./profile-photo-uploader";
 import LogoUploader from "./logo-uploader";
-import { initializeFirebase } from "@/firebase/client-init";
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateInput } from "../ui/date-input";
+import { doc, setDoc, collection } from "firebase/firestore";
 
-export default function FounderRegisterForm() {
+
+export default function FounderRegisterFormClient() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,9 +37,12 @@ export default function FounderRegisterForm() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  const auth = useAuth();
+  const firestore = useFirestore();
+
   useEffect(() => {
     if (!sessionStorage.getItem('registrationDetails')) {
-      router.push('/signup');
+      router.push('/register');
     }
   }, [router]);
 
@@ -65,62 +70,93 @@ export default function FounderRegisterForm() {
         description: "Your session has expired. Please start over.",
         variant: "destructive",
       });
-      router.push('/signup');
+      router.push('/register');
       return;
     }
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
-
-    const profileData = {
-        title: formData.get('title') as string,
-        companyName: formData.get('companyName') as string,
-        tagline: formData.get('tagline') as string,
-        industry: formData.get('industry') as string,
-        stage: formData.get('stage') as InvestmentStage,
-        website: formData.get('website') as string,
-        description: formData.get('description') as string,
-        objectives: selectedObjectives,
-        fundraisingGoal: Number(formData.get('fundraisingGoal') || 0),
-        isSeekingCoFounder,
-        isIncorporated,
-        country: formData.get('country') as string,
-        incorporationType: formData.get('incorporation-type') as string,
-        incorporationDate: incorporationDate ? new Date(incorporationDate).toISOString() : undefined,
-        entityNumber: formData.get('entity-number') as string,
-        taxId: formData.get('tax-id') as string,
-    };
     
-    const getFileAsDataURL = async (file: File | null): Promise<string | undefined> => {
-        if (!file) return undefined;
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const avatarDataUrl = await getFileAsDataURL(avatarFile);
-    const logoDataUrl = await getFileAsDataURL(logoFile);
+    if (!auth || !firestore) {
+      toast({
+        title: 'Registration Error',
+        description: 'Firebase services are not available.',
+        variant: 'destructive',
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
-        const { auth } = initializeFirebase();
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
-        const idToken = await userCredential.user.getIdToken();
+        const { user } = userCredential;
+        
+        const avatarUrl = 'https://picsum.photos/seed/new-founder-avatar/400/400';
+        
+        const startupRef = doc(collection(firestore, "startups"));
+        const companyLogoUrl = `https://picsum.photos/seed/logo-${startupRef.id}/200/200`;
+        
+        const startupData: Startup = {
+            id: startupRef.id,
+            companyName: formData.get('companyName') as string,
+            companyLogoUrl,
+            founderIds: [user.uid],
+            industry: formData.get('industry') as string,
+            stage: formData.get('stage') as InvestmentStage,
+            tagline: formData.get('tagline') as string,
+            website: formData.get('website') as string,
+            description: formData.get('description') as string,
+            financials: { revenue: 0, expenses: 0, netIncome: 0, grossProfitMargin: 0, ebitda: 0, customerAcquisitionCost: 0, customerLifetimeValue: 0, monthlyRecurringRevenue: 0, cashBurnRate: 0, runway: 0, companyName: formData.get('companyName') as string },
+            monthlyFinancials: [],
+            capTable: [],
+            incorporationDetails: {
+                isIncorporated: isIncorporated,
+                country: formData.get('country') as string,
+                incorporationType: formData.get('incorporation-type') as 'C-Corp' | 'S-Corp' | 'LLC' | 'Other',
+                incorporationDate: incorporationDate ? new Date(incorporationDate).toISOString() : undefined,
+                entityNumber: formData.get('entity-number') as string,
+                taxId: formData.get('tax-id') as string,
+            }
+        };
 
-        const result = await createUserAndSetSession(
-            idToken,
-            registrationDetails.name,
-            'founder',
-            profileData,
-            undefined,
-            avatarDataUrl,
-            logoDataUrl
-        );
+        const profile: FounderProfile = {
+            companyId: startupRef.id,
+            title: formData.get('title') as string,
+            isLead: true,
+            isPremium: false,
+            isSeekingCoFounder,
+            objectives: selectedObjectives,
+        };
+        
+        const fullUser: FullUserProfile = {
+            id: user.uid,
+            email: user.email!,
+            name: registrationDetails.name,
+            role: 'founder',
+            avatarUrl,
+            profile,
+        };
 
+        await setDoc(startupRef, startupData);
+        
+        const userDocRef = doc(firestore, 'users', user.uid);
+        
+        setDoc(userDocRef, fullUser, { merge: true }).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: fullUser,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+
+        // Now call server action just to set the cookie
+        const idToken = await user.getIdToken();
+        const result = await createUserAndSetSession(idToken);
+        
         if (result.success) {
             router.push("/dashboard");
         } else {
-            throw new Error(result.error || "An unknown error occurred.");
+            throw new Error(result.error || "Failed to set session.");
         }
 
     } catch (error: any) {

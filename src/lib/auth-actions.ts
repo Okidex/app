@@ -62,133 +62,18 @@ export async function getCurrentUserId(): Promise<string | null> {
     }
 }
 
-async function uploadImage(dataUrl: string, path: string): Promise<string> {
-    if (!dataUrl) return "";
-    
-    const { storage } = await initializeAdminApp();
-    const bucket = storage.bucket();
-    const file = bucket.file(path);
-    
-    const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
-    const mimeType = dataUrl.match(/data:(.*);base64/)?.[1] || 'image/jpeg';
-    
-    await file.save(buffer, {
-        metadata: { contentType: mimeType },
-    });
-    await file.makePublic();
-    return file.publicUrl();
-}
-
-export async function createUserAndSetSession(
-    idToken: string,
-    name: string,
-    role: UserRole,
-    profileData: any,
-    subRole?: TalentSubRole,
-    avatarDataUrl?: string,
-    logoDataUrl?: string,
-) {
-    const { auth, firestore } = await initializeAdminApp();
+// This function now only handles setting the session cookie.
+// User and profile creation is handled on the client.
+export async function createUserAndSetSession(idToken: string) {
     try {
-        const decodedToken = await auth.verifyIdToken(idToken);
-        const uid = decodedToken.uid;
-        const email = decodedToken.email!;
-
-        let avatarUrl = `https://picsum.photos/seed/${uid}/400/400`;
-        if (avatarDataUrl) {
-            avatarUrl = await uploadImage(avatarDataUrl, `avatars/${uid}`);
-        }
-        
-        await auth.updateUser(uid, { photoURL: avatarUrl, displayName: name });
-
-        const userDocRef = firestore.collection("users").doc(uid);
-
-        const userData: Omit<FullUserProfile, 'profile'> = {
-            id: uid,
-            email,
-            name,
-            role,
-            avatarUrl,
-        };
-        
-        let finalProfile: Profile = {};
-
-        if (role === 'founder') {
-            const startupRef = firestore.collection('startups').doc();
-            let companyLogoUrl = `https://picsum.photos/seed/logo-${startupRef.id}/200/200`;
-            if (logoDataUrl) {
-                companyLogoUrl = await uploadImage(logoDataUrl, `logos/${startupRef.id}`);
-            }
-
-            const startupData: Startup = {
-                id: startupRef.id,
-                companyName: profileData.companyName,
-                companyLogoUrl,
-                founderIds: [uid],
-                industry: profileData.industry,
-                stage: profileData.stage,
-                tagline: profileData.tagline,
-                website: profileData.website,
-                description: profileData.description,
-                financials: { revenue: 0, expenses: 0, netIncome: 0, grossProfitMargin: 0, ebitda: 0, customerAcquisitionCost: 0, customerLifetimeValue: 0, monthlyRecurringRevenue: 0, cashBurnRate: 0, runway: 0, companyName: profileData.companyName },
-                monthlyFinancials: [],
-                capTable: [],
-                incorporationDetails: {
-                    isIncorporated: profileData.isIncorporated,
-                    country: profileData.country,
-                    incorporationType: profileData.incorporationType,
-                    incorporationDate: profileData.incorporationDate,
-                    entityNumber: profileData.entityNumber,
-                    taxId: profileData.taxId,
-                }
-            };
-            await startupRef.set(startupData);
-            
-            finalProfile = {
-                companyId: startupRef.id,
-                title: profileData.title,
-                isLead: true,
-                isPremium: false,
-                isSeekingCoFounder: profileData.isSeekingCoFounder,
-                objectives: profileData.objectives || [],
-            } as FounderProfile;
-
-        } else if (role === 'investor') {
-            finalProfile = {
-                companyName: profileData.companyName,
-                companyUrl: profileData.companyUrl,
-                investorType: profileData.investorType,
-                about: profileData.about,
-                investmentInterests: profileData.investmentInterests,
-                investmentStages: profileData.investmentStages,
-                portfolio: [],
-                exits: profileData.exits,
-            } as InvestorProfile;
-        } else if (role === 'talent') {
-            finalProfile = {
-                subRole,
-                headline: profileData.headline,
-                skills: profileData.skills,
-                experience: profileData.experience,
-                linkedin: profileData.linkedin,
-                github: profileData.github,
-                about: profileData.about,
-                organization: profileData.organization,
-                education: profileData.education,
-                isSeekingCoFounder: subRole === 'co-founder',
-            } as TalentProfile;
-        }
-        
-        await userDocRef.set({ ...userData, profile: finalProfile });
-        
         await createSessionCookie(idToken);
-
-        return { success: true, userId: uid };
+        return { success: true };
     } catch (error: any) {
-        console.error("Error creating user:", error);
+        console.error("Error creating session cookie:", error);
         return { success: false, error: error.message };
     }
 }
+
 
 export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
     const { auth, firestore } = await initializeAdminApp();
