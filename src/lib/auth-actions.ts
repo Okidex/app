@@ -7,6 +7,7 @@ import { initializeAdminApp } from './firebase-server-init';
 import { FullUserProfile, FounderProfile, UserRole, Profile, TalentSubRole, Startup, InvestorProfile, TalentProfile } from './types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { toSerializable } from '@/lib/serialize';
+import { getAuth } from 'firebase-admin/auth';
 
 async function createSessionCookie(idToken: string) {
     const { auth: adminAuth } = await initializeAdminApp();
@@ -25,6 +26,16 @@ export async function login(idToken: string):Promise<{success: boolean, error?: 
 }
 
 export async function logout() {
+    const { auth: adminAuth } = await initializeAdminApp();
+    const sessionCookie = cookies().get('__session')?.value;
+    if (sessionCookie) {
+        try {
+            const decodedToken = await adminAuth.verifySessionCookie(sessionCookie);
+            await adminAuth.revokeRefreshTokens(decodedToken.sub);
+        } catch (error) {
+            console.error("Error revoking refresh tokens during logout:", error);
+        }
+    }
     cookies().set('__session', '', { maxAge: 0, path: '/' });
 }
 

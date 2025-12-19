@@ -17,7 +17,8 @@ import Logo from "../logo";
 import UserAvatar from "../shared/user-avatar";
 import Notifications from "./notifications";
 import { useUser } from "@/firebase";
-import { logout } from "@/lib/auth-actions";
+import { logout as clientLogout } from "@/lib/auth";
+import { logout as serverLogout } from "@/lib/auth-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AppHeader() {
@@ -25,8 +26,10 @@ export default function AppHeader() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
+    await clientLogout(); // Sign out from client
+    await serverLogout(); // Clear server session
     router.push("/");
+    router.refresh(); // Force a refresh to ensure state is cleared
   };
   
   return (

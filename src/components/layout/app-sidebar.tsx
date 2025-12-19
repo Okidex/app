@@ -35,7 +35,8 @@ import {
 } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser, useFirestore } from '@/firebase';
-import { logout } from '@/lib/auth-actions';
+import { logout as clientLogout } from "@/lib/auth";
+import { logout as serverLogout } from "@/lib/auth-actions";
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import UserAvatar from '../shared/user-avatar';
@@ -94,8 +95,10 @@ export function AppSidebar() {
   }, [user, db]);
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/');
+    await clientLogout(); // Sign out from client
+    await serverLogout(); // Clear server session
+    router.push("/");
+    router.refresh(); // Force a refresh to ensure state is cleared
   };
   
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
