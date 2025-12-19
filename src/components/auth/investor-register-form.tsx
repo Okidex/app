@@ -113,11 +113,13 @@ export default function InvestorRegisterFormClient() {
         }
 
     } catch(error: any) {
-        toast({
-            title: "Registration Failed",
-            description: error.message,
-            variant: "destructive",
-        });
+        if (!error.request) {
+          toast({
+              title: "Registration Failed",
+              description: error.message,
+              variant: "destructive",
+          });
+        }
     } finally {
         setIsSubmitting(false);
     }
