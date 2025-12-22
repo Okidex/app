@@ -14,9 +14,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 2025 Singleton Pattern: Safe for Next.js 15
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// 2025 Next.js Build-Safe Initialization
+const app = 
+  getApps().length > 0 
+    ? getApp() 
+    : (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) 
+      ? initializeApp(firebaseConfig) 
+      : null;
 
-export const auth = getAuth(app);
-export const firestore = getFirestore(app);
-export const storage = getStorage(app);
+export const auth = app ? getAuth(app) : null;
+export const firestore = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;

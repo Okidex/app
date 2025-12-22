@@ -1,21 +1,15 @@
-# Updated for December 2025 security and performance standards
+# Updated for December 2025 Stability and SSR Optimization
 name: Deploy to Firebase Hosting on merge
 'on':
   push:
     branches:
       - main
 
-# Prevents redundant builds if multiple merges occur quickly
-concurrency:
-  group: deploy-production
-  cancel-in-progress: true
-
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     environment:
       name: production
-      # Direct URL based on your confirmed project ID
       url: https://studio-8509111427-a45a7.web.app
     steps:
       - name: Checkout Repository
@@ -24,11 +18,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Use Node.js 20, a supported LTS version for Firebase Functions
-          node-version: 20
+          # Match Node 22 for Next.js 15 and Firebase 2025 stability
+          node-version: 22
           cache: 'npm'
 
-      # 2025 Next.js Optimization: Cache the .next/cache folder to avoid SSR build timeouts
       - name: Restore Next.js Build Cache
         uses: actions/cache@v4
         with:
@@ -38,8 +31,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
-      - name: Install and Build
-        # Passing env at the step level ensures Next.js correctly bundles client-side keys
+      - name: Build the Next.js application
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -48,6 +40,8 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+          # Injected Gemini key to support AI-logic during pre-rendering
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
         run: |
           npm install
@@ -56,9 +50,8 @@ jobs:
       - name: Deploy to Live Channel
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          # Ensure this secret is re-initialized if "No OAuth tokens" error persists
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
           entryPoint: .

@@ -19,8 +19,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Use Node.js 20, a supported LTS version for Firebase Functions
-          node-version: 20
+          # Updated to 22 to match your Nix environment and Next.js 15 requirements
+          node-version: 22
           cache: 'npm'
 
       - name: Restore Next.js Build Cache
@@ -33,15 +33,17 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Install and Build
-        # Passing env at the step level ensures Next.js sees them during build discovery
+        # All secrets must be added to GitHub Repo Settings > Secrets > Actions
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: studio-8509111427-a45a7
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+          # Added Gemini to prevent build-time crashes on AI-powered routes
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
         run: |
           npm install
@@ -56,3 +58,4 @@ jobs:
           entryPoint: .
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
