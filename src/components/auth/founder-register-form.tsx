@@ -20,29 +20,34 @@ export default function TalentRegisterFormClient() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  
+  // 2025 Build-Safety: Hooks return null during build, so we guard usage below
   const auth = useAuth();
   const firestore = useFirestore();
 
   useEffect(() => {
-    if (!sessionStorage.getItem('registrationDetails')) {
-      router.push('/register');
+    // Only run in the browser to prevent sessionStorage/router crashes during build
+    if (typeof window !== "undefined") {
+      if (!sessionStorage.getItem('registrationDetails')) {
+        router.push('/register');
+      }
     }
   }, [router]);
 
   /**
    * DEBUGGER SCRIPT: Detailed Error Reporting
-   * Captures the exact state of Auth and Firestore during a failure.
    */
   const executeDebuggableWrite = async (docRef: any, data: any, currentUser: any) => {
+    // Safety check for prerendering
+    if (typeof window === "undefined" || !firestore) return;
+
     console.log("[DEBUGGER] Checking Auth State before write:", {
       uid: currentUser?.uid,
       email: currentUser?.email,
-      isAnonymous: currentUser?.isAnonymous
     });
 
     try {
-      // 2025 Latency Buffer: Prevents "insufficient permissions" caused by 
-      // Firestore not yet recognizing the fresh Auth token.
+      // 2025 Latency Buffer: Prevents "insufficient permissions" race conditions
       await new Promise(resolve => setTimeout(resolve, 800)); 
       
       await setDoc(docRef, data, { merge: true });
@@ -62,14 +67,24 @@ export default function TalentRegisterFormClient() {
         errorMessage: error.message
       });
 
-      // Send detailed report to the error dashboard
       errorEmitter.emit('permission-error', permissionError);
-      throw error; // Re-throw to be caught by main handler
+      throw error; 
     }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // CRITICAL: Prevent execution if Firebase services are not available (build-time check)
+    if (!auth || !firestore) {
+        toast({ 
+            title: "Initializing...", 
+            description: "Please wait for the secure connection to establish.",
+            variant: "destructive" 
+        });
+        return;
+    }
+
     setIsSubmitting(true);
     
     const registrationDetailsString = sessionStorage.getItem('registrationDetails');
@@ -85,15 +100,8 @@ export default function TalentRegisterFormClient() {
     
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
-    
-    if (!auth || !firestore) {
-        toast({ title: "Services unavailable", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
-    }
 
     try {
-        // 1. Create Auth User
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
@@ -122,11 +130,8 @@ export default function TalentRegisterFormClient() {
         };
         
         const userDocRef = doc(firestore, 'users', user.uid);
-        
-        // 2. Execute debuggable write to Firestore
         await executeDebuggableWrite(userDocRef, fullUser, user);
 
-        // 3. Set Session Cookie via Server Action
         const idToken = await user.getIdToken();
         const result = await createUserAndSetSession(idToken);
 
@@ -141,7 +146,7 @@ export default function TalentRegisterFormClient() {
         toast({
             title: "Registration Failed",
             description: error.code === 'permission-denied' 
-                ? "Debugger: Security rules rejected this write. Check errorEmitter logs." 
+                ? "Debugger: Security rules rejected this write. Check error logs." 
                 : error.message,
             variant: "destructive",
         });

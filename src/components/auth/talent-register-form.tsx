@@ -20,32 +20,35 @@ export default function TalentRegisterFormClient() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  
+  // 2025 Build-Safety: Initialize hooks but guard their usage
   const auth = useAuth();
   const firestore = useFirestore();
 
   useEffect(() => {
-    if (!sessionStorage.getItem('registrationDetails')) {
-      router.push('/register');
+    // Only run session check in the browser
+    if (typeof window !== "undefined") {
+      if (!sessionStorage.getItem('registrationDetails')) {
+        router.push('/register');
+      }
     }
   }, [router]);
 
   /**
    * DEBUGGER SCRIPT: Detailed Error Reporting
-   * Specifically designed to solve "Missing or insufficient permissions" race conditions.
    */
   const executeDebuggableWrite = async (docRef: any, data: any, currentUser: any) => {
+    // Guard: Prevent execution during Next.js prerendering
+    if (typeof window === "undefined" || !firestore) return;
+
     console.log("[DEBUGGER] Checking Permission State for UID:", currentUser?.uid);
 
     try {
-      // 2025 Sync Buffer: Prevents race conditions where Firestore 
-      // hasn't received the Auth Token update from the Identity provider yet.
       await new Promise(resolve => setTimeout(resolve, 800)); 
-      
       await setDoc(docRef, data, { merge: true });
       console.log("[DEBUGGER] Profile Write Successful.");
     } catch (error: any) {
       console.error("[DEBUGGER] Firestore Permission Denial Details:", error);
-
       const permissionError = new FirestorePermissionError({
         path: docRef.path,
         operation: 'create',
@@ -57,8 +60,6 @@ export default function TalentRegisterFormClient() {
         errorCode: error.code,
         errorMessage: error.message
       });
-
-      // Emits the error to your global state for debugging logs
       errorEmitter.emit('permission-error', permissionError);
       throw error; 
     }
@@ -66,6 +67,17 @@ export default function TalentRegisterFormClient() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // CRITICAL: Prevent the build server from attempting Auth/Firestore calls
+    if (!auth || !firestore) {
+        toast({ 
+            title: "System initializing", 
+            description: "Please wait a moment and try again.",
+            variant: "destructive" 
+        });
+        return;
+    }
+
     setIsSubmitting(true);
     
     const registrationDetailsString = sessionStorage.getItem('registrationDetails');
@@ -81,15 +93,8 @@ export default function TalentRegisterFormClient() {
 
     const registrationDetails = JSON.parse(registrationDetailsString);
     const formData = new FormData(e.currentTarget);
-    
-    if (!auth || !firestore) {
-        toast({ title: "Services unavailable", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
-    }
 
     try {
-        // 1. Create the Authentication Account
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
@@ -118,11 +123,8 @@ export default function TalentRegisterFormClient() {
         };
         
         const userDocRef = doc(firestore, 'users', user.uid);
-        
-        // 2. Execute the Debuggable Write (with latency buffer)
         await executeDebuggableWrite(userDocRef, fullUser, user);
 
-        // 3. Establish the Server Session
         const idToken = await user.getIdToken();
         const result = await createUserAndSetSession(idToken);
 
@@ -137,7 +139,7 @@ export default function TalentRegisterFormClient() {
         toast({
             title: "Registration Failed",
             description: error.code === 'permission-denied' 
-                ? "Permission Denied: Ensure Firestore Rules allow 'create' for UID." 
+                ? "Permission Denied: Check Firestore rules for the users collection." 
                 : error.message,
             variant: "destructive",
         });

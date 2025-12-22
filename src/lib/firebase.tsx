@@ -1,8 +1,8 @@
 'use client';
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,15 +13,30 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 2025 Next.js Build-Safe Check:
-// Only initialize if we are in a browser OR if we have a valid API Key string.
-const canInitialize = typeof window !== 'undefined' || 
-                      (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
-                       process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "undefined");
+// Singleton to hold instances
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+let firestore: Firestore | undefined;
 
-const app = canInitialize 
-  ? (getApps().length > 0 ? getApp() : initializeApp(firebaseConfig))
-  : null;
+// Helper to initialize only on the client or if API key is present
+const initFirebase = () => {
+  if (typeof window === 'undefined' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+    return { auth: null, firestore: null };
+  }
 
-export const auth = app ? getAuth(app) : null;
-export const firestore = app ? getFirestore(app) : null;
+  if (!app) {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    firestore = getFirestore(app);
+  }
+
+  return { auth, firestore };
+};
+
+// Export pre-initialized instances for components
+const services = initFirebase();
+export const authInstance = services.auth;
+export const firestoreInstance = services.firestore;
+
+// Keep these for backward compatibility with your forms
+export { authInstance as auth, firestoreInstance as firestore };
