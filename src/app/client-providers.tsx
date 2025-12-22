@@ -1,13 +1,17 @@
 'use client';
 
-import React from 'react';
-// Changed: Direct import to ensure Firebase starts handshaking immediately
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import React, { createContext, useContext } from 'react';
+import { auth, firestore, storage } from '@/firebase'; // Path to your firebase.tsx
 
-export function ClientProviders({ children }: { children: React.ReactNode }) {
+const FirebaseContext = createContext({ auth, firestore, storage });
+
+export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
   return (
-    <FirebaseClientProvider>
+    <FirebaseContext.Provider value={{ auth, firestore, storage }}>
       {children}
-    </FirebaseClientProvider>
+    </FirebaseContext.Provider>
   );
 }
+
+export const useAuth = () => useContext(FirebaseContext).auth;
+export const useFirestore = () => useContext(FirebaseContext).firestore;

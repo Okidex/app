@@ -3,6 +3,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,30 +14,34 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Singleton to hold instances
+// Singleton instances
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let firestore: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 
-// Helper to initialize only on the client or if API key is present
-const initFirebase = () => {
+// Lazy Initializer
+const getFirebase = () => {
+  // Guard: If we are on the server and have no API key, return nulls safely
   if (typeof window === 'undefined' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-    return { auth: null, firestore: null };
+    return { auth: null, firestore: null, storage: null };
   }
 
   if (!app) {
     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     auth = getAuth(app);
     firestore = getFirestore(app);
+    storage = getStorage(app);
   }
 
-  return { auth, firestore };
+  return { auth, firestore, storage };
 };
 
-// Export pre-initialized instances for components
-const services = initFirebase();
+// Export services
+const services = getFirebase();
 export const authInstance = services.auth;
 export const firestoreInstance = services.firestore;
+export const storageInstance = services.storage;
 
-// Keep these for backward compatibility with your forms
-export { authInstance as auth, firestoreInstance as firestore };
+// Keep existing naming for your form imports
+export { authInstance as auth, firestoreInstance as firestore, storageInstance as storage };
