@@ -1,9 +1,14 @@
-# Updated for December 2025 Stability and SSR Optimization
+# Updated for December 2025 Stability and Next.js 15 SSR Optimization
 name: Deploy to Firebase Hosting on merge
 'on':
   push:
     branches:
       - main
+
+# Ensure only one production deploy runs at a time
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 jobs:
   build_and_deploy:
@@ -18,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Match Node 22 for Next.js 15 and Firebase 2025 stability
+          # Node 22 is the 2025 standard for Next.js 15 and Firebase
           node-version: 22
           cache: 'npm'
 
@@ -32,15 +37,15 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Build the Next.js application
+        # Environment variables must be available at BUILD TIME for Next.js static optimization
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: studio-8509111427-a45a7
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
-          # Injected Gemini key to support AI-logic during pre-rendering
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
         run: |
@@ -51,6 +56,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          # CRITICAL: Ensure this is the clean JSON key from Firebase Console
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
