@@ -3,7 +3,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,14 +13,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 2025 Next.js Build-Safe Initialization
-const app = 
-  getApps().length > 0 
-    ? getApp() 
-    : (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) 
-      ? initializeApp(firebaseConfig) 
-      : null;
+// 2025 Next.js Build-Safe Check:
+// Only initialize if we are in a browser OR if we have a valid API Key string.
+const canInitialize = typeof window !== 'undefined' || 
+                      (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+                       process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "undefined");
+
+const app = canInitialize 
+  ? (getApps().length > 0 ? getApp() : initializeApp(firebaseConfig))
+  : null;
 
 export const auth = app ? getAuth(app) : null;
 export const firestore = app ? getFirestore(app) : null;
-export const storage = app ? getStorage(app) : null;
