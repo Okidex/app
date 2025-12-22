@@ -5,7 +5,7 @@ name: Deploy to Firebase Hosting on merge
     branches:
       - main
 
-# Ensure only one production deploy runs at a time
+# Ensure only one production deploy runs at a time to prevent state conflicts
 concurrency:
   group: deploy-production
   cancel-in-progress: true
@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 22 is the 2025 standard for Next.js 15 and Firebase
+          # Using Node 22 for 2025 LTS stability
           node-version: 22
           cache: 'npm'
 
@@ -37,7 +37,7 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Build the Next.js application
-        # Environment variables must be available at BUILD TIME for Next.js static optimization
+        # Environment variables must be available at BUILD TIME for Next.js 15
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -56,7 +56,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          # CRITICAL: Ensure this is the clean JSON key from Firebase Console
+          # Verify this matches the name in GitHub Repository Secrets
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: studio-8509111427-a45a7
