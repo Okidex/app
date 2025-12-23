@@ -1,3 +1,4 @@
+
 "use client";
 
 import dynamic from 'next/dynamic';
@@ -19,7 +20,7 @@ const ProviderSkeleton = () => (
   </div>
 );
 
-const FirebaseProvider = dynamic(
+const DynamicFirebaseProvider = dynamic(
   () => import('@/firebase').then((mod) => mod.FirebaseClientProvider),
   { 
     ssr: false,
@@ -28,5 +29,5 @@ const FirebaseProvider = dynamic(
 );
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
-  return <FirebaseProvider>{children}</FirebaseProvider>;
+  return <DynamicFirebaseProvider>{children}</DynamicFirebaseProvider>;
 }
