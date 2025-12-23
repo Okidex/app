@@ -28,8 +28,8 @@ import { investmentStages } from "@/lib/constants";
 import IncorporationDetailsForm from "@/components/profile/incorporation-details-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateUserProfile, getStartupById, getUsersByIds } from "@/lib/actions";
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 
 export default function ProfileEditClient() {
@@ -122,6 +122,8 @@ export default function ProfileEditClient() {
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user || !db) return;
+
     let profileUpdateData: Partial<Profile> = {};
     const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
@@ -165,21 +167,29 @@ export default function ProfileEditClient() {
         }
     }
     
-    const { success, error } = await updateUserProfile(user.id, profileUpdateData);
+    const fullProfileUpdate = {
+        ...user,
+        profile: { ...user.profile, ...profileUpdateData }
+    };
+
+    const userDocRef = doc(db, 'users', user.id);
     
-    if (success) {
-      toast({
-        title: "Profile Saved",
-        description: "Your general information has been updated.",
-      });
-      router.refresh(); 
-    } else {
-      toast({
-        title: "Error",
-        description: error || "Failed to update profile.",
-        variant: "destructive",
-      });
-    }
+    setDoc(userDocRef, fullProfileUpdate, { merge: true })
+      .then(() => {
+        toast({
+          title: "Profile Saved",
+          description: "Your general information has been updated.",
+        });
+        router.refresh();
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: fullProfileUpdate,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   return (
@@ -442,3 +452,5 @@ export default function ProfileEditClient() {
     </div>
   );
 }
+
+    
