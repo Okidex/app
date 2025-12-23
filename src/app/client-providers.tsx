@@ -1,17 +1,32 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext } from 'react';
-import { auth, firestore, storage } from '@/firebase'; // Path to your firebase.tsx
+import dynamic from 'next/dynamic';
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const FirebaseContext = createContext({ auth, firestore, storage });
+const ProviderSkeleton = () => (
+  <div className="flex flex-col min-h-screen">
+    <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+       <Skeleton className="h-8 w-32" />
+       <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-24" />
+      </div>
+    </header>
+    <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <Skeleton className="h-[400px] w-full" />
+    </main>
+  </div>
+);
 
-export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <FirebaseContext.Provider value={{ auth, firestore, storage }}>
-      {children}
-    </FirebaseContext.Provider>
-  );
+const FirebaseProvider = dynamic(
+  () => import('@/firebase').then((mod) => mod.FirebaseClientProvider),
+  { 
+    ssr: false,
+    loading: () => <ProviderSkeleton />,
+  }
+);
+
+export function ClientProviders({ children }: { children: React.ReactNode }) {
+  return <FirebaseProvider>{children}</FirebaseProvider>;
 }
-
-export const useAuth = () => useContext(FirebaseContext).auth;
-export const useFirestore = () => useContext(FirebaseContext).firestore;

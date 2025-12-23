@@ -1,9 +1,5 @@
-// app/profile/page.tsx
 
-'use client'; // <-- MOVED TO THE TOP
-
-// Forces this page to be rendered dynamically at request time, bypassing static generation issues.
-export const dynamic = 'force-dynamic'; 
+'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,9 +13,9 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!loading) {
       if (currentUser) {
-        router.push(`/users/${currentUser.id}`);
+        router.replace(`/users/${currentUser.id}`);
       } else {
-        router.push('/login');
+        router.replace('/login');
       }
     }
   }, [currentUser, loading, router]);

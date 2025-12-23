@@ -1,9 +1,7 @@
-'use client';
-
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,34 +12,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Singleton instances
-let app: FirebaseApp | undefined;
-let auth: Auth | undefined;
-let firestore: Firestore | undefined;
-let storage: FirebaseStorage | undefined;
+// Initialize Firebase (Singleton pattern)
+// Standard modular initialization is generally safe in Next.js 15
+// as long as you don't call Auth/Firestore methods directly on the server.
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Lazy Initializer
-const getFirebase = () => {
-  // Guard: If we are on the server and have no API key, return nulls safely
-  if (typeof window === 'undefined' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-    return { auth: null, firestore: null, storage: null };
-  }
+// Export constants directly to fix the "Attempted import error"
+export const auth = getAuth(app);
+export const firestore = getFirestore(app);
+export const storage = getStorage(app);
 
-  if (!app) {
-    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    firestore = getFirestore(app);
-    storage = getStorage(app);
-  }
-
-  return { auth, firestore, storage };
-};
-
-// Export services
-const services = getFirebase();
-export const authInstance = services.auth;
-export const firestoreInstance = services.firestore;
-export const storageInstance = services.storage;
-
-// Keep existing naming for your form imports
-export { authInstance as auth, firestoreInstance as firestore, storageInstance as storage };
+// Export app instance in case it is needed for other services
+export default app;
