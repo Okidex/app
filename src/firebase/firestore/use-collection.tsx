@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useMemoFirebase } from '../provider';
 
 export type WithId<T> = T & { id: string };
 
@@ -21,6 +22,7 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null;
 }
 
+// Internal type to access protected properties for error reporting
 export interface InternalQuery extends Query<DocumentData> {
   _query: {
     path: {
@@ -31,7 +33,7 @@ export interface InternalQuery extends Query<DocumentData> {
 }
 
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>))  | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -41,6 +43,8 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // If the query is not ready (e.g., waiting for a user ID), 
+    // set loading to false and clear data/errors.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
@@ -63,10 +67,12 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+        // Use a type guard to access internal properties safely
+        const isInternalQuery = (q: any): q is InternalQuery => '_query' in q && q._query.path;
+        
+        const path: string = isInternalQuery(memoizedTargetRefOrQuery)
+          ? memoizedTargetRefOrQuery._query.path.canonicalString()
+          : (memoizedTargetRefOrQuery as CollectionReference).path;
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
@@ -82,10 +88,10 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
+  // We only want to re-run the effect if the memoized query itself changes.
+  // The dependencies for creating the query are handled by useMemoFirebase in the component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedTargetRefOrQuery]);
 
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error('useCollection query was not properly memoized using useMemoFirebase');
-  }
   return { data, isLoading, error };
 }

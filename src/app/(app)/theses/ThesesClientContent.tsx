@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import TalentInterestPrompt from "@/components/theses/talent-interest-prompt";
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, getDocs, orderBy, addDoc, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUsersByIds } from "@/lib/actions";
@@ -25,23 +26,24 @@ type ThesisWithAuthor = InvestmentThesis & { author?: FullUserProfile };
 
 export default function ThesesClientContent() {
   const { user: currentUser, isUserLoading: authLoading } = useUser();
+  const db = useFirestore();
+
+  const thesesQuery = useMemoFirebase(() => db ? query(collection(db, "theses"), orderBy("postedAt", "desc")) : null, [db]);
+  const {data: thesesData, isLoading: thesesLoading} = useCollection<InvestmentThesis>(thesesQuery);
+
   const [theses, setTheses] = useState<ThesisWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPostThesisOpen, setIsPostThesisOpen] = useState(false);
   const [showTalentPrompt, setShowTalentPrompt] = useState(false);
   const { toast } = useToast();
-  const db = useFirestore();
 
   useEffect(() => {
-      const fetchTheses = async () => {
-          if (!db) {
-            if(!authLoading) setLoading(false);
-            return;
+      const fetchAuthors = async () => {
+          if (!thesesData) {
+              if(!authLoading && !thesesLoading) setLoading(false);
+              return;
           };
           setLoading(true);
-          const thesesQuery = query(collection(db, "theses"), orderBy("postedAt", "desc"));
-          const querySnapshot = await getDocs(thesesQuery);
-          const thesesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InvestmentThesis));
 
           const authorIds = [...new Set(thesesData.map(t => t.investorId))];
           
@@ -58,8 +60,8 @@ export default function ThesesClientContent() {
 
           setLoading(false);
       };
-      fetchTheses();
-  }, [db, authLoading]);
+      fetchAuthors();
+  }, [thesesData, authLoading, thesesLoading]);
   
   const [newThesis, setNewThesis] = useState({
     title: "",

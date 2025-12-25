@@ -2,10 +2,9 @@
 'use client'; 
 
 import { useState, useEffect } from 'react';
-import { FullUserProfile, Job, FounderProfile, TalentProfile, InvestmentThesis } from "@/lib/types";
-import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { toSerializable } from '@/lib/serialize';
+import { FullUserProfile, Job, FounderProfile, TalentProfile, InvestmentThesis, Interest } from "@/lib/types";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,62 +18,58 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function DashboardClientContent() {
     const { user: currentUser, isUserLoading } = useUser();
     const db = useFirestore();
-    const [dashboardData, setDashboardData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
     const [isUpgradeCardVisible, setIsUpgradeCardVisible] = useState(true);
 
-    useEffect(() => {
-        if (isUserLoading || !currentUser || !db) return;
+    // --- Founder Data ---
+    const founderMatchesQuery = useMemoFirebase(() => 
+        currentUser?.role === 'founder' && db
+            ? query(collection(db, "users"), where("role", "in", ["investor", "talent"]), limit(3))
+            : null
+    , [currentUser, db]);
+    const { data: founderMatches, isLoading: founderMatchesLoading } = useCollection<FullUserProfile>(founderMatchesQuery);
 
-        const getDashboardData = async (user: FullUserProfile) => {
-            setLoading(true);
-            let data: any = {};
+    // --- Investor Data ---
+    const investorThesesQuery = useMemoFirebase(() =>
+        currentUser?.role === 'investor' && db && currentUser.id
+            ? query(collection(db, "theses"), where("investorId", "==", currentUser.id))
+            : null
+    , [currentUser, db]);
+    const { data: myTheses, isLoading: thesesLoading } = useCollection<InvestmentThesis>(investorThesesQuery);
 
-            if (user.role === 'founder') {
-                const q = query(collection(db, "users"), where("role", "!=", "founder"), limit(3));
-                const querySnapshot = await getDocs(q);
-                data.matches = querySnapshot.docs.map(doc => toSerializable(doc.data())).filter(Boolean);
-            }
-
-            if (user.role === 'investor') {
-                const thesesQuery = query(collection(db, "theses"), where("investorId", "==", user.id));
-                const myThesesSnap = await getDocs(thesesQuery);
-                const myTheses = myThesesSnap.docs.map(doc => toSerializable(doc.data())) as InvestmentThesis[];
-                data.myThesesCount = myTheses.length;
-
-                const myJobsQuery = query(collection(db, "jobs"), where("founderId", "==", user.id));
-                const myJobsSnap = await getDocs(myJobsQuery);
-                const myJobs = myJobsSnap.docs.map(doc => toSerializable(doc.data())) as Job[];
-
-                data.thesisInterestsCount = 0;
-                if (myTheses.length > 0) {
-                    const thesisInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", myTheses.map(t => t.id)));
-                    const thesisInterestsSnap = await getDocs(thesisInterestsQuery);
-                    data.thesisInterestsCount = thesisInterestsSnap.size;
-                }
-
-                data.jobInterestsCount = 0;
-                if (myJobs.length > 0) {
-                    const jobInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", myJobs.map(j => j.id)));
-                    const jobInterestsSnap = await getDocs(jobInterestsQuery);
-                    data.jobInterestsCount = jobInterestsSnap.size;
-                }
-            }
-
-            if (user.role === 'talent') {
-                const jobsQuery = query(collection(db, "jobs"), limit(3));
-                const jobsSnapshot = await getDocs(jobsQuery);
-                data.recommendedJobs = jobsSnapshot.docs.map(doc => toSerializable(doc.data())).filter(Boolean);
-            }
-            setDashboardData(data);
-            setLoading(false);
-        };
-
-        getDashboardData(currentUser);
-
-    }, [currentUser, isUserLoading, db]);
+    const investorJobsQuery = useMemoFirebase(() =>
+        currentUser?.role === 'investor' && db && currentUser.id
+            ? query(collection(db, "jobs"), where("founderId", "==", currentUser.id))
+            : null
+    , [currentUser, db]);
+    const { data: myJobs, isLoading: jobsLoading } = useCollection<Job>(investorJobsQuery);
     
-    if (isUserLoading || loading || !currentUser || !dashboardData) {
+    const thesisIds = myTheses?.map(t => t.id) || [];
+    const thesisInterestsQuery = useMemoFirebase(() => 
+        db && thesisIds.length > 0
+        ? query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", thesisIds))
+        : null
+    , [db, thesisIds]);
+    const { data: thesisInterests, isLoading: thesisInterestsLoading } = useCollection<Interest>(thesisInterestsQuery);
+
+    const jobIds = myJobs?.map(j => j.id) || [];
+    const jobInterestsQuery = useMemoFirebase(() =>
+      db && jobIds.length > 0
+        ? query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", jobIds))
+        : null
+    , [db, jobIds]);
+    const { data: jobInterests, isLoading: jobInterestsLoading } = useCollection<Interest>(jobInterestsQuery);
+
+    // --- Talent Data ---
+    const talentJobsQuery = useMemoFirebase(() =>
+        currentUser?.role === 'talent' && db
+            ? query(collection(db, "jobs"), limit(3))
+            : null
+    , [currentUser, db]);
+    const { data: recommendedJobs, isLoading: talentJobsLoading } = useCollection<Job>(talentJobsQuery);
+
+    const loading = isUserLoading || founderMatchesLoading || thesesLoading || jobsLoading || thesisInterestsLoading || jobInterestsLoading || talentJobsLoading;
+    
+    if (loading) {
         return (
              <div className="flex flex-col gap-6">
                 <div className="flex justify-between items-center">
@@ -92,6 +87,10 @@ export default function DashboardClientContent() {
                 <Skeleton className="h-64 w-full" />
             </div>
         );
+    }
+    
+    if (!currentUser) {
+        return null; // Auth wrapper will handle redirect
     }
 
     const isFounder = currentUser.role === 'founder';
@@ -141,7 +140,7 @@ export default function DashboardClientContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {dashboardData.matches.map((match: FullUserProfile) => (
+                        {founderMatches && founderMatches.map((match: FullUserProfile) => (
                             <div key={match.id} className="flex items-center gap-4">
                                 <UserAvatar name={match.name} avatarUrl={match.avatarUrl} />
                                 <div className="flex-1">
@@ -153,6 +152,9 @@ export default function DashboardClientContent() {
                                 </Button>
                             </div>
                         ))}
+                         {(!founderMatches || founderMatches.length === 0) && (
+                            <p className="text-sm text-muted-foreground text-center">No new matches right now.</p>
+                         )}
                     </CardContent>
                 </Card>
             </div>
@@ -162,9 +164,9 @@ export default function DashboardClientContent() {
     const renderInvestorDashboard = () => {
         return (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Link href="/theses"><StatsCard title="Theses Posted" value={dashboardData.myThesesCount.toString()} icon={FileText} description="Share your focus" /></Link>
-                <Link href="/applicants"><StatsCard title="Thesis Applicants" value={dashboardData.thesisInterestsCount.toString()} icon={UsersIcon} description="Interest in your theses" /></Link>
-                <Link href="/applicants"><StatsCard title="Job Applicants" value={dashboardData.jobInterestsCount.toString()} icon={Briefcase} description="Interest in your jobs" /></Link>
+                <Link href="/theses"><StatsCard title="Theses Posted" value={myTheses?.length?.toString() ?? '0'} icon={FileText} description="Share your focus" /></Link>
+                <Link href="/applicants"><StatsCard title="Thesis Applicants" value={thesisInterests?.length?.toString() ?? '0'} icon={UsersIcon} description="Interest in your theses" /></Link>
+                <Link href="/applicants"><StatsCard title="Job Applicants" value={jobInterests?.length?.toString() ?? '0'} icon={Briefcase} description="Interest in your jobs" /></Link>
                 <StatsCard title="Startups Viewed" value="89" icon={Activity} description="+15 from last week" />
                 <Link href="/matches"><StatsCard title="Active Matches" value="5" icon={CheckCheck} description="Ready for outreach" /></Link>
                 <Link href="/search"><StatsCard title="New Opportunities" value="18" icon={DollarSign} description="In your target industries" /></Link>
@@ -194,11 +196,14 @@ export default function DashboardClientContent() {
                 <div className="lg:col-span-2 space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Job Matches ({dashboardData.recommendedJobs.length})</CardTitle>
+                            <CardTitle>Job Matches ({recommendedJobs?.length ?? 0})</CardTitle>
                             <CardDescription>Recommended jobs that match your profile and skills.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {dashboardData.recommendedJobs.map((job: Job) => <RecommendedJobCard key={job.id} job={job} />)}
+                            {recommendedJobs && recommendedJobs.map((job: Job) => <RecommendedJobCard key={job.id} job={job} />)}
+                            {(!recommendedJobs || recommendedJobs.length === 0) && (
+                                <p className="text-sm text-muted-foreground text-center">No recommended jobs right now.</p>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { Lock } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore, useUser, useMemoFirebase } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUsersByIds } from "@/lib/actions";
 
@@ -55,22 +55,21 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
     const [loading, setLoading] = useState(true);
     const db = useFirestore();
 
+    const thesesQuery = useMemoFirebase(() => db && currentUser?.id ? query(collection(db, "theses"), where("investorId", "==", currentUser.id)) : null, [db, currentUser]);
+    const jobsQuery = useMemoFirebase(() => db && currentUser?.id ? query(collection(db, "jobs"), where("founderId", "==", currentUser.id)) : null, [db, currentUser]);
+
     useEffect(() => {
         const fetchInterests = async () => {
             if (!db || !currentUser?.id) return;
-            // Fetch theses created by investor
-            const thesesQuery = query(collection(db, "theses"), where("investorId", "==", currentUser.id));
-            const thesesSnap = await getDocs(thesesQuery);
-            const myTheses = thesesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as InvestmentThesis));
+            
+            const thesesSnap = thesesQuery ? await getDocs(thesesQuery) : null;
+            const myTheses = thesesSnap ? thesesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as InvestmentThesis)) : [];
 
-            // Fetch jobs created by investor
-            const jobsQuery = query(collection(db, "jobs"), where("founderId", "==", currentUser.id));
-            const jobsSnap = await getDocs(jobsQuery);
-            const myJobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+            const jobsSnap = jobsQuery ? await getDocs(jobsQuery) : null;
+            const myJobs = jobsSnap ? jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job)) : [];
 
             const allUserIds: string[] = [];
 
-            // Fetch interests for theses
             if (myTheses.length > 0) {
                 const thesisInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", myTheses.map(t => t.id)));
                 const thesisInterestsSnap = await getDocs(thesisInterestsQuery);
@@ -85,7 +84,6 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 })));
             }
 
-            // Fetch interests for jobs
             if (myJobs.length > 0) {
                 const jobInterestsQuery = query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", myJobs.map(j => j.id)));
                 const jobInterestsSnap = await getDocs(jobInterestsQuery);
@@ -100,7 +98,6 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
                 })));
             }
             
-            // Fetch user profiles for all interests
             if(allUserIds.length > 0) {
                 const users = await getUsersByIds(allUserIds);
                 setThesisInterests(prev => prev.map(item => ({...item, user: users.find(u => u.id === item.userId)})));
@@ -112,7 +109,7 @@ const InvestorApplicantsView = ({ currentUser }: { currentUser: FullUserProfile 
         if(currentUser?.id) {
             fetchInterests();
         }
-    }, [currentUser.id, db]);
+    }, [currentUser, db, thesesQuery, jobsQuery]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
 
@@ -137,12 +134,14 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
     const [loading, setLoading] = useState(true);
     const db = useFirestore();
 
+    const jobsQuery = useMemoFirebase(() => db && currentUser?.id ? query(collection(db, "jobs"), where("founderId", "==", currentUser.id)) : null, [db, currentUser]);
+
     useEffect(() => {
         const fetchInterests = async () => {
             if (!db || !currentUser?.id) return;
-            const jobsQuery = query(collection(db, "jobs"), where("founderId", "==", currentUser.id));
-            const jobsSnap = await getDocs(jobsQuery);
-            const myJobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+            
+            const jobsSnap = jobsQuery ? await getDocs(jobsQuery) : null;
+            const myJobs = jobsSnap ? jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job)) : [];
 
             if (myJobs.length > 0) {
                 const interestsQuery = query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", myJobs.map(j => j.id)));
@@ -165,7 +164,7 @@ const FounderApplicantsView = ({ currentUser }: { currentUser: FullUserProfile }
         if (currentUser?.id) {
             fetchInterests();
         }
-    }, [currentUser.id, db]);
+    }, [currentUser, db, jobsQuery]);
 
     if (loading) return <div><Skeleton className="h-10 w-64 mb-4" /><Skeleton className="h-32 w-full" /></div>;
 

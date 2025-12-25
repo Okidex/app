@@ -34,12 +34,12 @@ import {
   Notification,
 } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore } from '@/firebase';
-import { logout as clientLogout } from "@/lib/auth";
+import { useUser, useFirestore, useAuth } from '@/firebase';
 import { logout as serverLogout } from "@/lib/auth-actions";
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import UserAvatar from '../shared/user-avatar';
+import { signOut } from 'firebase/auth';
 
 const menuItemsFounder = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -76,6 +76,7 @@ export function AppSidebar() {
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const isMobile = useIsMobile();
   const db = useFirestore();
+  const auth = useAuth();
 
   React.useEffect(() => {
     if (!user || !db) return;
@@ -95,10 +96,10 @@ export function AppSidebar() {
   }, [user, db]);
 
   const handleLogout = async () => {
-    await clientLogout(); // Sign out from client
-    await serverLogout(); // Clear server session
+    if (!auth) return;
+    await signOut(auth);
+    await serverLogout();
     router.push("/");
-    router.refresh(); // Force a refresh to ensure state is cleared
   };
   
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;

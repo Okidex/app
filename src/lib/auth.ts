@@ -1,6 +1,7 @@
-"use server";
 
-import { initializeFirebase } from '@/firebase';
+"use client";
+
+import { initializeFirebase } from '@/firebase/client-init';
 import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 export async function login(email: string, password: string):Promise<{success: boolean, error?: string}> {
@@ -12,17 +13,6 @@ export async function login(email: string, password: string):Promise<{success: b
     return { success: false, error: error.message };
   }
 }
-
-export async function logout() {
-  const { auth } = initializeFirebase();
-  try {
-    await signOut(auth);
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
 
 export async function sendPasswordReset(email: string) {
   const { auth } = initializeFirebase();

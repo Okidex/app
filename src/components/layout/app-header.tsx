@@ -16,20 +16,21 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import Logo from "../logo";
 import UserAvatar from "../shared/user-avatar";
 import Notifications from "./notifications";
-import { useUser } from "@/firebase";
-import { logout as clientLogout } from "@/lib/auth";
+import { useUser, useAuth } from "@/firebase";
 import { logout as serverLogout } from "@/lib/auth-actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { signOut } from "firebase/auth";
 
 export default function AppHeader() {
   const { user, isUserLoading: loading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await clientLogout(); // Sign out from client
+    if (!auth) return;
+    await signOut(auth); // Sign out from client
     await serverLogout(); // Clear server session
     router.push("/");
-    router.refresh(); // Force a refresh to ensure state is cleared
   };
   
   return (
@@ -67,7 +68,7 @@ export default function AppHeader() {
           </>
         ) : (
            <Button asChild>
-              <Link href="/signin">Log In</Link>
+              <Link href="/login">Log In</Link>
             </Button>
         )}
       </div>

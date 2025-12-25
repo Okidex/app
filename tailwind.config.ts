@@ -5,10 +5,11 @@ import forms from "@tailwindcss/forms"
 const config = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    // Narrowing patterns to specific subdirectories within src
+    // to resolve the broad glob performance warning
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   prefix: "",
   theme: {
@@ -21,7 +22,6 @@ const config = {
     },
     extend: {
       fontFamily: {
-        // Standardized to use Inter as the primary sans stack
         sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-inter)', 'sans-serif'],
         headline: ['var(--font-inter)', 'sans-serif'],
@@ -93,7 +93,6 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        // Prevents the calendar from "jumping" visually during state changes
         "calendar-fade": {
           "0%": { opacity: "0", transform: "scale(0.98)" },
           "100%": { opacity: "1", transform: "scale(1)" },
@@ -108,7 +107,7 @@ const config = {
   },
   plugins: [
     animate,
-    forms({ strategy: 'class' }) // Strategy 'class' ensures it doesn't break Shadcn input global styles
+    forms({ strategy: 'class' })
   ],
 } satisfies Config
 

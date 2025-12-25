@@ -1,6 +1,4 @@
-
 "use client";
-export const dynamic = 'force-dynamic';
 
 import LoginForm from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +26,7 @@ export default function LoginPage() {
       <Alert className="mt-4">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-xs text-muted-foreground">
-          <strong>Okidex is in early access.</strong> We&apos;re working to a full release and are actively developing new features, so things may change. Your feedback is invaluable—please{' '}
+          <strong>Okidex is in early access.</strong> We're working to a full release and are actively developing new features, so things may change. Your feedback is invaluable—please{' '}
           <a href="mailto:wilfred@okidex.com" className="underline">
             share your thoughts with us
           </a>

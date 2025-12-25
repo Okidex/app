@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,7 +11,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Conversation, FullUserProfile, Message } from "@/lib/types";
 import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore, useUser, useMemoFirebase } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,28 +25,32 @@ export default function MessagesClientContent() {
     const { toast } = useToast();
     const db = useFirestore();
 
+    const conversationsQuery = useMemoFirebase(() => 
+        currentUser?.id && db 
+            ? query(collection(db, "conversations"), where("participantIds", "array-contains", currentUser.id))
+            : null
+    , [currentUser, db]);
+
     useEffect(() => {
-        if (!currentUser || !db) {
+        if (!conversationsQuery) {
             if (!authLoading) setLoading(false);
             return;
         };
 
         setLoading(true);
-        const q = query(collection(db, "conversations"), where("participantIds", "array-contains", currentUser.id));
-        
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const unsubscribe = onSnapshot(conversationsQuery, async (snapshot) => {
             const convos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
             
-            const otherParticipantIds = convos.flatMap(c => c.participantIds).filter(id => id !== currentUser.id);
+            const otherParticipantIds = convos.flatMap(c => c.participantIds).filter(id => id !== currentUser?.id);
             const uniqueParticipantIds = [...new Set(otherParticipantIds)];
 
             if (uniqueParticipantIds.length > 0) {
-                const usersQuery = query(collection(db, "users"), where("id", "in", uniqueParticipantIds));
+                const usersQuery = query(collection(db!, "users"), where("id", "in", uniqueParticipantIds));
                 const usersSnap = await getDocs(usersQuery);
                 const usersData = usersSnap.docs.map(doc => doc.data() as FullUserProfile);
                 
                 const populatedConvos = convos.map(convo => {
-                    const otherParticipant = usersData.find(u => convo.participantIds.includes(u.id) && u.id !== currentUser.id);
+                    const otherParticipant = usersData.find(u => convo.participantIds.includes(u.id) && u.id !== currentUser?.id);
                     const participants = [currentUser, otherParticipant].filter(Boolean) as FullUserProfile[];
                     return { ...convo, participants, messages: convo.messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) };
                 });
@@ -66,7 +71,7 @@ export default function MessagesClientContent() {
         });
 
         return () => unsubscribe();
-    }, [currentUser, activeConversationId, db, authLoading]);
+    }, [conversationsQuery, currentUser, activeConversationId, db, authLoading]);
     
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -6,10 +6,12 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
 
-    // Users: Private account data
+    // Users: Private account data. List allowed for matching purposes.
     match /users/{userId} {
       allow get, update, delete: if isOwner(userId);
       allow create: if isOwner(userId);
+      // Allow authenticated users to list other users for matching, but not themselves.
+      allow list: if isSignedIn() && request.query.resource.data.role != get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     // User Profiles: Public to read, private to edit

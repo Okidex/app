@@ -7,27 +7,21 @@ import { Firestore, doc, getDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { FullUserProfile } from '@/lib/types';
+import { FirestorePermissionError } from './errors';
+import { errorEmitter } from './error-emitter';
 
-interface UserAuthState {
+
+export interface UserHookResult {
   user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
 }
 
-export interface FirebaseContextState {
+interface FirebaseContextState {
   areServicesAvailable: boolean;
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
-  user: FullUserProfile | null;
-  isUserLoading: boolean;
-  userError: Error | null;
-}
-
-export interface FirebaseServicesAndUser {
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
   user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -48,7 +42,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firestore,
   auth,
 }) => {
-  const [userAuthState, setUserAuthState] = useState<UserAuthState>({
+  const [userAuthState, setUserAuthState] = useState<UserHookResult>({
     user: null,
     isUserLoading: true,
     userError: null,
@@ -64,20 +58,23 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       async (firebaseUser) => {
         if (firebaseUser) {
-            try {
-                // Fetch user profile from Firestore on the client
-                const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-                const userDocSnap = await getDoc(userDocRef);
-
+            const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+            getDoc(userDocRef)
+              .then((userDocSnap) => {
                 if (userDocSnap.exists()) {
                     setUserAuthState({ user: userDocSnap.data() as FullUserProfile, isUserLoading: false, userError: null });
                 } else {
-                    setUserAuthState({ user: null, isUserLoading: false, userError: new Error("User document not found.") });
+                    setUserAuthState({ user: null, isUserLoading: false, userError: null });
                 }
-            } catch (error) {
-                console.error("FirebaseProvider: Error fetching user document:", error);
-                setUserAuthState({ user: null, isUserLoading: false, userError: error as Error });
-            }
+              })
+              .catch((serverError) => {
+                const contextualError = new FirestorePermissionError({
+                  path: userDocRef.path,
+                  operation: 'get',
+                });
+                errorEmitter.emit('permission-error', contextualError);
+                setUserAuthState({ user: null, isUserLoading: false, userError: contextualError });
+              });
         } else {
             setUserAuthState({ user: null, isUserLoading: false, userError: null });
         }
@@ -111,49 +108,36 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-export const useFirebase = (): FirebaseServicesAndUser => {
+export const useFirebase = (): FirebaseContextState => {
   const context = useContext(FirebaseContext);
-
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
-
-  if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
-  }
-
-  return {
-    firebaseApp: context.firebaseApp,
-    firestore: context.firestore,
-    auth: context.auth,
-    user: context.user,
-    isUserLoading: context.isUserLoading,
-    userError: context.userError,
-  };
+  return context;
 };
 
-export const useAuth = (): Auth => {
+export const useAuth = (): Auth | null => {
   const { auth } = useFirebase();
   return auth;
 };
 
-export const useFirestore = (): Firestore => {
+export const useFirestore = (): Firestore | null => {
   const { firestore } = useFirebase();
   return firestore;
 };
 
-export const useFirebaseApp = (): FirebaseApp => {
+export const useFirebaseApp = (): FirebaseApp | null => {
   const { firebaseApp } = useFirebase();
   return firebaseApp;
 };
 
-type MemoFirebase <T> = T & {__memo?: boolean};
+export const useUser = (): UserHookResult => {
+  const { user, isUserLoading, userError } = useFirebase();
+  return { user, isUserLoading, userError };
+};
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
-  const memoized = useMemo(factory, deps);
-  
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
-  
-  return memoized;
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoizedValue = useMemo(factory, deps);
+  return memoizedValue;
 }

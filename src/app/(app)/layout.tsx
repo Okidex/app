@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -54,4 +54,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </AuthWrapper>
   );
 }
-

@@ -1,6 +1,7 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // FIX: Next.js 15/14 require these to be external for AI & Telemetry packages
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  // 1. Critical for Genkit/AI SDKs to work in Server Components
   experimental: {
     serverComponentsExternalPackages: [
       "require-in-the-middle",
@@ -8,15 +9,36 @@ const nextConfig = {
       "@genkit-ai/core",
       "@genkit-ai/ai",
       "genkit",
+      "fsevents"
     ],
   },
+  
+  // 2. Fixes "Critical dependency" and "Unexpected Token" browser errors
+  // by preventing Node.js-only modules from being bundled into the client build
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        child_process: false,
+        perf_hooks: false,
+        dns: false,
+        readline: false,
+      };
+    }
+    return config;
+  },
+
   typescript: {
-    // Setting to true to bypass strict checks during troubleshooting
     ignoreBuildErrors: true,
   },
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'placehold.co', pathname: '/**' },

@@ -12,15 +12,21 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase (Singleton pattern)
-// Standard modular initialization is generally safe in Next.js 15
-// as long as you don't call Auth/Firestore methods directly on the server.
+// Safety check for 2025: Ensure the app doesn't crash during build if env vars are missing
+if (!firebaseConfig.apiKey && typeof window !== 'undefined') {
+  console.warn("Firebase API Key is missing. Check your .env.local file.");
+}
+
+// 1. Initialize the App (Singleton pattern)
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Export constants directly to fix the "Attempted import error"
-export const auth = getAuth(app);
-export const firestore = getFirestore(app);
-export const storage = getStorage(app);
+// 2. Initialize Services
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+const storage = getStorage(app);
 
-// Export app instance in case it is needed for other services
+// 3. EXPLICIT NAMED EXPORTS (Fixes the "Attempted import error")
+export { app, auth, firestore, storage };
+
+// Default export as a fallback
 export default app;
