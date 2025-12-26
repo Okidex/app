@@ -1,5 +1,10 @@
-import 'server-only'; // Ensures this file never runs on the client
-import admin from 'firebase-admin';
+'use server-only';
+
+import * as admin from 'firebase-admin';
+import { getApps, getApp, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 interface FirebaseAdminServices {
   auth: admin.auth.Auth;
@@ -7,58 +12,53 @@ interface FirebaseAdminServices {
   storage: admin.storage.Storage;
 }
 
-// Global variable to persist the admin instance during HMR/Build
-let adminServices: FirebaseAdminServices | null = null;
-
-function getServiceAccount(): admin.ServiceAccount {
+function getServiceAccount() {
   const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
 
   if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
-    throw new Error('Firebase Admin environment variables are missing.');
+    throw new Error('Missing Firebase Admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).');
   }
 
   return {
     projectId: FIREBASE_PROJECT_ID,
     clientEmail: FIREBASE_CLIENT_EMAIL,
-    // Fixes formatting issues with private keys in .env files
+    // Ensure the private key is properly formatted for Node.js
     privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
   };
 }
 
 /**
- * Modern 2025 initialization helper.
+ * Core function to initialize or retrieve the Firebase Admin instance.
  */
 export function getFirebaseAdmin(): FirebaseAdminServices {
-  if (adminServices) return adminServices;
+  const existingApps = getApps();
+  let app: admin.app.App;
 
-  if (admin.apps.length === 0) {
-    try {
-      const serviceAccount = getServiceAccount();
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        // Fallback to newer 2025 storage bucket naming convention
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${serviceAccount.projectId}.firebasestorage.app`,
-      });
-      
-      console.log('Firebase Admin initialized successfully.');
-    } catch (error: any) {
-      console.error('Firebase Admin initialization error:', error.message);
-      throw new Error('Failed to initialize Firebase Admin SDK.');
-    }
+  if (existingApps.length === 0) {
+    const serviceAccount = getServiceAccount();
+    app = initializeApp({
+      credential: cert(serviceAccount),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${serviceAccount.projectId}.appspot.com`,
+    });
+    console.log('Firebase Admin initialized successfully.');
+  } else {
+    app = getApp();
   }
 
-  adminServices = {
-    auth: admin.auth(),
-    firestore: admin.firestore(),
-    storage: admin.storage(),
+  return {
+    auth: getAuth(app),
+    firestore: getFirestore(app),
+    storage: getStorage(app),
   };
-
-  return adminServices;
 }
 
-/**
- * CRITICAL BUILD FIX:
- * Alias to support legacy code importing 'initializeAdminApp'
- */
+// --- EXPORTS FOR BACKWARD COMPATIBILITY ---
+
+// Fixes: "Attempted import error: 'initializeAdminApp' is not exported"
 export const initializeAdminApp = getFirebaseAdmin;
+
+// Named exports for direct use in Server Actions
+const services = getFirebaseAdmin();
+export const adminAuth = services.auth;
+export const adminDb = services.firestore;
+export const adminStorage = services.storage;

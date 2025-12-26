@@ -1,4 +1,3 @@
-
 'use server';
 
 import 'server-only';
@@ -6,10 +5,7 @@ import { initializeAdminApp } from '@/lib/firebase-server-init';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
     FullUserProfile, Startup, Profile, Message,
-    FinancialData,
     FounderProfile,
-    InvestorProfile,
-    TalentProfile,
 } from './types';
 import {
   summarizeFinancialData,
@@ -36,10 +32,11 @@ import {
 } from '@/ai/flows/smart-search';
 import { toSerializable } from './serialize';
 
+// --- User Actions ---
 
 export async function getUserById(userId: string): Promise<FullUserProfile | null> {
   if (!userId) return null;
-  const { firestore } = await initializeAdminApp();
+  const { firestore } = initializeAdminApp(); // Removed 'await'
   const userDoc = await firestore.collection('users').doc(userId).get();
   if (userDoc.exists) {
     return toSerializable(userDoc.data()) as FullUserProfile;
@@ -48,16 +45,14 @@ export async function getUserById(userId: string): Promise<FullUserProfile | nul
 }
 
 export async function getUsersByIds(userIds: string[]): Promise<FullUserProfile[]> {
-    if (!userIds || userIds.length === 0) {
-        return [];
-    }
-    const { firestore } = await initializeAdminApp();
-    const uniqueIds = [...new Set(userIds)];
+    if (!userIds || userIds.length === 0) return [];
     
-    if (uniqueIds.length === 0) {
-        return [];
-    }
+    const { firestore } = initializeAdminApp(); // Removed 'await'
+    const uniqueIds = [...new Set(userIds)].filter(Boolean);
     
+    if (uniqueIds.length === 0) return [];
+    
+    // Firestore 'in' queries are limited to 30 elements per chunk
     const chunks: string[][] = [];
     for (let i = 0; i < uniqueIds.length; i += 30) {
         chunks.push(uniqueIds.slice(i, i + 30));
@@ -76,27 +71,21 @@ export async function getUsersByIds(userIds: string[]): Promise<FullUserProfile[
     return users;
 }
 
-export async function getStartupById(startupId: string): Promise<Startup | null> {
-    if (!startupId) return null;
-    const { firestore } = await initializeAdminApp();
-    const startupDoc = await firestore.collection('startups').doc(startupId).get();
-    if (startupDoc.exists) {
-        return toSerializable(startupDoc.data()) as Startup;
-    }
-    return null;
-}
-
 export async function updateUserProfile(userId: string, data: Partial<Profile>) {
-    const { firestore } = await initializeAdminApp();
+    const { firestore } = initializeAdminApp(); // Removed 'await'
     try {
         const userRef = firestore.collection("users").doc(userId);
         const existingDoc = await userRef.get();
         if (!existingDoc.exists) {
             throw new Error("User not found");
         }
-        const existingProfile = existingDoc.data()?.profile || {};
+        const existingData = existingDoc.data();
+        const existingProfile = existingData?.profile || {};
 
-        await userRef.update({ profile: { ...existingProfile, ...data } });
+        await userRef.update({
+            profile: { ...existingProfile, ...data },
+            updatedAt: FieldValue.serverTimestamp() // 2025 Audit Tracking
+        });
         return { success: true };
     } catch (error: any) {
         console.error("Error updating user profile:", error);
@@ -104,8 +93,22 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
     }
 }
 
+// --- Startup Actions ---
+
+export async function getStartupById(startupId: string): Promise<Startup | null> {
+    if (!startupId) return null;
+    const { firestore } = initializeAdminApp();
+    const startupDoc = await firestore.collection('startups').doc(startupId).get();
+    if (startupDoc.exists) {
+        return toSerializable(startupDoc.data()) as Startup;
+    }
+    return null;
+}
+
+// --- Messaging Actions ---
+
 export async function sendMessage(conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) {
-    const { firestore } = await initializeAdminApp();
+    const { firestore } = initializeAdminApp();
     try {
         const convoRef = firestore.collection('conversations').doc(conversationId);
         const newMessage: Message = {
@@ -114,7 +117,8 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
             timestamp: new Date().toISOString(),
         }
         await convoRef.update({
-            messages: FieldValue.arrayUnion(newMessage)
+            messages: FieldValue.arrayUnion(newMessage),
+            lastMessageAt: FieldValue.serverTimestamp()
         });
         return { success: true, message: newMessage };
     } catch (error: any) {
@@ -122,6 +126,8 @@ export async function sendMessage(conversationId: string, message: Omit<Message,
         return { success: false, error: error.message };
     }
 }
+
+// --- AI Flow Actions ---
 
 export async function getFinancialSummary(input: FinancialDataInput): Promise<FinancialDataOutput> {
     return await summarizeFinancialData(input);
@@ -136,15 +142,20 @@ export async function getFinancialBreakdown(input: FinancialBreakdownInput): Pro
     return await financialBreakdown(input);
 }
 
+// --- Search Actions ---
+
 export async function getSearchResults(queryText: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
-    const { firestore } = await initializeAdminApp();
-    if (!queryText) {
-        return { startups: [], users: [] };
-    }
-    const usersCollection = await firestore.collection('users').get();
-    const allUsers = usersCollection.docs.map((doc) => toSerializable(doc.data()) as FullUserProfile);
-    const startupsCollection = await firestore.collection('startups').get();
-    const allStartups = startupsCollection.docs.map((doc) => toSerializable(doc.data()) as Startup);
+    const { firestore } = initializeAdminApp();
+    if (!queryText) return { startups: [], users: [] };
+
+    // Fetch initial datasets
+    const [usersSnap, startupsSnap] = await Promise.all([
+        firestore.collection('users').limit(100).get(), // Added limits for 2025 performance
+        firestore.collection('startups').limit(100).get()
+    ]);
+
+    const allUsers = usersSnap.docs.map((doc) => toSerializable(doc.data()) as FullUserProfile);
+    const allStartups = startupsSnap.docs.map((doc) => toSerializable(doc.data()) as Startup);
     
     const searchableData = JSON.stringify({
         users: allUsers.map(u => ({
@@ -152,7 +163,7 @@ export async function getSearchResults(queryText: string): Promise<{ startups: S
             name: u.name,
             role: u.role,
             profile: u.profile,
-            objectives: (u.profile as FounderProfile).objectives || []
+            objectives: (u.profile as FounderProfile)?.objectives || []
         })),
         startups: allStartups.map(s => ({
             id: s.id,
@@ -162,7 +173,9 @@ export async function getSearchResults(queryText: string): Promise<{ startups: S
             tagline: s.tagline,
             description: s.description,
             fundraisingGoal: s.fundraisingGoal,
-            founderObjectives: allUsers.find(u => u.id === s.founderIds[0]) ? ((allUsers.find(u => u.id === s.founderIds[0])!.profile as FounderProfile).objectives || []) : []
+            founderObjectives: allUsers.find(u => u.id === s.founderIds[0])
+                ? ((allUsers.find(u => u.id === s.founderIds[0])!.profile as FounderProfile)?.objectives || [])
+                : []
         }))
     });
 

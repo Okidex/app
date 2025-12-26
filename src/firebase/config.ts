@@ -1,6 +1,8 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
-// Your current config
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -11,11 +13,25 @@ export const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// SAFE INITIALIZATION:
-// Only initialize if we have an API Key (prevents build crash)
-// and if we haven't already initialized an app.
-const app = (getApps().length === 0 && firebaseConfig.apiKey)
-  ? initializeApp(firebaseConfig)
-  : (getApps().length > 0 ? getApp() : null);
+// 1. Initialize App safely
+let app: FirebaseApp;
 
-export { app };
+if (getApps().length === 0) {
+  // If we're missing an API key during build, use a placeholder to prevent crashes
+  // while ensuring 'app' is never null for the client-side hooks.
+  app = initializeApp(firebaseConfig.apiKey ? firebaseConfig : { ...firebaseConfig, apiKey: "placeholder" });
+} else {
+  app = getApp();
+}
+
+// 2. Initialize Services
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// 3. Set Persistence (Fixes the "Double Login" race condition)
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence);
+}
+
+export { app, auth, db, storage };
