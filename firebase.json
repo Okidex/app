@@ -16,13 +16,16 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "functions": {
-    "source": "src/ai",
-    "runtime": "nodejs20",
-    "predeploy": [
-      "npm --prefix \"$RESOURCE_DIR\" install"
-    ]
-  },
+  "functions": [
+    {
+      "source": "src/ai",
+      "codebase": "ai-logic",
+      "runtime": "nodejs22",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" install"
+      ]
+    }
+  ],
   "emulators": {
     "auth": { "port": 9099 },
     "functions": { "port": 5001 },

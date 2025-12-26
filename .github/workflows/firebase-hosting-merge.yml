@@ -5,10 +5,14 @@ name: Deploy to Firebase Hosting on merge
     branches:
       - main
 
-# Ensure only one production deploy runs at a time to prevent state conflicts
+# Prevent state conflicts by ensuring only one production deploy runs at a time
 concurrency:
   group: deploy-production
   cancel-in-progress: true
+
+permissions:
+  checks: write
+  contents: read
 
 jobs:
   build_and_deploy:
@@ -23,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Using Node 22 for 2025 LTS stability
+          # Node 22 is the verified LTS for late 2025 Next.js deployments
           node-version: 22
           cache: 'npm'
 
@@ -36,12 +40,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
-      - name: Build the Next.js application
-        # CRITICAL: Environment variables MUST be available at BUILD TIME for Next.js 15
+      - name: Install and Build
+        # CRITICAL: Next.js 15 requires these at BUILD TIME for SSG/SSR optimization
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: "studio-8509111427-a45a7"
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
@@ -49,7 +53,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Deploy to Live Channel
