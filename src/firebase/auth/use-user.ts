@@ -10,8 +10,6 @@ export interface UserHookResult {
   userError: Error | null;
 }
 
-// This hook is now a simple wrapper around the context.
-// The actual logic is in the provider itself.
 export const useUser = (): UserHookResult => {
   const { user, isUserLoading, userError } = useFirebase();
   return { user, isUserLoading, userError };

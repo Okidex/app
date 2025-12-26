@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeFirebase, getSdks } from './client-init';
@@ -7,9 +6,9 @@ import {
   useAuth,
   useFirestore,
   useFirebaseApp,
-  useUser,
   useMemoFirebase,
 } from './provider';
+import { useUser } from './auth/use-user';
 import { FirebaseClientProvider } from './client-provider';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';

@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getAuth, setPersistence, browserLocalPersistence, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,24 +13,27 @@ export const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// 1. Initialize App safely
+// Singleton pattern to prevent re-initialization during Fast Refresh
 let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
 
 if (getApps().length === 0) {
-  // If we're missing an API key during build, use a placeholder to prevent crashes
-  // while ensuring 'app' is never null for the client-side hooks.
+  // Use a placeholder only if the key is missing (mostly during build)
   app = initializeApp(firebaseConfig.apiKey ? firebaseConfig : { ...firebaseConfig, apiKey: "placeholder" });
 } else {
   app = getApp();
 }
 
-// 2. Initialize Services
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Initialize services once
+auth = getAuth(app);
+db = getFirestore(app);
+storage = getStorage(app);
 
-// 3. Set Persistence (Fixes the "Double Login" race condition)
+// Client-only initialization
 if (typeof window !== "undefined") {
+  // 1. Force persistence to local to prevent "Ghost" logged-out states
   setPersistence(auth, browserLocalPersistence);
 }
 

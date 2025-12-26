@@ -1,11 +1,45 @@
+'use client';
 
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
 import Logo from '@/components/logo';
 import { ArrowRight, Briefcase, Lightbulb, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RootPage() {
+    const { user, isUserLoading: loading } = useUser();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && user) {
+            router.push('/dashboard');
+        }
+    }, [user, loading, router]);
+
+    if (loading || user) {
+        return (
+            <div className="flex flex-col min-h-screen">
+                <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                    <Logo />
+                    <Skeleton className="h-10 w-24" />
+                </header>
+                <main className="flex-1">
+                    <section className="py-20 md:py-32">
+                         <div className="container mx-auto text-center px-4">
+                            <Skeleton className="h-12 w-2/3 mx-auto mb-6" />
+                            <Skeleton className="h-6 w-full max-w-3xl mx-auto mb-10" />
+                            <Skeleton className="h-12 w-48 mx-auto" />
+                        </div>
+                    </section>
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col min-h-screen">
             <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">

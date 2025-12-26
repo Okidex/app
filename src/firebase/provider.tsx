@@ -4,12 +4,11 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, getDoc } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { FullUserProfile } from '@/lib/types';
 import { FirestorePermissionError } from './errors';
 import { errorEmitter } from './error-emitter';
-
 
 export interface UserHookResult {
   user: FullUserProfile | null;
@@ -131,13 +130,15 @@ export const useFirebaseApp = (): FirebaseApp | null => {
   return firebaseApp;
 };
 
-export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
-};
-
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedValue = useMemo(factory, deps);
+  if (memoizedValue && typeof memoizedValue === 'object' && !('__memo' in memoizedValue)) {
+    try {
+      (memoizedValue as any).__memo = true;
+    } catch (e) {
+      // This can fail on frozen objects, but it's okay.
+    }
+  }
   return memoizedValue;
 }

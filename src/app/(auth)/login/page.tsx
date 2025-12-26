@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/firebase"; // Assuming this is your hook using onAuthStateChanged
+import { useUser } from "@/firebase";
 import LoginForm from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -13,15 +13,12 @@ export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
-  // Fixes "Double Login" by immediately moving users who are already logged in 
-  // (e.g., via persistent cookie) away from the login page.
   useEffect(() => {
     if (!isUserLoading && user) {
       router.replace("/dashboard");
     }
   }, [user, isUserLoading, router]);
 
-  // Prevents the "Flash" of the login form while checking auth state
   if (isUserLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -31,7 +28,6 @@ export default function LoginPage() {
     );
   }
 
-  // If user is logged in, don't render the form (prevents "Double Login" flicker)
   if (user) return null;
 
   return (
