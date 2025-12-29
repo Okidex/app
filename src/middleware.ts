@@ -1,4 +1,3 @@
-// src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -6,18 +5,27 @@ export function middleware(request: NextRequest) {
   const session = request.cookies.get('__session')?.value;
   const { pathname } = request.nextUrl;
 
-  // 1. PUBLIC ROUTES: Define paths that never require login.
-  // Include home page ('/') and login/register paths here.
-  const isPublicPage = pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/register');
+  // 1. PUBLIC ASSETS & NEXT INTERNALS (Never redirect these)
+  // This avoids the "blank page with only a logo" issue.
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.') || // matches .js, .css, .png, etc.
+    pathname === '/favicon.ico'
+  ) {
+    return NextResponse.next();
+  }
 
-  // 2. AUTHENTICATION GUARD:
-  // Only redirect if it's NOT a public page and there is NO session.
+  // 2. PUBLIC PAGES (Home and Auth pages)
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname.startsWith('/register');
+  
+  // 3. REDIRECT LOGIC
+  // Redirect unauthenticated users to login for protected pages
   if (!session && !isPublicPage) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // 3. LOGGED-IN GUARD:
-  // If user is already logged in, redirect them away from login/register to dashboard.
+  // Redirect authenticated users away from auth pages to dashboard
   if (session && (pathname === '/login' || pathname.startsWith('/register'))) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
@@ -25,11 +33,13 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// 4. CRITICAL MATCHER UPDATE:
-// This regex specifically EXCLUDES system files, static assets, and public images.
-// If this is missing or wrong, your page will appear blank.
+// 4. CRITICAL MATCHER FIX
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all paths except internal ones.
+     * The regex below is the safest for Next.js 14/15.
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
