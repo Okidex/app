@@ -26,7 +26,6 @@ export async function login(idToken: string) {
       path: '/',
     });
 
-    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
     console.error('Login Error:', error);

@@ -71,23 +71,16 @@ export default function LoginForm() {
     }
 
     try {
-      // 1. Authenticate with Firebase Client SDK
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({ title: "Credentials match!", description: "Establishing secure session..." });
       
-      // 2. Get the ID Token
       const idToken = await userCredential.user.getIdToken();
       
-      // 3. Sync to Server (Sets the __session cookie)
       const result = await login(idToken);
       
       if (result?.success) {
         toast({ title: "Login successful", description: "Redirecting to dashboard..." });
-        
-        // 4. CRITICAL FIX: Refresh the router to acknowledge the cookie 
-        // before navigating to prevent "Double Login" loop.
         router.refresh();
-        router.push("/dashboard");
       } else {
         throw new Error(result?.error || "Failed to establish server session.");
       }
