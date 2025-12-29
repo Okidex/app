@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -22,7 +23,20 @@ import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { login } from "@/lib/auth-actions";
 
-// ... (Schemas remain the same)
+const loginSchema = z.object({
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(1, {
+    message: "Password is required.",
+  }),
+});
+
+const resetPasswordSchema = z.object({
+    email: z.string().email({
+        message: "Please enter a valid email to reset your password.",
+    }),
+});
 
 export default function LoginForm() {
   const router = useRouter();
@@ -32,7 +46,20 @@ export default function LoginForm() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const auth = useAuth();
 
-  // ... (Form initializations remain the same)
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const resetForm = useForm<z.infer<typeof resetPasswordSchema>>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+        email: "",
+    },
+  });
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsLoggingIn(true);
@@ -46,6 +73,7 @@ export default function LoginForm() {
     try {
       // 1. Authenticate with Firebase Client SDK
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      toast({ title: "Credentials match!", description: "Establishing secure session..." });
       
       // 2. Get the ID Token
       const idToken = await userCredential.user.getIdToken();
@@ -65,22 +93,77 @@ export default function LoginForm() {
       }
 
     } catch(error: any) {
-       setIsLoggingIn(false);
        toast({
         title: "Login Failed",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+        setIsLoggingIn(false);
     }
   };
   
-  // ... (handlePasswordReset remains the same)
+  const handlePasswordReset = async (values: z.infer<typeof resetPasswordSchema>) => {
+    setIsResetting(true);
+    if(!auth) {
+        toast({ title: "Auth service not available", variant: "destructive" });
+        setIsResetting(false);
+        return;
+    }
+    try {
+        await sendPasswordResetEmail(auth, values.email);
+        toast({
+            title: "Password Reset Email Sent",
+            description: "Please check your inbox for instructions to reset your password.",
+        });
+        setIsForgotPasswordOpen(false);
+    } catch (error: any) {
+         toast({
+            title: "Error Sending Reset Email",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsResetting(false);
+    }
+  }
 
   return (
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* ... Form Fields ... */}
+          <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ada@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                   <div className="flex justify-between items-center">
+                    <FormLabel>Password</FormLabel>
+                     <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setIsForgotPasswordOpen(true)}>
+                        Forgot Password?
+                    </Button>
+                  </div>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           <Button type="submit" className="w-full" disabled={isLoggingIn}>
             {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLoggingIn ? 'Establishing session...' : 'Login'}
@@ -88,7 +171,40 @@ export default function LoginForm() {
         </form>
       </Form>
       
-      {/* ... Forgot Password Dialog ... */}
+      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Forgot Password</DialogTitle>
+                <DialogDescription>Enter your email address and we'll send you a link to reset your password.</DialogDescription>
+            </DialogHeader>
+             <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(handlePasswordReset)} className="space-y-4">
+                     <FormField
+                        control={resetForm.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="ada@example.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline" disabled={isResetting}>Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={isResetting}>
+                            {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Send Reset Link
+                        </Button>
+                    </DialogFooter>
+                </form>
+             </Form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

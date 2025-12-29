@@ -1,8 +1,12 @@
+
 'use server';
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { getFirebaseAdmin } from './firebase-server-init';
+import { FullUserProfile, FounderProfile } from './types';
+import { toSerializable } from './serialize';
+
 
 /**
  * Log in a user and establish a session cookie.
@@ -14,8 +18,7 @@ export async function login(idToken: string) {
   try {
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
     
-    const cookieStore = await cookies();
-    cookieStore.set('__session', sessionCookie, {
+    cookies().set('__session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
       secure: true,
@@ -32,32 +35,61 @@ export async function login(idToken: string) {
 }
 
 /**
- * FIX: Restore missing function for Register Forms
- * Used by founder-register-form.tsx, investor-register-form.tsx, talent-register-form.tsx
+ * Create a user record and establish a session cookie during registration.
  */
 export async function createUserAndSetSession(idToken: string) {
-  // Logic is identical to login for session establishment
+  // This logic is identical to login for session establishment.
   return await login(idToken);
 }
 
 /**
- * FIX: Restore missing function for Settings Page
- * Used by src/app/(app)/settings/client.tsx
+ * Retrieves the FullUserProfile for the currently authenticated user from session.
  */
-export async function deleteCurrentUserAccount() {
-  const { auth } = getFirebaseAdmin();
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('__session')?.value;
+export async function getCurrentUser(): Promise<FullUserProfile | null> {
+    const { auth, firestore } = getFirebaseAdmin();
+    const sessionCookie = cookies().get('__session')?.value;
+
+    if (!sessionCookie) {
+        return null;
+    }
+
+    try {
+        const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+        const userDoc = await firestore.collection('users').doc(decodedClaims.uid).get();
+        if (userDoc.exists) {
+            return toSerializable(userDoc.data()) as FullUserProfile;
+        }
+        return null;
+    } catch (error) {
+        // Session cookie is invalid or expired.
+        console.error("Error verifying session cookie in getCurrentUser:", error);
+        return null;
+    }
+}
+
+
+/**
+ * Delete the current user's account from Firebase Auth and Firestore.
+ */
+export async function deleteCurrentUserAccount(userId: string, role: string, companyId?: string) {
+  const { auth, firestore } = getFirebaseAdmin();
 
   try {
-    if (sessionCookie) {
-      const decodedClaims = await auth.verifySessionCookie(sessionCookie);
-      // Delete from Firebase Auth
-      await auth.deleteUser(decodedClaims.uid);
-      // Note: Add logic here to delete Firestore user data if required
+    // Delete from Firebase Auth
+    await auth.deleteUser(userId);
+
+    // Delete user document from Firestore
+    const userDocRef = firestore.collection('users').doc(userId);
+    await userDocRef.delete();
+
+    // If user is a founder and has a company, delete the startup document
+    if (role === 'founder' && companyId) {
+        const startupDocRef = firestore.collection('startups').doc(companyId);
+        await startupDocRef.delete();
     }
     
-    cookieStore.delete('__session');
+    // Clear the session cookie
+    cookies().delete('__session');
     revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
@@ -70,8 +102,7 @@ export async function deleteCurrentUserAccount() {
  * Log out the current user and purge the session.
  */
 export async function logout() {
-  const cookieStore = await cookies();
-  cookieStore.delete('__session');
+  cookies().delete('__session');
   revalidatePath('/', 'layout');
   return { success: true };
 }
