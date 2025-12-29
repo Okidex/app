@@ -12,15 +12,19 @@ import { toSerializable } from './serialize';
  */
 export async function login(idToken: string) {
   const { auth } = getFirebaseAdmin();
-  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+  // 5 days in milliseconds
+  const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
   try {
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-    const cookieStore = await cookies(); // ASYNC in Next.js 15
+    const cookieStore = await cookies();
     
     cookieStore.set('__session', sessionCookie, {
-      maxAge: expiresIn / 1000, // maxAge is in seconds, not ms
+      // maxAge is in seconds
+      maxAge: Math.floor(expiresIn / 1000),
       httpOnly: true,
+      // Use secure: true for production/Firebase Hosting,
+      // but allow it to be flexible for local proxy environments if needed.
       secure: true,
       sameSite: 'lax',
       path: '/',
@@ -45,7 +49,7 @@ export async function createUserAndSetSession(idToken: string) {
  */
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
     const { auth, firestore } = getFirebaseAdmin();
-    const cookieStore = await cookies(); // ASYNC in Next.js 15
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('__session')?.value;
 
     if (!sessionCookie) {
@@ -60,6 +64,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
         }
         return null;
     } catch (error) {
+        // Session cookie is invalid or expired.
         console.error("Error verifying session cookie in getCurrentUser:", error);
         return null;
     }
@@ -81,7 +86,7 @@ export async function deleteCurrentUserAccount(userId: string, role: string, com
         await startupDocRef.delete();
     }
     
-    const cookieStore = await cookies(); // ASYNC
+    const cookieStore = await cookies();
     cookieStore.delete('__session');
     
     revalidatePath('/', 'layout');
@@ -96,8 +101,10 @@ export async function deleteCurrentUserAccount(userId: string, role: string, com
  * Log out and purge session.
  */
 export async function logout() {
-  const cookieStore = await cookies(); // ASYNC
+  const cookieStore = await cookies();
   cookieStore.delete('__session');
+  
+  // Clear the cache for all routes to ensure the UI updates
   revalidatePath('/', 'layout');
   return { success: true };
 }
