@@ -1,17 +1,21 @@
-// src/app/providers.tsx
 'use client';
 
 import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth"; // Explicit import
-import { initializeFirebase } from "@/firebase";
-// Import your types
+import { onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
+/** 
+ * CRITICAL: Import directly from the init file, NOT the index barrel.
+ * This prevents the 'TypeError: (0, n.aF) is not a function' build error.
+ */
+import { initializeFirebase } from "@/firebase/client-init"; 
 import { FirebaseContextState, FullUserProfile } from "@/lib/types"; 
 
 const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 export function FirebaseProvider({ children }: { children: ReactNode }) {
-  // 1. Safe Firebase Initialization
-  // Ensure Firebase only initializes if the window object is present (Client-only)
+  const router = useRouter();
+
+  // 1. Client-only Initialization
   const services = useMemo(() => {
     if (typeof window === "undefined") return null;
     return initializeFirebase();
@@ -23,7 +27,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     userError: Error | null;
   }>({ 
     user: null, 
-    isUserLoading: typeof window !== "undefined", // Only load if on client
+    isUserLoading: true, 
     userError: null 
   });
 
@@ -33,10 +37,16 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(services.auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // Add your existing logic to fetch FullUserProfile here
+          // If you have logic to fetch additional profile data from Firestore:
+          // const profile = await fetchUserProfile(firebaseUser.uid);
           // setUserAuthState({ user: profile, isUserLoading: false, userError: null });
+          
+          // Trigger a refresh so Middleware/Server Components see the new cookie
+          router.refresh();
         } else {
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
+          // If user signs out, refresh to ensure protected routes redirect
+          router.refresh();
         }
       } catch (error) {
         setUserAuthState({ user: null, isUserLoading: false, userError: error as Error });
@@ -44,7 +54,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     });
     
     return () => unsubscribe();
-  }, [services?.auth]);
+  }, [services?.auth, router]);
 
   const contextValue = useMemo(() => ({
     firebaseApp: services?.firebaseApp || null,
@@ -53,9 +63,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     ...userAuthState,
   }), [services, userAuthState]);
 
-  // 2. CRITICAL BUILD FIX: Do not return null during prerendering.
-  // Returning null can break the component tree during static generation.
-  // Instead, render the children immediately so the tree is always defined.
   return (
     <FirebaseContext.Provider value={contextValue}>
       {children}
@@ -63,7 +70,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Ensure you export the hook to avoid 'undefined' errors when consuming
 export const useFirebase = () => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {

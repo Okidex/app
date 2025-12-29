@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -19,7 +18,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/firebase";
+
+/** 
+ * FIXED: Direct import to avoid barrel file circularity 
+ * Replace 'provider' with your actual filename (e.g., 'context' or 'firebase-config')
+ */
+import { useAuth } from "@/firebase/provider"; 
+
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { login } from "@/lib/auth-actions";
 
@@ -72,15 +77,23 @@ export default function LoginForm() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({ title: "Credentials match!", description: "Establishing secure session..." });
       
+      // 1. Get the Token from Firebase Client SDK
       const idToken = await userCredential.user.getIdToken();
       
+      // 2. Call Server Action to set the '__session' cookie
       const result = await login(idToken);
       
       if (result?.success) {
-        toast({ title: "Login successful", description: "Redirecting to dashboard..." });
+        toast({ title: "Login successful", description: "Redirecting..." });
+        
+        /**
+         * FIXED FOR 2025:
+         * refresh() invalidates the Client Router Cache (so middleware sees the cookie).
+         * push() forces the browser to move to the dashboard immediately.
+         */
         router.refresh();
+        router.push("/dashboard");
       } else {
         throw new Error(result?.error || "Failed to establish server session.");
       }
@@ -107,7 +120,7 @@ export default function LoginForm() {
         await sendPasswordResetEmail(auth, values.email);
         toast({
             title: "Password Reset Email Sent",
-            description: "Please check your inbox for instructions to reset your password.",
+            description: "Please check your inbox.",
         });
         setIsForgotPasswordOpen(false);
     } catch (error: any) {
@@ -168,7 +181,7 @@ export default function LoginForm() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Forgot Password</DialogTitle>
-                <DialogDescription>Enter your email address and we'll send you a link to reset your password.</DialogDescription>
+                <DialogDescription>Enter your email address and we&apos;ll send you a link to reset your password.</DialogDescription>
             </DialogHeader>
              <Form {...resetForm}>
                 <form onSubmit={resetForm.handleSubmit(handlePasswordReset)} className="space-y-4">

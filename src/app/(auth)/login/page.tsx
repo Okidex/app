@@ -2,7 +2,12 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/firebase";
+/** 
+ * FIXED FOR DECEMBER 2025: 
+ * Direct import from the specific hook file to bypass barrel file circularity.
+ * Based on your file structure, the correct path is '@/firebase/auth/use-user'.
+ */
+import { useUser } from "@/firebase/auth/use-user"; 
 import LoginForm from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -14,7 +19,9 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If the user is already logged in, sync the session and move to dashboard
     if (!isUserLoading && user) {
+      router.refresh();
       router.replace("/dashboard");
     }
   }, [user, isUserLoading, router]);
@@ -28,6 +35,7 @@ export default function LoginPage() {
     );
   }
 
+  // Prevent flash of form if user is found (redirecting)
   if (user) return null;
 
   return (
@@ -50,7 +58,7 @@ export default function LoginPage() {
       <Alert className="mt-4">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-xs text-muted-foreground">
-          <strong>Okidex is in early access.</strong> We&apos;re working toward a full release and are actively developing new features, so things may change. Your feedback is invaluable—please{' '}
+          <strong>Okidex is in early access.</strong> We&apos;re working toward a full release. Your feedback is invaluable—please{' '}
           <a href="mailto:wilfred@okidex.com" className="underline">
             share your thoughts with us
           </a>

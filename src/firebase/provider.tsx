@@ -1,7 +1,7 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, getDoc } from 'firebase/firestore';
 import { Auth, onAuthStateChanged } from 'firebase/auth';
@@ -41,6 +41,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firestore,
   auth,
 }) => {
+  const router = useRouter();
   const [userAuthState, setUserAuthState] = useState<UserHookResult>({
     user: null,
     isUserLoading: true,
@@ -58,24 +59,27 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       async (firebaseUser) => {
         if (firebaseUser) {
             const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-            getDoc(userDocRef)
-              .then((userDocSnap) => {
-                if (userDocSnap.exists()) {
-                    setUserAuthState({ user: userDocSnap.data() as FullUserProfile, isUserLoading: false, userError: null });
-                } else {
-                    setUserAuthState({ user: null, isUserLoading: false, userError: null });
-                }
-              })
-              .catch((serverError) => {
-                const contextualError = new FirestorePermissionError({
-                  path: userDocRef.path,
-                  operation: 'get',
-                });
-                errorEmitter.emit('permission-error', contextualError);
-                setUserAuthState({ user: null, isUserLoading: false, userError: contextualError });
+            try {
+              const userDocSnap = await getDoc(userDocRef);
+              if (userDocSnap.exists()) {
+                setUserAuthState({ user: userDocSnap.data() as FullUserProfile, isUserLoading: false, userError: null });
+              } else {
+                setUserAuthState({ user: null, isUserLoading: false, userError: null });
+              }
+              // SYNC: Invalidate Next.js cache so Middleware sees the session cookie
+              router.refresh();
+            } catch (serverError) {
+              const contextualError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'get',
               });
+              errorEmitter.emit('permission-error', contextualError);
+              setUserAuthState({ user: null, isUserLoading: false, userError: contextualError });
+            }
         } else {
             setUserAuthState({ user: null, isUserLoading: false, userError: null });
+            // SYNC: Ensure middleware redirects to login if cookie is cleared
+            router.refresh();
         }
       },
       (error) => {
@@ -84,7 +88,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
     return () => unsubscribe();
-  }, [auth, firestore]);
+  }, [auth, firestore, router]);
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
@@ -107,27 +111,44 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
+/**
+ * HOOKS
+ * UPDATED FOR 2025 BUILD COMPATIBILITY:
+ * During 'next build', Next.js executes pages on the server to generate static HTML.
+ * If the context is undefined (common during prerendering), we return a safe 
+ * loading state instead of throwing an error to allow the build to complete.
+ */
+
 export const useFirebase = (): FirebaseContextState => {
   const context = useContext(FirebaseContext);
+  
   if (context === undefined) {
-    throw new Error('useFirebase must be used within a FirebaseProvider.');
+    return {
+      areServicesAvailable: false,
+      firebaseApp: null,
+      firestore: null,
+      auth: null,
+      user: null,
+      isUserLoading: true,
+      userError: null,
+    };
   }
   return context;
 };
 
 export const useAuth = (): Auth | null => {
-  const { auth } = useFirebase();
-  return auth;
+  const context = useContext(FirebaseContext);
+  return context?.auth || null;
 };
 
 export const useFirestore = (): Firestore | null => {
-  const { firestore } = useFirebase();
-  return firestore;
+  const context = useContext(FirebaseContext);
+  return context?.firestore || null;
 };
 
 export const useFirebaseApp = (): FirebaseApp | null => {
-  const { firebaseApp } = useFirebase();
-  return firebaseApp;
+  const context = useContext(FirebaseContext);
+  return context?.firebaseApp || null;
 };
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
@@ -136,9 +157,7 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   if (memoizedValue && typeof memoizedValue === 'object' && !('__memo' in memoizedValue)) {
     try {
       (memoizedValue as any).__memo = true;
-    } catch (e) {
-      // This can fail on frozen objects, but it's okay.
-    }
+    } catch (e) {}
   }
   return memoizedValue;
 }

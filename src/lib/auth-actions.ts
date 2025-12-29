@@ -1,15 +1,14 @@
-
 'use server';
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { getFirebaseAdmin } from './firebase-server-init';
-import { FullUserProfile, FounderProfile } from './types';
+import { FullUserProfile } from './types';
 import { toSerializable } from './serialize';
-
 
 /**
  * Log in a user and establish a session cookie.
+ * UPDATED FOR NEXT.JS 15: cookies() must be awaited.
  */
 export async function login(idToken: string) {
   const { auth } = getFirebaseAdmin();
@@ -17,9 +16,10 @@ export async function login(idToken: string) {
 
   try {
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
+    const cookieStore = await cookies(); // ASYNC in Next.js 15
     
-    cookies().set('__session', sessionCookie, {
-      maxAge: expiresIn,
+    cookieStore.set('__session', sessionCookie, {
+      maxAge: expiresIn / 1000, // maxAge is in seconds, not ms
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
@@ -37,7 +37,6 @@ export async function login(idToken: string) {
  * Create a user record and establish a session cookie during registration.
  */
 export async function createUserAndSetSession(idToken: string) {
-  // This logic is identical to login for session establishment.
   return await login(idToken);
 }
 
@@ -46,7 +45,8 @@ export async function createUserAndSetSession(idToken: string) {
  */
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
     const { auth, firestore } = getFirebaseAdmin();
-    const sessionCookie = cookies().get('__session')?.value;
+    const cookieStore = await cookies(); // ASYNC in Next.js 15
+    const sessionCookie = cookieStore.get('__session')?.value;
 
     if (!sessionCookie) {
         return null;
@@ -60,35 +60,30 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
         }
         return null;
     } catch (error) {
-        // Session cookie is invalid or expired.
         console.error("Error verifying session cookie in getCurrentUser:", error);
         return null;
     }
 }
 
-
 /**
- * Delete the current user's account from Firebase Auth and Firestore.
+ * Delete account and clear session.
  */
 export async function deleteCurrentUserAccount(userId: string, role: string, companyId?: string) {
   const { auth, firestore } = getFirebaseAdmin();
 
   try {
-    // Delete from Firebase Auth
     await auth.deleteUser(userId);
-
-    // Delete user document from Firestore
     const userDocRef = firestore.collection('users').doc(userId);
     await userDocRef.delete();
 
-    // If user is a founder and has a company, delete the startup document
     if (role === 'founder' && companyId) {
         const startupDocRef = firestore.collection('startups').doc(companyId);
         await startupDocRef.delete();
     }
     
-    // Clear the session cookie
-    cookies().delete('__session');
+    const cookieStore = await cookies(); // ASYNC
+    cookieStore.delete('__session');
+    
     revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
@@ -98,10 +93,11 @@ export async function deleteCurrentUserAccount(userId: string, role: string, com
 }
 
 /**
- * Log out the current user and purge the session.
+ * Log out and purge session.
  */
 export async function logout() {
-  cookies().delete('__session');
+  const cookieStore = await cookies(); // ASYNC
+  cookieStore.delete('__session');
   revalidatePath('/', 'layout');
   return { success: true };
 }

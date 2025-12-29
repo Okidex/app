@@ -1,46 +1,44 @@
 'use server-only';
 
-import * as admin from 'firebase-admin';
-import { getApps, getApp, initializeApp, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
+import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getStorage, Storage } from 'firebase-admin/storage';
 
 interface FirebaseAdminServices {
-  auth: admin.auth.Auth;
-  firestore: admin.firestore.Firestore;
-  storage: admin.storage.Storage;
+  auth: Auth;
+  firestore: Firestore;
+  storage: Storage;
 }
 
 function getServiceAccount() {
   const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
 
   if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
-    throw new Error('Missing Firebase Admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).');
+    throw new Error('Missing Firebase Admin environment variables.');
   }
 
   return {
     projectId: FIREBASE_PROJECT_ID,
     clientEmail: FIREBASE_CLIENT_EMAIL,
-    // Ensure the private key is properly formatted for Node.js
+    // Fix for private key newline characters in environment variables
     privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
   };
 }
 
 /**
- * Core function to initialize or retrieve the Firebase Admin instance.
+ * Modern modular initialization for 2025.
  */
 export function getFirebaseAdmin(): FirebaseAdminServices {
-  const existingApps = getApps();
-  let app: admin.app.App;
+  const apps = getApps();
+  let app: App;
 
-  if (existingApps.length === 0) {
+  if (!apps.length) {
     const serviceAccount = getServiceAccount();
     app = initializeApp({
       credential: cert(serviceAccount),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${serviceAccount.projectId}.appspot.com`,
     });
-    console.log('Firebase Admin initialized successfully.');
   } else {
     app = getApp();
   }
@@ -52,13 +50,13 @@ export function getFirebaseAdmin(): FirebaseAdminServices {
   };
 }
 
-// --- EXPORTS FOR BACKWARD COMPATIBILITY ---
+/**
+ * Individual exports for Server Actions.
+ * Note: These call the function dynamically to ensure the app is ready.
+ */
+export const adminAuth = () => getFirebaseAdmin().auth;
+export const adminDb = () => getFirebaseAdmin().firestore;
+export const adminStorage = () => getFirebaseAdmin().storage;
 
-// Fixes: "Attempted import error: 'initializeAdminApp' is not exported"
+// Keep for backward compatibility with your existing actions
 export const initializeAdminApp = getFirebaseAdmin;
-
-// Named exports for direct use in Server Actions
-const services = getFirebaseAdmin();
-export const adminAuth = services.auth;
-export const adminDb = services.firestore;
-export const adminStorage = services.storage;

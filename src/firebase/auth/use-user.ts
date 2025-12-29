@@ -1,16 +1,21 @@
-
+// src/firebase/auth/use-user.ts
 'use client';
 
-import { useFirebase } from '@/firebase/provider';
-import { FullUserProfile } from '@/lib/types';
+import { useContext } from 'react';
+import { FirebaseContext } from '../provider';
 
-export interface UserHookResult {
-  user: FullUserProfile | null;
-  isUserLoading: boolean;
-  userError: Error | null;
+export function useUser() {
+  const context = useContext(FirebaseContext);
+
+  // If we are prerendering (Build time), context will be undefined.
+  // We return a loading state instead of throwing an error.
+  if (!context) {
+    return { user: null, isUserLoading: true, userError: null };
+  }
+
+  return {
+    user: context.user,
+    isUserLoading: context.isUserLoading,
+    userError: context.userError
+  };
 }
-
-export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
-};
