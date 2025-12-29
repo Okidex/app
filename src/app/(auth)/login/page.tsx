@@ -1,43 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-/** 
- * FIXED FOR DECEMBER 2025: 
- * Direct import from the specific hook file to bypass barrel file circularity.
- * Based on your file structure, the correct path is '@/firebase/auth/use-user'.
- */
-import { useUser } from "@/firebase/auth/use-user"; 
 import LoginForm from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 
 export default function LoginPage() {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    // If the user is already logged in, sync the session and move to dashboard
-    if (!isUserLoading && user) {
-      router.refresh();
-      router.replace("/dashboard");
-    }
-  }, [user, isUserLoading, router]);
-
-  if (isUserLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-sm text-muted-foreground">Checking authentication...</p>
-      </div>
-    );
-  }
-
-  // Prevent flash of form if user is found (redirecting)
-  if (user) return null;
-
+  // Middleware now handles all redirection logic.
+  // This page is now only responsible for rendering the form.
   return (
     <div className="w-full max-w-md animate-in fade-in duration-500">
       <Card>

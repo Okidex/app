@@ -1,45 +1,37 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const session = request.cookies.get('__session')?.value;
   const { pathname } = request.nextUrl;
 
-  // 1. PUBLIC ASSETS & NEXT INTERNALS (Never redirect these)
-  // This avoids the "blank page with only a logo" issue.
+  const publicPaths = ['/', '/login', '/register', '/legal/privacy-policy', '/legal/user-agreement'];
+  const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/register/');
+
+  // Prevent redirect loops for static assets
   if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/static') ||
-    pathname.includes('.') || // matches .js, .css, .png, etc.
-    pathname === '/favicon.ico'
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/static/') ||
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
-
-  // 2. PUBLIC PAGES (Home and Auth pages)
-  const isPublicPage = pathname === '/' || pathname === '/login' || pathname.startsWith('/register');
   
-  // 3. REDIRECT LOGIC
-  // Redirect unauthenticated users to login for protected pages
-  if (!session && !isPublicPage) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // If the user is logged in, redirect them away from public-only pages to the dashboard.
+  if (session) {
+    if (isPublicPage) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
-
-  // Redirect authenticated users away from auth pages to dashboard
-  if (session && (pathname === '/login' || pathname.startsWith('/register'))) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // If the user is not logged in, protect non-public pages.
+  else if (!isPublicPage) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
 }
 
-// 4. CRITICAL MATCHER FIX
 export const config = {
-  matcher: [
-    /*
-     * Match all paths except internal ones.
-     * The regex below is the safest for Next.js 14/15.
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  // Match all paths except for API routes and static files
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
