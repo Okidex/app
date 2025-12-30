@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence, Auth } from "firebase/auth";
+import { getAuth, Auth, inMemoryPersistence, setPersistence } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 
@@ -13,28 +13,25 @@ export const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Singleton pattern to prevent re-initialization during Fast Refresh
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let storage: FirebaseStorage;
+// 1. Initialize App (Singleton pattern)
+const app = getApps().length === 0
+  ? initializeApp(firebaseConfig)
+  : getApp();
 
-if (getApps().length === 0) {
-  // Use a placeholder only if the key is missing (mostly during build)
-  app = initializeApp(firebaseConfig.apiKey ? firebaseConfig : { ...firebaseConfig, apiKey: "placeholder" });
-} else {
-  app = getApp();
-}
+// 2. Initialize Services
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Initialize services once
-auth = getAuth(app);
-db = getFirestore(app);
-storage = getStorage(app);
-
-// Client-only initialization
+/**
+ * 3. Client-Side Persistence Fix
+ * For Next.js 15 Apps using Server Actions + Session Cookies (__session):
+ * We set persistence to 'inMemoryPersistence' on the client.
+ * This ensures the Firebase Client SDK doesn't fight with your Server-side
+ * cookies for 'control' over the user session, fixing redirect loops.
+ */
 if (typeof window !== "undefined") {
-  // 1. Force persistence to local to prevent "Ghost" logged-out states
-  setPersistence(auth, browserLocalPersistence);
+  setPersistence(auth, inMemoryPersistence);
 }
 
 export { app, auth, db, storage };

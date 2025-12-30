@@ -6,26 +6,33 @@ import { FirebaseProvider } from './provider';
 import { initializeFirebase } from './client-init';
 
 export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  // Use a state to track hydration to prevent SSR mismatch errors in Next.js 15
+  const [isHydrated, setIsHydrated] = useState(false);
 
+  // Initialize services only on the client
   const firebaseServices = useMemo(() => {
     if (typeof window === 'undefined') return null;
     return initializeFirebase();
   }, []);
 
   useEffect(() => {
-    setMounted(true);
+    setIsHydrated(true);
   }, []);
 
-  // During SSR/Prerendering, firebaseServices will be null.
-  // We provide dummy values to FirebaseProvider to keep the context 
-  // initialized so child hooks don't crash.
+  // Avoid "dummy" values that can crash hooks. 
+  // Instead, provide null/undefined and let your hooks handle the loading state.
   return (
     <FirebaseProvider
-      firebaseApp={firebaseServices?.firebaseApp as any}
-      auth={firebaseServices?.auth as any}
-      firestore={firebaseServices?.firestore as any}
+      firebaseApp={firebaseServices?.firebaseApp ?? null}
+      auth={firebaseServices?.auth ?? null}
+      firestore={firebaseServices?.firestore ?? null}
     >
+      {/* 
+        Optional: If you find child components are crashing due to null services 
+        during the first mount, you can wrap {children} in:
+        {isHydrated ? children : null} 
+        However, for SEO/SSR it's better to render children with null context.
+      */}
       {children}
     </FirebaseProvider>
   );

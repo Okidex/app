@@ -2,59 +2,72 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation'; // Added for redirection
 import { getFirebaseAdmin } from './firebase-server-init';
 import { FullUserProfile } from './types';
-import { toSerializable } from './serialize';
+
+function toSerializable<T>(data: any): T {
+    if (data === null || data === undefined) return data;
+    if (typeof data !== 'object') return data;
+    if (data.toDate && typeof data.toDate === 'function') {
+      return data.toDate().toISOString() as any;
+    }
+    if (Array.isArray(data)) return data.map(toSerializable) as any;
+    const res: { [key: string]: any } = {};
+    for (const key in data) {
+      res[key] = toSerializable(data[key]);
+    }
+    return res as T;
+}
 
 /**
  * Log in a user and establish a session cookie.
- * UPDATED FOR NEXT.JS 15: cookies() must be awaited.
  */
 export async function login(idToken: string) {
   const { auth } = getFirebaseAdmin();
-  // 5 days in milliseconds
-  const expiresIn = 60 * 60 * 24 * 5 * 1000;
+  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+  let success = false;
 
   try {
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-    const cookieStore = await cookies();
+    const cookieStore = await cookies(); // Awaited for Next.js 15
     
     cookieStore.set('__session', sessionCookie, {
-      // maxAge is in seconds
-      maxAge: Math.floor(expiresIn / 1000),
+      maxAge: expiresIn / 1000,
       httpOnly: true,
-      // Use secure: true for production/Firebase Hosting,
-      // but allow it to be flexible for local proxy environments if needed.
-      secure: true,
+      secure: true, // Required for __session prefix
       sameSite: 'lax',
       path: '/',
     });
-
-    return { success: true };
+    success = true;
   } catch (error: any) {
     console.error('Login Error:', error);
     return { success: false, error: error.message };
   }
+
+  if (success) {
+    revalidatePath('/', 'layout');
+    redirect('/dashboard'); // Change this to your desired post-login route
+  }
 }
 
 /**
- * Create a user record and establish a session cookie during registration.
+ * Create a user record and establish a session cookie.
  */
 export async function createUserAndSetSession(idToken: string) {
+  // This will now trigger the redirect inside the login function
   return await login(idToken);
 }
 
 /**
- * Retrieves the FullUserProfile for the currently authenticated user from session.
+ * Retrieves the FullUserProfile for the currently authenticated user.
  */
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
     const { auth, firestore } = getFirebaseAdmin();
-    const cookieStore = await cookies();
+    const cookieStore = await cookies(); // Awaited for Next.js 15
     const sessionCookie = cookieStore.get('__session')?.value;
 
-    if (!sessionCookie) {
-        return null;
-    }
+    if (!sessionCookie) return null;
 
     try {
         const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
@@ -64,8 +77,6 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
         }
         return null;
     } catch (error) {
-        // Session cookie is invalid or expired.
-        console.error("Error verifying session cookie in getCurrentUser:", error);
         return null;
     }
 }
@@ -75,6 +86,7 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
  */
 export async function deleteCurrentUserAccount(userId: string, role: string, companyId?: string) {
   const { auth, firestore } = getFirebaseAdmin();
+  let success = false;
 
   try {
     await auth.deleteUser(userId);
@@ -88,12 +100,15 @@ export async function deleteCurrentUserAccount(userId: string, role: string, com
     
     const cookieStore = await cookies();
     cookieStore.delete('__session');
-    
-    revalidatePath('/', 'layout');
-    return { success: true };
+    success = true;
   } catch (error: any) {
     console.error("Delete Account Error:", error);
     return { success: false, error: error.message };
+  }
+
+  if (success) {
+    revalidatePath('/', 'layout');
+    redirect('/login');
   }
 }
 
@@ -103,8 +118,6 @@ export async function deleteCurrentUserAccount(userId: string, role: string, com
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete('__session');
-  
-  // Clear the cache for all routes to ensure the UI updates
   revalidatePath('/', 'layout');
-  return { success: true };
+  redirect('/login'); // Redirecting ensures the UI updates to logged-out state
 }
