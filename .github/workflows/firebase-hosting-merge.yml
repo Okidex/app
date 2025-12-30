@@ -6,7 +6,6 @@ name: Deploy to Firebase Hosting on merge
       - main
 
 # Prevent state conflicts by ensuring only one production deploy runs at a time.
-# If a new push occurs while one is deploying, the older one is cancelled.
 concurrency:
   group: deploy-production
   cancel-in-progress: true
@@ -27,7 +26,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 22 is the verified LTS for late 2025 Next.js 15 deployments
           node-version: 22
           cache: 'npm'
 
@@ -40,26 +38,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
-      - name: Create .env file for Next.js Build
-        # Critical: Injects secrets into the environment BEFORE build.
-        # This prevents the 'auth/invalid-api-key' crash during static page generation.
-        run: |
-          echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env
-          echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}" >> .env
-          echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}" >> .env
-          echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}" >> .env
-          echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
-          echo "NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}" >> .env
-          echo "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}" >> .env
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-
-      - name: Install and Build
-        run: |
-          npm ci
-          npm run build
-        env:
-          # Required for Firebase to automatically handle Next.js App Router features
-          FIREBASE_CLI_EXPERIMENTS: webframeworks
+      - name: Install dependencies
+        run: npm ci
 
       - name: Deploy to Live Channel
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -70,4 +50,14 @@ jobs:
           projectId: '${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}'
           entryPoint: .
         env:
+          # CRITICAL: Next.js must have these during the Deploy Step's internal build
+          # to prevent 'auth/invalid-api-key' during static page generation.
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks

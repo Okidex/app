@@ -2,21 +2,32 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation'; // Added for redirection
+import { redirect } from 'next/navigation';
 import { getFirebaseAdmin } from './firebase-server-init';
 import { FullUserProfile } from './types';
 
+/**
+ * Helper to convert Firestore data (like Timestamps) into plain JSON
+ * necessary for Next.js 15 Server-to-Client data transfer.
+ */
 function toSerializable<T>(data: any): T {
     if (data === null || data === undefined) return data;
     if (typeof data !== 'object') return data;
+  
+    // Handle Firestore Timestamps
     if (data.toDate && typeof data.toDate === 'function') {
       return data.toDate().toISOString() as any;
     }
-    if (Array.isArray(data)) return data.map(toSerializable) as any;
+  
+    if (Array.isArray(data)) {
+      return data.map(toSerializable) as any;
+    }
+  
     const res: { [key: string]: any } = {};
     for (const key in data) {
       res[key] = toSerializable(data[key]);
     }
+  
     return res as T;
 }
 
@@ -32,10 +43,11 @@ export async function login(idToken: string) {
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
     const cookieStore = await cookies(); // Awaited for Next.js 15
     
+    // Using '__session' is required for Firebase Hosting SSR
     cookieStore.set('__session', sessionCookie, {
       maxAge: expiresIn / 1000,
       httpOnly: true,
-      secure: true, // Required for __session prefix
+      secure: true, // Must be true for __session cookies
       sameSite: 'lax',
       path: '/',
     });
@@ -45,22 +57,22 @@ export async function login(idToken: string) {
     return { success: false, error: error.message };
   }
 
+  // Redirect must happen outside the try/catch block
   if (success) {
     revalidatePath('/', 'layout');
-    redirect('/dashboard'); // Change this to your desired post-login route
+    return redirect('/dashboard');
   }
 }
 
 /**
- * Create a user record and establish a session cookie.
+ * Create a user record and establish a session cookie during registration.
  */
 export async function createUserAndSetSession(idToken: string) {
-  // This will now trigger the redirect inside the login function
   return await login(idToken);
 }
 
 /**
- * Retrieves the FullUserProfile for the currently authenticated user.
+ * Retrieves the FullUserProfile for the currently authenticated user from session.
  */
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
     const { auth, firestore } = getFirebaseAdmin();
@@ -72,11 +84,13 @@ export async function getCurrentUser(): Promise<FullUserProfile | null> {
     try {
         const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
         const userDoc = await firestore.collection('users').doc(decodedClaims.uid).get();
+        
         if (userDoc.exists) {
             return toSerializable(userDoc.data()) as FullUserProfile;
         }
         return null;
     } catch (error) {
+        // Token expired or invalid
         return null;
     }
 }
@@ -108,7 +122,7 @@ export async function deleteCurrentUserAccount(userId: string, role: string, com
 
   if (success) {
     revalidatePath('/', 'layout');
-    redirect('/login');
+    return redirect('/login');
   }
 }
 
@@ -119,5 +133,5 @@ export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete('__session');
   revalidatePath('/', 'layout');
-  redirect('/login'); // Redirecting ensures the UI updates to logged-out state
+  return redirect('/login');
 }

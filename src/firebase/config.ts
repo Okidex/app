@@ -13,25 +13,39 @@ export const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// 1. Initialize App (Singleton pattern)
-const app = getApps().length === 0
-  ? initializeApp(firebaseConfig)
-  : getApp();
+// 1. Build Guard: Check if we have a valid configuration.
+// This prevents 'auth/invalid-api-key' crashes during GitHub Actions/Next.js Build.
+const isConfigValid = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined";
 
-// 2. Initialize Services
+// 2. Initialize App (Singleton pattern)
+let app: FirebaseApp;
+
+if (getApps().length === 0) {
+  // If config is invalid (during build), we initialize with a dummy config
+  // to let the build finish. At runtime, the real secrets will be used.
+  app = initializeApp(isConfigValid ? firebaseConfig : { ...firebaseConfig, apiKey: "AIza-BUILD-PLACEHOLDER" });
+} else {
+  app = getApp();
+}
+
+// 3. Initialize Services
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
 /**
- * 3. Client-Side Persistence Fix
+ * 4. Client-Side Persistence Fix
  * For Next.js 15 Apps using Server Actions + Session Cookies (__session):
  * We set persistence to 'inMemoryPersistence' on the client.
- * This ensures the Firebase Client SDK doesn't fight with your Server-side
- * cookies for 'control' over the user session, fixing redirect loops.
  */
 if (typeof window !== "undefined") {
-  setPersistence(auth, inMemoryPersistence);
+  // Ensure we don't attempt persistence calls if the auth service is
+  // currently using a placeholder key during build.
+  if (isConfigValid) {
+    setPersistence(auth, inMemoryPersistence).catch((err) => {
+      console.error("Persistence error:", err);
+    });
+  }
 }
 
 export { app, auth, db, storage };
