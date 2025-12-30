@@ -5,26 +5,33 @@ export async function middleware(request: NextRequest) {
   const session = request.cookies.get('__session')?.value;
   const { pathname } = request.nextUrl;
 
-  const publicPaths = ['/', '/login', '/register', '/legal/privacy-policy', '/legal/user-agreement'];
-  const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/register/');
-
-  // Prevent redirect loops for static assets
+  // 1. EXIT EARLY for system/static files
+  // This prevents DevTools and system probes from triggering auth logic
   if (
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/static/') ||
-    pathname.includes('.')
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.') ||
+    pathname.startsWith('/.well-known')
   ) {
     return NextResponse.next();
   }
-  
-  // If the user is logged in, redirect them away from public-only pages to the dashboard.
+
+  const publicPaths = ['/', '/login', '/register'];
+  const isPublicPage = publicPaths.includes(pathname);
+
+  // 2. Redirect Logic
   if (session) {
+    // If logged in and on a public page (like /login), go to dashboard
     if (isPublicPage) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+    // Otherwise, allow access
+    return NextResponse.next();
   }
-  // If the user is not logged in, protect non-public pages.
-  else if (!isPublicPage) {
+
+  // 3. Not Logged In Logic
+  if (!isPublicPage) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -32,6 +39,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match all paths except for API routes and static files
+  // Use a simplified matcher to let the internal logic handle exclusions
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
