@@ -1,16 +1,17 @@
 # To learn more about how to use Nix to configure your environment
 # visit: developers.google.com
 { pkgs, ... }: {
-  channel = "stable-24.11"; # Updated for late 2024/2025 stability
+  # Updated for 2026 stability
+  channel = "stable-25.11";
 
   packages = [
-    pkgs.nodejs_22
+    pkgs.nodejs_24      # Updated to Node 24 (2026 LTS)
     pkgs.firebase-tools
     pkgs.gh
   ];
 
   env = {
-    NODE_VERSION = "22";
+    NODE_VERSION = "24";
     NEXT_PUBLIC_FIREBASE_API_KEY = "AIzaSyCN6uhJT_aUSTj5psl9Ru5viR50M7oyNY8";
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "studio-8509111427-a45a7.firebaseapp.com";
     NEXT_PUBLIC_FIREBASE_PROJECT_ID = "studio-8509111427-a45a7";
