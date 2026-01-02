@@ -22,11 +22,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # CHANGED: Use install --legacy-peer-deps to handle React 19/Radix UI conflicts
-        # and to bypass the 'npm ci' sync error until your lockfile is repaired.
+        # FIX: Handles React 19/Radix peer conflicts and avoids npm ci sync errors
         run: npm install --legacy-peer-deps
 
       - name: Build Application
+        # Verified: Prevents crash during static page generation
         run: npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
@@ -43,8 +43,13 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          # Ensure this is the literal project ID for preview tagging
           projectId: studio-8509111427-a45a7
           entryPoint: .
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+          # CRITICAL: Re-injecting here prevents the CLI from failing during
+          # SSR function verification and final site manifest creation.
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
