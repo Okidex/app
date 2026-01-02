@@ -62,7 +62,7 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
-          # Ensure this matches your project ID: studio-8509111427-a45a7
+          # Ensure this secret contains: studio-8509111427-a45a7
           projectId: '${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}'
           entryPoint: .
         env:
