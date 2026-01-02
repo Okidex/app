@@ -1,140 +1,110 @@
+
 'use server';
 
+import 'server-only';
 import { cookies } from 'next/headers';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { getFirebaseAdmin } from './firebase-server-init';
-import { FullUserProfile } from './types';
+import { initializeAdminApp } from './firebase-server-init';
+import { FullUserProfile, FounderProfile, UserRole, Profile, TalentSubRole, Startup, InvestorProfile, TalentProfile } from './types';
+import { FieldValue } from 'firebase-admin/firestore';
+import { toSerializable } from '@/lib/serialize';
+import { getAuth } from 'firebase-admin/auth';
 
-/**
- * Helper to convert Firestore data into plain JSON.
- * Essential for Next.js 15 Server Actions.
- */
-function toSerializable<T>(data: any): T {
-    if (data === null || data === undefined) return data;
-    if (typeof data !== 'object') return data;
-    if (data.toDate && typeof data.toDate === 'function') {
-      return data.toDate().toISOString() as any;
-    }
-    if (Array.isArray(data)) return data.map(toSerializable) as any;
-    const res: { [key: string]: any } = {};
-    for (const key in data) {
-      res[key] = toSerializable(data[key]);
-    }
-    return res as T;
+async function createSessionCookie(idToken: string) {
+    const { auth: adminAuth } = await initializeAdminApp();
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
 }
 
-/**
- * Log in a user and establish a session cookie.
- */
-export async function login(idToken: string) {
-  console.log("[AUTH_DEBUG] Starting login flow...");
-  const { auth } = getFirebaseAdmin();
-  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-  let success = false;
-
+export async function login(idToken: string):Promise<{success: boolean, error?: string}> {
   try {
-    // 1. Verify ID Token and create session cookie
-    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-    console.log("[AUTH_DEBUG] Session cookie generated.");
-
-    // 2. Access Cookie Store (Awaited for Next.js 15)
-    const cookieStore = await cookies();
-    
-    /**
-     * SECURITY NOTE:
-     * Firebase Hosting requires the name '__session'.
-     * In Cloud Workstations, ensure your preview URL is HTTPS.
-     * If 'secure' is true and the browser detects HTTP, the cookie will be dropped.
-     */
-    cookieStore.set('__session', sessionCookie, {
-      maxAge: expiresIn / 1000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production' || requestIsSecure(), // Dynamic security
-      sameSite: 'lax',
-      path: '/',
-    });
-
-    console.log("[AUTH_DEBUG] Cookie set in store.");
-    success = true;
-  } catch (error: any) {
-    console.error('[AUTH_DEBUG_ERROR] Login failure:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack?.split('\n')[1] // Log just the top of the stack for clarity
-    });
-    return { success: false, error: "Authentication failed. Check server logs." };
-  }
-
-  if (success) {
-    console.log("[AUTH_DEBUG] Redirecting to /dashboard...");
-    revalidatePath('/', 'layout');
-    return redirect('/dashboard');
-  }
-}
-
-/**
- * Helper to detect if we are on a secure workstation link
- */
-function requestIsSecure() {
-  // Cloud Workstations URLs usually contain 'https'
-  return true;
-}
-
-export async function createUserAndSetSession(idToken: string) {
-  return await login(idToken);
-}
-
-export async function getCurrentUser(): Promise<FullUserProfile | null> {
-    const { auth, firestore } = getFirebaseAdmin();
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('__session')?.value;
-
-    if (!sessionCookie) return null;
-
-    try {
-        const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-        const userDoc = await firestore.collection('users').doc(decodedClaims.uid).get();
-        
-        if (userDoc.exists) {
-            return toSerializable(userDoc.data()) as FullUserProfile;
-        }
-        return null;
-    } catch (error) {
-        return null;
-    }
-}
-
-export async function deleteCurrentUserAccount(userId: string, role: string, companyId?: string) {
-  const { auth, firestore } = getFirebaseAdmin();
-  let success = false;
-
-  try {
-    await auth.deleteUser(userId);
-    const userDocRef = firestore.collection('users').doc(userId);
-    await userDocRef.delete();
-
-    if (role === 'founder' && companyId) {
-        await firestore.collection('startups').doc(companyId).delete();
-    }
-    
-    const cookieStore = await cookies();
-    cookieStore.delete('__session');
-    success = true;
-  } catch (error: any) {
-    console.error("[AUTH_DEBUG_ERROR] Delete Account Error:", error);
+    await createSessionCookie(idToken);
+    return { success: true };
+  } catch(error: any) {
     return { success: false, error: error.message };
-  }
-
-  if (success) {
-    revalidatePath('/', 'layout');
-    return redirect('/login');
   }
 }
 
 export async function logout() {
-  const cookieStore = await cookies();
-  cookieStore.delete('__session');
-  revalidatePath('/', 'layout');
-  return redirect('/login');
+    const { auth: adminAuth } = await initializeAdminApp();
+    const sessionCookie = cookies().get('__session')?.value;
+    if (sessionCookie) {
+        try {
+            const decodedToken = await adminAuth.verifySessionCookie(sessionCookie);
+            await adminAuth.revokeRefreshTokens(decodedToken.sub);
+        } catch (error) {
+            console.error("Error revoking refresh tokens during logout:", error);
+        }
+    }
+    cookies().set('__session', '', { maxAge: 0, path: '/' });
+}
+
+export async function getCurrentUser(): Promise<FullUserProfile | null> {
+  const { firestore } = await initializeAdminApp();
+  const uid = await getCurrentUserId();
+  
+  if (!uid) {
+    return null;
+  }
+  
+  const userDoc = await firestore.collection('users').doc(uid).get();
+
+  if (!userDoc.exists) {
+    return null;
+  }
+
+  return toSerializable(userDoc.data()) as FullUserProfile;
+}
+
+export async function getCurrentUserId(): Promise<string | null> {
+    const { auth } = await initializeAdminApp();
+    const sessionCookie = cookies().get('__session');
+
+    if (!sessionCookie) {
+        return null;
+    }
+    
+    try {
+        const decodedToken = await auth.verifySessionCookie(sessionCookie.value, true);
+        return decodedToken.uid;
+    } catch (error) {
+        console.error("Error verifying session cookie:", error);
+        return null;
+    }
+}
+
+// This function now only handles setting the session cookie.
+// User and profile creation is handled on the client.
+export async function createUserAndSetSession(idToken: string) {
+    try {
+        await createSessionCookie(idToken);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error creating session cookie:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+
+export async function deleteCurrentUserAccount(userId: string, role: UserRole, companyId?: string) {
+    const { auth, firestore } = await initializeAdminApp();
+    try {
+        await firestore.collection("users").doc(userId).delete();
+        if (role === 'founder' && companyId) {
+            await firestore.collection("startups").doc(companyId).delete();
+        }
+        await auth.deleteUser(userId);
+        await logout();
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error deleting user account:", error);
+        let errorMessage = "An unexpected error occurred.";
+        if (error.code === 'auth/requires-recent-login') {
+            errorMessage = "This is a sensitive operation and requires recent authentication. Please log in again before retrying.";
+        } else {
+            errorMessage = error.message;
+        }
+        return { success: false, error: errorMessage };
+    }
 }
