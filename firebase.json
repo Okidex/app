@@ -18,12 +18,9 @@
   },
   "functions": [
     {
-      "source": "src/ai",
-      "codebase": "ai-logic",
-      "runtime": "nodejs22",
-      "predeploy": [
-        "npm --prefix \"src/ai\" install"
-      ]
+      "source": ".",
+      "codebase": "default",
+      "runtime": "nodejs22"
     }
   ],
   "emulators": {

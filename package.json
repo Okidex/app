@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22"
   },
   "overrides": {
     "glob": "^11.0.0",
@@ -55,11 +55,11 @@
     "genkit": "^1.25.0",
     "handlebars": "^4.7.8",
     "lucide-react": "^0.468.0",
-    "next": "^15.5.9",
+    "next": "15.5.9",
     "postcss": "^8.4.49",
-    "react": "^19.0.0",
+    "react": "19.0.0",
     "react-day-picker": "^9.4.1",
-    "react-dom": "^19.0.0",
+    "react-dom": "19.0.0",
     "react-hook-form": "^7.54.1",
     "recharts": "^2.14.1",
     "server-only": "^0.0.1",
@@ -73,11 +73,11 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
     "@types/node": "^22.10.2",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
     "dotenv": "^16.4.7",
     "eslint": "^9.16.0",
-    "eslint-config-next": "15.1.0",
+    "eslint-config-next": "15.5.9",
     "firebase-functions-test": "^3.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
