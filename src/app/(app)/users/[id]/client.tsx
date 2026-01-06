@@ -5,7 +5,7 @@ import { notFound, useParams } from "next/navigation";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, Building, ExternalLink, Github, Linkedin, Pencil, Loader2, ShieldCheck, ShieldAlert, UserCheck, HandCoins, BarChart2 } from "lucide-react";
+import { Briefcase, Building, ExternalLink, Github, Linkedin, Pencil, Loader2, ShieldCheck, ShieldAlert, UserCheck, HandCoins, BarChart2, Edit } from "lucide-react";
 import { FullUserProfile, FounderProfile, InvestorProfile, TalentProfile, Startup } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -28,6 +28,27 @@ import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star } from "lucide-react";
 import { getFinancialBreakdown, getUsersByIds, getStartupById } from "@/lib/actions";
+
+const IncompleteFinancialsCard = () => (
+    <Card className="border-dashed border-2 text-center">
+        <CardHeader>
+            <div className="mx-auto bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center mb-4">
+                <Edit className="w-8 h-8" />
+            </div>
+            <CardTitle>Complete Your Financial Profile</CardTitle>
+            <CardDescription>
+                Attract investors by providing a full picture of your startup's financial health. Add your monthly performance and capitalization table to complete your profile.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Button asChild>
+                <Link href="/profile/edit">
+                    Edit Financials
+                </Link>
+            </Button>
+        </CardContent>
+    </Card>
+);
 
 const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, currentUser: FullUserProfile | null }) => {
     const profile = user.profile as FounderProfile;
@@ -54,7 +75,10 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     
     // Simulate connection status.
     const isConnected = false; 
-    const showFinancials = currentUser?.role === 'investor' && (isConnected || currentUser?.id === user.id);
+    const isOwner = currentUser?.id === user.id;
+    const showFinancialsToInvestor = currentUser?.role === 'investor' && isConnected;
+    const showFinancials = isOwner || showFinancialsToInvestor;
+    const financialsAreComplete = startup && startup.monthlyFinancials && startup.monthlyFinancials.length > 0 && startup.capTable && startup.capTable.length > 0;
 
     useEffect(() => {
         const fetchFounders = async () => {
@@ -139,7 +163,7 @@ setIsLoadingBreakdown(true);
                         <p className="text-muted-foreground">{startup.description}</p>
                     </CardContent>
                 </Card>
-                 {isIncorporated && showFinancials && (
+                 {isIncorporated && showFinancials && financialsAreComplete && (
                     <>
                         <Card>
                             <CardHeader>
@@ -189,8 +213,12 @@ setIsLoadingBreakdown(true);
                         <CapTableCard capTable={startup.capTable} />
                     </>
                 )}
+                
+                {isIncorporated && isOwner && !financialsAreComplete && (
+                    <IncompleteFinancialsCard />
+                )}
 
-                {isIncorporated && !showFinancials && (
+                {isIncorporated && !isOwner && !showFinancialsToInvestor && (
                     <LockedFinancialsCard />
                 )}
             </div>

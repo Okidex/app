@@ -21,10 +21,23 @@ export interface CapTableEntry {
 
 export interface MonthlyFinancials {
   month: string; // e.g., "2024-01"
-  revenue: number;
+  revenue: number; // Also considered Net Sales
   expenses: number;
   netIncome: number;
   monthlyRecurringRevenue: number;
+  
+  // New fields for advanced metrics
+  currentAssets: number;
+  currentLiabilities: number;
+  inventory?: number; // Optional as not all startups have it
+  totalAssets: number;
+  totalLiabilities: number;
+  shareholdersEquity: number;
+  ebit: number; // Earnings Before Interest and Taxes
+  interestExpense: number;
+  cogs: number; // Cost of Goods Sold
+  accountsReceivable: number;
+  headcount: number;
 }
 
 export interface IncorporationDetails {
