@@ -9,16 +9,20 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// This AuthWrapper is a simplified guard. The main redirection logic is now in the root page.tsx.
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading: loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
+    // If after loading there is definitively no user, redirect to login.
+    // This serves as a client-side failsafe.
     if (!loading && !user) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [user, loading, router]);
 
+  // While loading, or if the user is not yet available, show a skeleton screen.
   if (loading || !user) {
     return (
         <div className="flex min-h-screen">
@@ -35,6 +39,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If user is authenticated, render the children.
   return <>{children}</>;
 }
 

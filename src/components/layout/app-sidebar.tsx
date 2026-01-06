@@ -34,7 +34,7 @@ import {
   Notification,
 } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore, useAuth } from '@/firebase';
+import { useUser, useFirestore, useAuth, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { logout as serverLogout } from "@/lib/auth-actions";
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
@@ -83,13 +83,20 @@ export function AppSidebar() {
 
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', user.id),
-      where('isRead', '==', false)
+      where('userId', '==', user.id)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setNotifications(
-        snapshot.docs.map((doc) => doc.data() as Notification)
-      );
+      const notifs = snapshot.docs.map((doc) => doc.data() as Notification);
+      // Sort client-side
+      notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setNotifications(notifs);
+    },
+    (serverError) => {
+        const contextualError = new FirestorePermissionError({
+            path: `notifications`,
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', contextualError);
     });
 
     return () => unsubscribe();
@@ -168,7 +175,7 @@ export function AppSidebar() {
       <SidebarMenu className="p-2 flex-1">
         {menuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
           const notificationCount = notifications.filter(
-            (n) => n.type === notificationType
+            (n) => n.type === notificationType && !n.isRead
           ).length;
           
           return (
@@ -200,6 +207,14 @@ export function AppSidebar() {
       <SidebarSeparator />
       <SidebarFooter className="p-2">
         <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Oki+">
+                <Link href="/settings/billing">
+                    <Plus />
+                    <span>Oki+</span>
+                </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="Settings">
             <Link href="/settings">
               <Settings />
@@ -212,17 +227,6 @@ export function AppSidebar() {
             <LogOut />
             <span>Logout</span>
           </SidebarMenuButton>
-        </SidebarMenuItem>
-        <SidebarMenuItem>
-            <Link href={`/users/${user.id}`} className='w-full'>
-                <SidebarMenuButton tooltip="Profile" size="lg" className="w-full justify-start mt-2">
-                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="size-8"/>
-                    <div className="flex flex-col items-start text-left">
-                        <span className="font-medium">{user.name}</span>
-                        <span className="text-xs text-muted-foreground -mt-0.5 capitalize">{user.role}</span>
-                    </div>
-                </SidebarMenuButton>
-            </Link>
         </SidebarMenuItem>
       </SidebarFooter>
     </Sidebar>

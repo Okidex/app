@@ -20,11 +20,24 @@ import { useUser, useAuth } from "@/firebase";
 import { logout as serverLogout } from "@/lib/auth-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { signOut } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { FounderProfile, Startup } from "@/lib/types";
+import { getStartupById } from "@/lib/actions";
 
 export default function AppHeader() {
   const { user, isUserLoading: loading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const [startup, setStartup] = useState<Startup | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'founder') {
+      const companyId = (user.profile as FounderProfile).companyId;
+      if (companyId) {
+        getStartupById(companyId).then(setStartup);
+      }
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -35,11 +48,15 @@ export default function AppHeader() {
   
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-        <div className="md:hidden">
-            <SidebarTrigger />
-        </div>
-      <div className="hidden md:block">
-        <Logo />
+      <div className="md:hidden">
+        <SidebarTrigger />
+      </div>
+      <div className="hidden md:flex items-center gap-2 text-lg font-semibold">
+        {user?.role === 'founder' && startup ? (
+          <Link href="/profile/edit" className="hover:text-primary transition-colors">{startup.companyName}</Link>
+        ) : (
+          <Logo />
+        )}
       </div>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <div className="ml-auto"></div>
@@ -61,6 +78,7 @@ export default function AppHeader() {
                 <DropdownMenuItem asChild><Link href={`/users/${user.id}`}>Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings/billing">Oki+</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/feedback">Feedback & Support</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>

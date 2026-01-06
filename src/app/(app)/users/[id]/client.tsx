@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams } from "next/navigation";
@@ -368,15 +369,45 @@ const TalentProfileView = ({ user }: { user: FullUserProfile }) => {
     );
 };
 
-const UserProfileHeader = ({ user, isOwnProfile, startup }: { user: FullUserProfile, isOwnProfile: boolean, startup?: Startup | null }) => {
+const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOwnProfile: boolean }) => {
+    const [startup, setStartup] = useState<Startup | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStartup = async () => {
+            if (user.role === 'founder') {
+                const companyId = (user.profile as FounderProfile).companyId;
+                if (companyId) {
+                    const startupData = await getStartupById(companyId);
+                    setStartup(startupData);
+                }
+            }
+            setLoading(false);
+        };
+        fetchStartup();
+    }, [user]);
+
     if (user.role === 'founder') {
         const profile = user.profile as FounderProfile;
-        if (!startup) return <Card><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>;
+
+        if (loading || !startup?.companyName) {
+            return (
+                <Card>
+                    <CardContent className="p-6 flex items-center gap-6">
+                        <Skeleton className="w-24 h-24 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-8 w-48" />
+                            <Skeleton className="h-5 w-72" />
+                        </div>
+                    </CardContent>
+                </Card>
+            );
+        }
 
         return (
             <Card>
                 <CardContent className="p-6 flex flex-col sm:flex-row items-start gap-6 relative">
-                    <Image src={startup.companyLogoUrl} alt={startup.companyName} width={96} height={96} className="w-24 h-24 rounded-full border" data-ai-hint="logo" />
+                    <Image src={startup.companyLogoUrl || ''} alt={startup.companyName || ''} width={96} height={96} className="w-24 h-24 rounded-full border" data-ai-hint="logo" />
                     <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <h1 className="text-2xl font-bold font-headline">{startup.companyName}</h1>
@@ -500,11 +531,10 @@ interface UserProfileClientProps {
 
 export default function UserProfileClient({ serverUser, serverCurrentUser }: UserProfileClientProps) {
     const isOwnProfile = serverCurrentUser?.id === serverUser.id;
-    const startup = (serverUser.role === 'founder' && (serverUser.profile as FounderProfile).companyId) ? { id: (serverUser.profile as FounderProfile).companyId! } : null;
 
     return (
         <div className="space-y-6">
-            <UserProfileHeader user={serverUser} isOwnProfile={isOwnProfile} startup={startup as any} />
+            <UserProfileHeader user={serverUser} isOwnProfile={isOwnProfile} />
             {serverUser.role === 'founder' && <FounderProfileView user={serverUser} currentUser={serverCurrentUser} />}
             {serverUser.role === 'investor' && <InvestorProfileView user={serverUser} />}
             {serverUser.role === 'talent' && <TalentProfileView user={serverUser} />}

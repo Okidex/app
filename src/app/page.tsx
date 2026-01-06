@@ -18,7 +18,7 @@ export default function Page() {
     }
   }, [user, isUserLoading, router]);
 
-  // While loading, show a skeleton UI.
+  // While loading, show a skeleton UI to prevent flash of content.
   if (isUserLoading) {
      return (
       <div className="flex flex-col min-h-screen">
@@ -42,13 +42,13 @@ export default function Page() {
     );
   }
 
-  // If loading is finished and there's no user, show the actual homepage.
-  if (!isUserLoading && !user) {
+  // If loading is finished and there's no user, show the public homepage.
+  if (!user) {
     return <RootPage />;
   }
 
-  // If the user is logged in, this will be briefly rendered before the redirect effect runs.
-  // Showing the skeleton here as well prevents a flash of the homepage content.
+  // If user is logged in, this renders a skeleton while the redirect effect runs.
+  // This prevents the homepage from flashing before redirecting to the dashboard.
   return (
       <div className="flex flex-col min-h-screen">
         <header className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
