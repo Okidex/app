@@ -13,8 +13,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { investmentStages } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
+import { updateStartupData } from '@/lib/actions';
 
 interface CapTableFormProps {
+    startupId: string;
     initialData: CapTableEntry[];
 }
 
@@ -27,7 +29,7 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-export default function CapTableForm({ initialData }: CapTableFormProps) {
+export default function CapTableForm({ startupId, initialData }: CapTableFormProps) {
     
     const newEntryDefault: Omit<CapTableEntry, 'id'> = {
         shareholderName: '',
@@ -55,16 +57,26 @@ export default function CapTableForm({ initialData }: CapTableFormProps) {
         setIsAdding(false);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!editedData) return;
-
+        
+        let newData: CapTableEntry[];
         if (isAdding) {
             const newId = `ct-new-${Date.now()}`;
-            setData([...data, { ...newEntryDefault, ...editedData, id: newId }]);
+            newData = [...data, { ...newEntryDefault, ...editedData, id: newId }];
             toast({ title: "Shareholder Added", description: `Added ${editedData.shareholderName} to the cap table.` });
         } else {
-            setData(data.map(d => d.id === editedData.id ? { ...d, ...editedData } as CapTableEntry : d));
+            newData = data.map(d => d.id === editedData.id ? { ...d, ...editedData } as CapTableEntry : d);
             toast({ title: "Cap Table Updated", description: `Successfully updated details for ${editedData.shareholderName}.` });
+        }
+        
+        const totalInvestment = newData.reduce((acc, entry) => acc + entry.investment, 0);
+
+        const result = await updateStartupData(startupId, { capTable: newData, fundsRaised: totalInvestment });
+        if(result.success) {
+            setData(newData);
+        } else {
+            toast({ title: "Error", description: result.error, variant: 'destructive' });
         }
 
         setEditingRow(null);
@@ -72,10 +84,19 @@ export default function CapTableForm({ initialData }: CapTableFormProps) {
         setIsAdding(false);
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         const entryName = data.find(d => d.id === id)?.shareholderName;
-        setData(data.filter(d => d.id !== id));
-        toast({ title: "Shareholder Removed", description: `${entryName} has been removed from the cap table.`, variant: "destructive" });
+        const newData = data.filter(d => d.id !== id);
+        const totalInvestment = newData.reduce((acc, entry) => acc + entry.investment, 0);
+
+        const result = await updateStartupData(startupId, { capTable: newData, fundsRaised: totalInvestment });
+
+        if(result.success) {
+            setData(newData);
+            toast({ title: "Shareholder Removed", description: `${entryName} has been removed from the cap table.`, variant: "destructive" });
+        } else {
+            toast({ title: "Error", description: result.error, variant: 'destructive' });
+        }
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,7 +224,7 @@ export default function CapTableForm({ initialData }: CapTableFormProps) {
                             <TableHead>Stage</TableHead>
                             <TableHead className="text-right">Investment</TableHead>
                             <TableHead className="text-right">Shares</TableHead>
-                            <TableHead className="text-right">Equity</TableHead>
+                            <TableHead className="text-right">Equity %</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>

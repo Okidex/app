@@ -43,7 +43,7 @@ export default function CapTableCard({ capTable }: CapTableCardProps) {
                             <TableHead>Stage</TableHead>
                             <TableHead className="text-right">Investment</TableHead>
                             <TableHead className="text-right">Shares</TableHead>
-                            <TableHead className="text-right">Equity</TableHead>
+                            <TableHead className="text-right">Equity %</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>

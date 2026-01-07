@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
-import RootPage from './home-page';
+import HomePage from './home-page'; // The actual landing page content
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Page() {
@@ -44,7 +44,7 @@ export default function Page() {
 
   // If loading is finished and there's no user, show the public homepage.
   if (!user) {
-    return <RootPage />;
+    return <HomePage />;
   }
 
   // If user is logged in, this renders a skeleton while the redirect effect runs.

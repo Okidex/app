@@ -10,6 +10,9 @@ import {
     FounderProfile,
     InvestorProfile,
     TalentProfile,
+    MonthlyFinancials,
+    CapTableEntry,
+    FounderObjective,
 } from './types';
 import {
   summarizeFinancialData,
@@ -101,6 +104,18 @@ export async function updateUserProfile(userId: string, data: Partial<Profile>) 
     } catch (error: any) {
         console.error("Error updating user profile:", error);
         return { success: false, error: error.message || "Failed to update profile." };
+    }
+}
+
+export async function updateStartupData(startupId: string, data: Partial<Startup>) {
+    const { firestore } = await initializeAdminApp();
+    try {
+        const startupRef = firestore.collection("startups").doc(startupId);
+        await startupRef.update(data);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error updating startup data:", error);
+        return { success: false, error: error.message || "Failed to update startup data." };
     }
 }
 

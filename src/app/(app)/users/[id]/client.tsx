@@ -5,8 +5,8 @@ import { notFound, useParams } from "next/navigation";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, Building, ExternalLink, Github, Linkedin, Pencil, Loader2, ShieldCheck, ShieldAlert, UserCheck, HandCoins, BarChart2, Edit } from "lucide-react";
-import { FullUserProfile, FounderProfile, InvestorProfile, TalentProfile, Startup } from "@/lib/types";
+import { Briefcase, Building, ExternalLink, Github, Linkedin, Pencil, Loader2, ShieldCheck, ShieldAlert, UserCheck, HandCoins, BarChart2, Edit, Users, Goal, BookUser } from "lucide-react";
+import { FullUserProfile, FounderProfile, InvestorProfile, TalentProfile, Startup, CapTableEntry, FounderObjective } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
@@ -18,16 +18,24 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts"
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, parseISO } from 'date-fns';
 import CapTableCard from "@/components/profile/cap-table-card";
 import LockedFinancialsCard from "@/components/profile/locked-financials-card";
 import { useFirestore, useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star } from "lucide-react";
-import { getFinancialBreakdown, getUsersByIds, getStartupById } from "@/lib/actions";
+import { getFinancialBreakdown, getUsersByIds, getStartupById, updateStartupData } from "@/lib/actions";
+import FundraisingProgressCard from "@/components/profile/fundraising-progress-card";
+import FundraisingGoalCard from "@/components/profile/fundraising-goal-card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { founderObjectives } from "@/lib/constants";
+import { Separator } from "@/components/ui/separator";
 
 const IncompleteFinancialsCard = () => (
     <Card className="border-dashed border-2 text-center">
@@ -54,6 +62,7 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     const profile = user.profile as FounderProfile;
     const [startup, setStartup] = useState<Startup | null>(null);
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchStartup = async () => {
@@ -73,12 +82,71 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
     const [selectedMonth, setSelectedMonth] = useState(0);
     const [founders, setFounders] = useState<FullUserProfile[]>([]);
     
-    // Simulate connection status.
     const isConnected = false; 
     const isOwner = currentUser?.id === user.id;
     const showFinancialsToInvestor = currentUser?.role === 'investor' && isConnected;
     const showFinancials = isOwner || showFinancialsToInvestor;
-    const financialsAreComplete = startup && startup.monthlyFinancials && startup.monthlyFinancials.length > 0 && startup.capTable && startup.capTable.length > 0;
+    
+    const hasMonthlyFinancials = startup && startup.monthlyFinancials && startup.monthlyFinancials.length > 0;
+    const hasCapTable = startup && startup.capTable && startup.capTable.length > 0;
+
+    const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
+    const [investmentAmount, setInvestmentAmount] = useState<number | undefined>();
+    const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleAcknowledgeInvestment = async () => {
+        if (!investmentAmount || !currentUser || !startup) return;
+        
+        setIsSubmitting(true);
+        const investorName = isAnonymous ? 'Anonymous Investor' : currentUser.name;
+
+        // Simulate equity calculation. In a real app this would be more complex.
+        const newEquity = (investmentAmount / ((startup.fundraisingGoal || 0) * 5)) * 100;
+        const newShares = Math.round((newEquity / 100) * 10000000); // Assuming 10M total shares
+
+        const newCapTableEntry: CapTableEntry = {
+            id: `ct-inv-${currentUser.id}-${Date.now()}`,
+            shareholderName: investorName,
+            investment: investmentAmount,
+            shares: newShares,
+            equityPercentage: newEquity,
+            investmentStage: startup.stage
+        };
+
+        const newCapTable = [...(startup.capTable || []), newCapTableEntry];
+        const newFundsRaised = (startup.fundsRaised || 0) + investmentAmount;
+        
+        const newInvestors = [
+            ...(startup.investors || []),
+            {
+                investorId: currentUser.id,
+                name: currentUser.name,
+                avatarUrl: currentUser.avatarUrl,
+                isAnonymous: isAnonymous
+            }
+        ];
+
+        const updateData: Partial<Startup> = {
+            fundsRaised: newFundsRaised,
+            capTable: newCapTable,
+            investors: newInvestors
+        };
+
+        const result = await updateStartupData(startup.id, updateData);
+        if (result.success) {
+            setStartup(prev => prev ? { ...prev, ...updateData } : null);
+            toast({ title: "Investment Acknowledged", description: "Your investment has been added to the startup's profile." });
+        } else {
+            toast({ title: "Error", description: "Could not acknowledge investment.", variant: "destructive" });
+        }
+
+        setIsSubmitting(false);
+        setIsInvestDialogOpen(false);
+        setInvestmentAmount(undefined);
+        setIsAnonymous(false);
+    };
+
 
     useEffect(() => {
         const fetchFounders = async () => {
@@ -133,7 +201,7 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
         if (data && data.activePayload && data.activePayload[0]) {
             const metric = data.activePayload[0].payload.metric;
             setSelectedMetric(metric);
-setIsLoadingBreakdown(true);
+            setIsLoadingBreakdown(true);
             const result = await getFinancialBreakdown({metric});
             setBreakdown(result.breakdown);
             setIsLoadingBreakdown(false);
@@ -153,6 +221,11 @@ setIsLoadingBreakdown(true);
     }));
     
     const isIncorporated = startup.incorporationDetails.isIncorporated;
+    const isFundraising = profile.objectives?.includes('fundraising') && startup.fundraisingGoal && startup.fundraisingGoal > 0;
+
+    const getObjectiveLabel = (objectiveId: FounderObjective) => {
+        return founderObjectives.find(o => o.id === objectiveId)?.label || objectiveId;
+    }
 
     return (
         <div className="grid md:grid-cols-3 gap-6">
@@ -163,62 +236,104 @@ setIsLoadingBreakdown(true);
                         <p className="text-muted-foreground">{startup.description}</p>
                     </CardContent>
                 </Card>
-                 {isIncorporated && showFinancials && financialsAreComplete && (
+                {isFundraising && startup.showFundraisingProgress && (
+                    <FundraisingProgressCard startup={startup} />
+                )}
+                {isFundraising && !startup.showFundraisingProgress && (
+                    <FundraisingGoalCard startup={startup} />
+                )}
+                 {isIncorporated && showFinancials && (hasMonthlyFinancials || hasCapTable) && (
                     <>
-                        <Card>
-                            <CardHeader>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle>Financial Snapshot</CardTitle>
-                                        <CardDescription>{timeframe === 'annual' ? 'Annualized' : 'Monthly'} key metrics. Click a bar for details.</CardDescription>
+                        {hasMonthlyFinancials ? (
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle>Financial Snapshot</CardTitle>
+                                            <CardDescription>{timeframe === 'annual' ? 'Annualized' : 'Monthly'} key metrics. Click a bar for details.</CardDescription>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {timeframe === 'monthly' && (
+                                                <Select value={String(selectedMonth)} onValueChange={(value) => setSelectedMonth(Number(value))}>
+                                                    <SelectTrigger className="w-[180px]">
+                                                        <SelectValue placeholder="Select month" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {months.map(month => (
+                                                            <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                            <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as "annual" | "monthly")}>
+                                                <TabsList>
+                                                    <TabsTrigger value="annual">Annual</TabsTrigger>
+                                                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                                                </TabsList>
+                                            </Tabs>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        {timeframe === 'monthly' && (
-                                            <Select value={String(selectedMonth)} onValueChange={(value) => setSelectedMonth(Number(value))}>
-                                                <SelectTrigger className="w-[180px]">
-                                                    <SelectValue placeholder="Select month" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {months.map(month => (
-                                                        <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                        <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as "annual" | "monthly")}>
-                                            <TabsList>
-                                                <TabsTrigger value="annual">Annual</TabsTrigger>
-                                                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                                            </TabsList>
-                                        </Tabs>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                            <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-                                    <BarChart accessibilityLayer data={chartData} onClick={handleBarClick}>
-                                        <CartesianGrid vertical={false} />
-                                        <XAxis dataKey="metric" tickLine={false} tickMargin={10} axisLine={false} />
-                                        <YAxis tickFormatter={formatYAxis} />
-                                        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
-                                        <Bar dataKey="value" radius={4} style={{ cursor: 'pointer' }}>
-                                            {chartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                        <CapTableCard capTable={startup.capTable} />
+                                </CardHeader>
+                                <CardContent>
+                                <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                                        <BarChart accessibilityLayer data={chartData} onClick={handleBarClick}>
+                                            <CartesianGrid vertical={false} />
+                                            <XAxis dataKey="metric" tickLine={false} tickMargin={10} axisLine={false} />
+                                            <YAxis tickFormatter={formatYAxis} />
+                                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+                                            <Bar dataKey="value" radius={4} style={{ cursor: 'pointer' }}>
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ChartContainer>
+                                </CardContent>
+                            </Card>
+                        ) : isOwner && (
+                            <Card className="border-dashed border-2 text-center">
+                                <CardHeader>
+                                    <CardTitle>Add Your Monthly Performance</CardTitle>
+                                    <CardDescription>
+                                        Complete your financial profile by adding your monthly performance data.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Button asChild>
+                                        <Link href="/profile/edit">
+                                            Add Monthly Performance
+                                        </Link>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {hasCapTable ? (
+                            <CapTableCard capTable={startup.capTable} />
+                        ) : isOwner && (
+                             <Card className="border-dashed border-2 text-center">
+                                <CardHeader>
+                                    <CardTitle>Add Your Capitalization Table</CardTitle>
+                                    <CardDescription>
+                                        Complete your financial profile by adding your cap table.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Button asChild>
+                                        <Link href="/profile/edit">
+                                            Add Cap Table
+                                        </Link>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
                     </>
                 )}
                 
-                {isIncorporated && isOwner && !financialsAreComplete && (
+                {isIncorporated && isOwner && !hasMonthlyFinancials && !hasCapTable && (
                     <IncompleteFinancialsCard />
                 )}
 
-                {isIncorporated && !isOwner && !showFinancialsToInvestor && (
+                {isIncorporated && !isOwner && !showFinancials && (
                     <LockedFinancialsCard />
                 )}
             </div>
@@ -233,8 +348,33 @@ setIsLoadingBreakdown(true);
                             <span>Status: <strong>{isIncorporated ? "Incorporated" : "Not Incorporated"}</strong></span>
                         </div>
                         <div className="flex items-center gap-2"><ExternalLink className="w-4 h-4 text-muted-foreground" /> <a href={startup.website} target="_blank" rel="noreferrer" className="text-primary hover:underline"><strong>Visit Website</strong></a></div>
+                        
+                        {(isOwner || (showFinancialsToInvestor && isIncorporated)) && (
+                            <>
+                                <Separator />
+                                <div className="space-y-3 pt-1">
+                                    <h4 className="font-semibold flex items-center gap-2 text-base"><BookUser className="w-4 h-4 text-muted-foreground" /> Legal Details</h4>
+                                    <div className="flex items-center gap-2">Country: <strong>{startup.incorporationDetails.country}</strong></div>
+                                    <div className="flex items-center gap-2">Type: <strong>{startup.incorporationDetails.incorporationType}</strong></div>
+                                    <div className="flex items-center gap-2">Date: <strong>{startup.incorporationDetails.incorporationDate ? format(parseISO(startup.incorporationDetails.incorporationDate), 'MMMM d, yyyy') : 'N/A'}</strong></div>
+                                    {startup.incorporationDetails.entityNumber && <div className="flex items-center gap-2">Entity ID: <strong>{startup.incorporationDetails.entityNumber}</strong></div>}
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
+                {profile.objectives && profile.objectives.length > 0 && (
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Goal className="w-5 h-5 text-muted-foreground" />Seeking</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-wrap gap-2">
+                            {profile.objectives.map(objective => (
+                                <Badge key={objective} variant="secondary">{getObjectiveLabel(objective)}</Badge>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
                 <Card>
                     <CardHeader><CardTitle>Founders</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
@@ -252,6 +392,34 @@ setIsLoadingBreakdown(true);
                         ))}
                     </CardContent>
                 </Card>
+                 {startup.investors && startup.investors.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Investors</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {startup.investors.map((investor) => (
+                                <div key={investor.investorId} className="flex items-center gap-3">
+                                    <UserAvatar
+                                        name={investor.isAnonymous ? "Anonymous Investor" : investor.name}
+                                        avatarUrl={investor.isAnonymous ? '' : investor.avatarUrl}
+                                    />
+                                    <div className="flex-1">
+                                        <p className="font-medium">
+                                            {investor.isAnonymous ? (
+                                                "Anonymous Investor"
+                                            ) : (
+                                                <Link href={`/users/${investor.investorId}`} className="hover:underline">
+                                                    {investor.name}
+                                                </Link>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
             </div>
             <Dialog open={!!selectedMetric} onOpenChange={() => setSelectedMetric(null)}>
                 <DialogContent className="sm:max-w-[425px]">
@@ -270,6 +438,45 @@ setIsLoadingBreakdown(true);
                             <div className="text-sm text-muted-foreground whitespace-pre-wrap">{breakdown}</div>
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Acknowledge Investment in {startup.companyName}</DialogTitle>
+                        <DialogDescription>
+                            Your acknowledgment will be sent to the founder for confirmation. Once approved, this will update the startup's fundraising progress.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="investment-amount">Investment Amount (USD)</Label>
+                            <Input
+                                id="investment-amount"
+                                type="number"
+                                placeholder="e.g., 50000"
+                                value={investmentAmount || ''}
+                                onChange={(e) => setInvestmentAmount(Number(e.target.value))}
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="anonymous-investment"
+                                checked={isAnonymous}
+                                onCheckedChange={(checked) => setIsAnonymous(!!checked)}
+                            />
+                            <Label htmlFor="anonymous-investment">I want to invest anonymously</Label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleAcknowledgeInvestment} disabled={isSubmitting || !investmentAmount}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Submit
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
@@ -397,28 +604,28 @@ const TalentProfileView = ({ user }: { user: FullUserProfile }) => {
     );
 };
 
-const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOwnProfile: boolean }) => {
-    const [startup, setStartup] = useState<Startup | null>(null);
-    const [loading, setLoading] = useState(true);
+const UserProfileHeader = ({ user, currentUser, onInvestClick }: { user: FullUserProfile, currentUser: FullUserProfile | null, onInvestClick: () => void }) => {
+    const isOwnProfile = currentUser?.id === user.id;
 
-    useEffect(() => {
-        const fetchStartup = async () => {
-            if (user.role === 'founder') {
-                const companyId = (user.profile as FounderProfile).companyId;
-                if (companyId) {
-                    const startupData = await getStartupById(companyId);
-                    setStartup(startupData);
-                }
-            }
-            setLoading(false);
-        };
-        fetchStartup();
-    }, [user]);
+    const showInvestButton = currentUser?.role === 'investor' && user.role === 'founder';
 
     if (user.role === 'founder') {
         const profile = user.profile as FounderProfile;
+        const [startup, setStartup] = useState<Startup | null>(null);
+        const [loading, setLoading] = useState(true);
 
-        if (loading || !startup?.companyName) {
+        useEffect(() => {
+            const fetchStartup = async () => {
+                if (profile.companyId) {
+                    const startupData = await getStartupById(profile.companyId);
+                    setStartup(startupData);
+                }
+                setLoading(false);
+            };
+            fetchStartup();
+        }, [profile.companyId]);
+
+        if (loading) {
             return (
                 <Card>
                     <CardContent className="p-6 flex items-center gap-6">
@@ -431,6 +638,10 @@ const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOw
                 </Card>
             );
         }
+        
+        if (!startup) {
+            return <Card><CardContent><p>Startup data not found.</p></CardContent></Card>
+        }
 
         return (
             <Card>
@@ -439,12 +650,6 @@ const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOw
                     <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <h1 className="text-2xl font-bold font-headline">{startup.companyName}</h1>
-                             {profile.isSeekingCoFounder && (
-                                <Badge variant="secondary" className="gap-1.5">
-                                    <UserCheck className="w-3.5 h-3.5" />
-                                    Seeking Co-founder
-                                </Badge>
-                            )}
                         </div>
                         <p className="text-muted-foreground">{startup.tagline}</p>
                         
@@ -452,6 +657,12 @@ const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOw
                             <div className="flex items-center gap-4 mt-4">
                                 <Button>Connect</Button>
                                 <Button variant="outline">Message</Button>
+                                {showInvestButton && (
+                                    <Button variant="outline" onClick={onInvestClick}>
+                                        <HandCoins className="mr-2 h-4 w-4" />
+                                        Acknowledge Investment
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -507,7 +718,6 @@ const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOw
 
     // Default for Talent and others
     const talentProfile = user.profile as TalentProfile;
-    const isSeekingCoFounder = user.role === 'talent' && talentProfile.isSeekingCoFounder;
     
     return (
         <Card>
@@ -516,12 +726,6 @@ const UserProfileHeader = ({ user, isOwnProfile }: { user: FullUserProfile, isOw
                 <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                         <h1 className="text-2xl font-bold font-headline">{user.name}</h1>
-                        {isSeekingCoFounder && (
-                            <Badge variant="secondary" className="gap-1.5">
-                                <UserCheck className="w-3.5 h-3.5" />
-                                Seeking Co-founder
-                            </Badge>
-                        )}
                     </div>
                     {talentProfile.headline ? (
                          <p className="text-lg text-muted-foreground">{talentProfile.headline}</p>
@@ -558,11 +762,11 @@ interface UserProfileClientProps {
 }
 
 export default function UserProfileClient({ serverUser, serverCurrentUser }: UserProfileClientProps) {
-    const isOwnProfile = serverCurrentUser?.id === serverUser.id;
+    const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
 
     return (
         <div className="space-y-6">
-            <UserProfileHeader user={serverUser} isOwnProfile={isOwnProfile} />
+            <UserProfileHeader user={serverUser} currentUser={serverCurrentUser} onInvestClick={() => setIsInvestDialogOpen(true)} />
             {serverUser.role === 'founder' && <FounderProfileView user={serverUser} currentUser={serverCurrentUser} />}
             {serverUser.role === 'investor' && <InvestorProfileView user={serverUser} />}
             {serverUser.role === 'talent' && <TalentProfileView user={serverUser} />}

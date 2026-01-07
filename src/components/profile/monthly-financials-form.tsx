@@ -13,8 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { updateStartupData } from '@/lib/actions';
 
 interface MonthlyFinancialsFormProps {
+    startupId: string;
     initialData: MonthlyFinancials[];
 }
 
@@ -27,7 +29,7 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-export default function MonthlyFinancialsForm({ initialData }: MonthlyFinancialsFormProps) {
+export default function MonthlyFinancialsForm({ startupId, initialData }: MonthlyFinancialsFormProps) {
     const [data, setData] = useState<MonthlyFinancials[]>(initialData);
     const [editingRow, setEditingRow] = useState<string | null>(null);
     const [editedData, setEditedData] = useState<MonthlyFinancials | null>(null);
@@ -64,18 +66,27 @@ export default function MonthlyFinancialsForm({ initialData }: MonthlyFinancials
         setEditedData(null);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!editedData) return;
-        setData(data.map(d => d.month === editedData.month ? editedData : d));
+        const newData = data.map(d => d.month === editedData.month ? editedData : d);
+        
+        const result = await updateStartupData(startupId, { monthlyFinancials: newData });
+
+        if (result.success) {
+            setData(newData);
+            toast({
+                title: "Financials Updated",
+                description: `Successfully updated financial data for ${format(new Date(editedData.month + '-02'), "MMMM yyyy")}.`,
+            });
+        } else {
+             toast({ title: "Error", description: result.error, variant: 'destructive' });
+        }
+        
         setEditingRow(null);
         setEditedData(null);
-        toast({
-            title: "Financials Updated",
-            description: `Successfully updated financial data for ${format(new Date(editedData.month + '-02'), "MMMM yyyy")}.`,
-        });
     };
     
-    const handleAddMonth = (e: React.FormEvent) => {
+    const handleAddMonth = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const newEntry: MonthlyFinancials = {
@@ -83,15 +94,20 @@ export default function MonthlyFinancialsForm({ initialData }: MonthlyFinancials
             netIncome: newMonthData.revenue - newMonthData.expenses
         };
         
-        setData(prevData => [...prevData, newEntry].sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime()));
-        
-        toast({
-            title: "Month Added",
-            description: `Financials for ${format(new Date(newMonthData.month + '-02'), "MMMM yyyy")} have been added.`,
-        });
-        
-        setNewMonthData(newMonthDefaultState);
-        setIsAddDialogOpen(false);
+        const newData = [...data, newEntry].sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
+        const result = await updateStartupData(startupId, { monthlyFinancials: newData });
+
+        if (result.success) {
+            setData(newData);
+            toast({
+                title: "Month Added",
+                description: `Financials for ${format(new Date(newMonthData.month + '-02'), "MMMM yyyy")} have been added.`,
+            });
+            setNewMonthData(newMonthDefaultState);
+            setIsAddDialogOpen(false);
+        } else {
+             toast({ title: "Error", description: result.error, variant: 'destructive' });
+        }
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,6 +137,9 @@ export default function MonthlyFinancialsForm({ initialData }: MonthlyFinancials
         }
         if (field === 'month') {
             return <TableCell className="font-medium sticky left-0 bg-card">{format(new Date(monthData.month + '-02'), "MMMM yyyy")}</TableCell>
+        }
+        if (field === 'headcount') {
+            return <TableCell className="text-right">{(monthData[field] as number).toLocaleString()}</TableCell>;
         }
         if (typeof monthData[field] === 'number') {
             return <TableCell className="text-right">{formatCurrency(monthData[field] as number)}</TableCell>;
