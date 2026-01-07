@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -16,7 +15,7 @@ import UserAvatar from '../shared/user-avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
 import {
   collection,
   query,
@@ -25,7 +24,6 @@ import {
   getDocs,
   doc,
   writeBatch,
-  orderBy,
 } from 'firebase/firestore';
 import { getUsersByIds } from '@/lib/actions';
 
@@ -56,13 +54,16 @@ export default function Notifications() {
 
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', authUser.id),
-      orderBy('timestamp', 'desc')
+      where('userId', '==', authUser.id)
     );
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const notifs = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Notification)
       );
+      
+      // Sort client-side
+      notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
       setNotifications(notifs);
 
       const senderIds = [
@@ -79,10 +80,17 @@ export default function Notifications() {
           setSenders(newSenders);
         }
       }
+    },
+    (serverError) => {
+        const contextualError = new FirestorePermissionError({
+            path: 'notifications',
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', contextualError);
     });
 
     return () => unsubscribe();
-  }, [authUser, db]);
+  }, [authUser, db, senders]);
 
   const markAllAsRead = async () => {
     if (!authUser || unreadCount === 0 || !db) return;
@@ -93,7 +101,14 @@ export default function Notifications() {
         batch.update(notifRef, { isRead: true });
       }
     });
-    await batch.commit();
+    await batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: 'notifications',
+            operation: 'write',
+            requestResourceData: { isRead: true }
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   return (
