@@ -1,5 +1,4 @@
-
-# Updated for January 2, 2026 Stability and Next.js 15.5.9 SSR Optimization
+# Updated for January 7, 2026 Stability and Next.js 15.5.9 SSR Optimization
 name: Deploy to Firebase Hosting on merge
 'on':
   push:
@@ -8,7 +7,7 @@ name: Deploy to Firebase Hosting on merge
 
 # Prevent state conflicts by ensuring only one production deploy runs at a time.
 concurrency:
-  group: deploy-production
+  group: deploy-production-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -27,17 +26,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 22 is the verified LTS for 2026 Next.js 15.5.9 deployments
           node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
-        # FIX: Handles React 19/Radix UI peer conflicts and avoids npm ci sync errors
         run: npm install --legacy-peer-deps
 
       - name: Build Application
-        # Verified: Providing secrets here allows Next.js to pre-render static pages
-        # without hitting the 'auth/invalid-api-key' error during build.
         run: npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
@@ -55,18 +50,15 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
-          # Hardcoded ID ensures CLI context stability in 2026 webframeworks experiment
           projectId: studio-8509111427-a45a7
           entryPoint: .
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-          # CRITICAL: Re-injecting here prevents the CLI from failing during
-          # SSR function verification and final site manifest creation.
+          # Re-injected all variables to ensure SSR/Edge functions initialize correctly
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-
-    
