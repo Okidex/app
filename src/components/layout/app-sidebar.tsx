@@ -13,6 +13,7 @@ import {
   SidebarFooter,
   SidebarMenuBadge,
   SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -26,7 +27,6 @@ import {
   Search,
   Users as UsersIcon,
 } from 'lucide-react';
-import Logo from '../logo';
 import {
   FullUserProfile,
   FounderProfile,
@@ -77,6 +77,7 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
   const db = useFirestore();
   const auth = useAuth();
+  const { state: sidebarState } = useSidebar();
 
   React.useEffect(() => {
     if (!user || !db) return;
@@ -151,7 +152,15 @@ export function AppSidebar() {
     return (
       <Sidebar>
         <SidebarHeader className="hidden md:flex">
-          <Logo />
+          <Link href="/" className="flex items-center gap-2 text-2xl font-headline font-normal tracking-tight">
+            <svg width="34" height="24" viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary h-6 w-auto shrink-0">
+                <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="2"/>
+                <path d="M34 1L23 12L34 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className={`transition-all duration-300 ease-in-out ${sidebarState === 'collapsed' ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
+                Okidex
+            </span>
+        </Link>
         </SidebarHeader>
         <SidebarMenu className="p-2 flex-1">
           {Array.from({ length: 7 }).map((_, i) => (
@@ -166,12 +175,18 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="hidden md:flex">
-        <Logo />
+      <SidebarHeader className="h-16 p-2 justify-start">
+         <Link href="/" className="flex items-center gap-2 font-headline font-normal tracking-tight">
+            <svg width="34" height="24" viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary h-6 w-auto shrink-0">
+                <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="2"/>
+                <path d="M34 1L23 12L34 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className={`text-2xl transition-all duration-300 ease-in-out ${sidebarState === 'collapsed' ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
+                Okidex
+            </span>
+        </Link>
       </SidebarHeader>
-      <SidebarHeader className="flex md:hidden items-center justify-center p-6">
-        <Logo />
-      </SidebarHeader>
+      
       <SidebarMenu className="p-2 flex-1">
         {menuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
           const notificationCount = notifications.filter(
@@ -220,12 +235,6 @@ export function AppSidebar() {
               <Settings />
               <span>Settings</span>
             </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton onClick={handleLogout} tooltip="Logout">
-            <LogOut />
-            <span>Logout</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarFooter>

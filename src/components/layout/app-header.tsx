@@ -52,11 +52,7 @@ export default function AppHeader() {
         <SidebarTrigger />
       </div>
       <div className="hidden md:flex items-center gap-2 text-lg font-semibold">
-        {user?.role === 'founder' && startup ? (
-          <Link href="/profile/edit" className="hover:text-primary transition-colors">{startup.companyName}</Link>
-        ) : (
-          <Logo />
-        )}
+        <Logo />
       </div>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <div className="ml-auto"></div>
@@ -77,7 +73,7 @@ export default function AppHeader() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href={`/users/${user.id}`}>Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings/billing">Oki+</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/profile/edit/financials">Financials</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/feedback">Feedback & Support</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
