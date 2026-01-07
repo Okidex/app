@@ -7,8 +7,8 @@
   },
   "overrides": {
     "glob": "^11.0.0",
-    "react": "$react",
-    "react-dom": "$react-dom"
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -55,6 +55,7 @@
     "genkit": "^1.25.0",
     "handlebars": "^4.7.8",
     "lucide-react": "^0.468.0",
+    "micro": "^10.0.1",
     "next": "15.5.9",
     "postcss": "^8.4.49",
     "react": "19.0.0",
