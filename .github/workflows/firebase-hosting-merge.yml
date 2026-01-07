@@ -1,3 +1,4 @@
+
 # Updated for January 2, 2026 Stability and Next.js 15.5.9 SSR Optimization
 name: Deploy to Firebase Hosting on merge
 'on':
@@ -66,3 +67,6 @@ jobs:
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+
+    

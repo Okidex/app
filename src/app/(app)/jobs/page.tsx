@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,45 +17,29 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import FounderApplyPrompt from "@/components/jobs/founder-apply-prompt";
 import { collection, addDoc, serverTimestamp, query, getDocs, orderBy } from "firebase/firestore";
-import { useFirestore, useUser } from "@/firebase";
+import { useFirestore, useUser, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-
-export const dynamic = 'force-dynamic';
 
 export default function JobsPage() {
     const { user: currentUser, isUserLoading: authLoading } = useUser();
-    const [jobs, setJobs] = useState<Job[]>([]);
-    const [loading, setLoading] = useState(true);
+    const db = useFirestore();
+    const jobsQuery = useMemoFirebase(() => db ? query(collection(db, "jobs"), orderBy("postedAt", "desc")) : null, [db]);
+    const { data: jobs, isLoading: jobsLoading } = useCollection<Job>(jobsQuery);
+
     const [isPostJobOpen, setIsPostJobOpen] = useState(false);
     const [showFounderPrompt, setShowFounderPrompt] = useState(false);
     const { toast } = useToast();
-    const db = useFirestore();
     
-    useEffect(() => {
-        const fetchJobs = async () => {
-            if (!db) {
-                // Firestore might not be available right away
-                if(!authLoading) setLoading(false);
-                return;
-            };
-            setLoading(true);
-            const jobsQuery = query(collection(db, "jobs"), orderBy("postedAt", "desc"));
-            const querySnapshot = await getDocs(jobsQuery);
-            const jobsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
-            setJobs(jobsData);
-            setLoading(false);
-        };
-        fetchJobs();
-    }, [db, authLoading]);
-
     const [newJob, setNewJob] = useState({
         title: "",
         location: "Remote",
         type: "Full-time" as Job['type'],
         description: "",
     });
+
+    const loading = authLoading || jobsLoading;
     
-    if (authLoading || loading) {
+    if (loading) {
         return (
             <div className="space-y-6">
                 <Skeleton className="h-12 w-full" />
@@ -113,16 +98,21 @@ export default function JobsPage() {
             postedAt: new Date().toISOString(),
         };
 
-        try {
-            const docRef = await addDoc(collection(db, 'jobs'), newJobData);
-            setJobs([{ id: docRef.id, ...newJobData }, ...jobs]);
+        const jobsCollectionRef = collection(db, 'jobs');
+        addDoc(jobsCollectionRef, newJobData)
+        .then(() => {
             setIsPostJobOpen(false);
             setNewJob({ title: "", location: "Remote", type: "Full-time", description: "" });
             toast({ title: "Job Posted", description: "Your job has been successfully posted." });
-        } catch (error) {
-            console.error("Error posting job:", error);
-            toast({ title: "Error", description: "Failed to post job.", variant: "destructive" });
-        }
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: jobsCollectionRef.path,
+                operation: 'create',
+                requestResourceData: newJobData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
     };
 
     const handleApply = (jobTitle: string, companyName: string) => {
@@ -142,7 +132,7 @@ export default function JobsPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold font-headline">Jobs</h1>
-                    <p className="text-muted-foreground">Find your next role at a high-growth startup.</p>
+                    <p className="text-muted-foreground">Find your next role at a high-growth startup, or post a job to grow your team.</p>
                 </div>
                 {(isInvestor || (isFounder && isPremiumFounder)) && (
                     <Button onClick={() => setIsPostJobOpen(true)}>
@@ -152,7 +142,7 @@ export default function JobsPage() {
                 {isFounder && !isPremiumFounder && (
                     <Button asChild variant="outline">
                         <Link href="/settings/billing">
-                            <Plus className="mr-2 h-4 w-4" /> Post a Job
+                            <Plus className="mr-2 h-4 w-4" /> Post a Job (Oki+)
                         </Link>
                     </Button>
                 )}
@@ -188,7 +178,7 @@ export default function JobsPage() {
 
             
             <div className="grid grid-cols-1 gap-6">
-                {jobs.map(job => (
+                {jobs && jobs.map(job => (
                     <Card key={job.id}>
                         <CardHeader className="flex flex-row items-start gap-4">
                             <Image src={job.companyLogoUrl} alt={job.companyName} width={56} height={56} className="rounded-full border" data-ai-hint="logo" />
@@ -258,3 +248,6 @@ export default function JobsPage() {
         </div>
     );
 }
+
+
+    

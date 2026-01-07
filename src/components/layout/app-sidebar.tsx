@@ -41,32 +41,14 @@ import { Skeleton } from '../ui/skeleton';
 import UserAvatar from '../shared/user-avatar';
 import { signOut } from 'firebase/auth';
 
-const menuItemsFounder = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match' },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message' },
-  { href: '/applicants', label: 'Applicants', icon: UsersIcon, notificationType: 'applicant', premium: true },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase, premium: true },
-  { href: '/theses', label: 'Theses', icon: FileText, premium: true },
-];
-
-const menuItemsInvestor = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match' },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message' },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase },
-  { href: '/applicants', label: 'Applicants', icon: UsersIcon, notificationType: 'applicant' },
-  { href: '/theses', label: 'Theses', icon: FileText },
-];
-
-const menuItemsTalent = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match' },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message' },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase },
+const allMenuItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'investor', 'talent'] },
+  { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match', roles: ['founder', 'investor', 'talent'] },
+  { href: '/search', label: 'Search', icon: Search, roles: ['founder', 'investor', 'talent'] },
+  { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message', roles: ['founder', 'investor', 'talent'] },
+  { href: '/jobs', label: 'Jobs', icon: Briefcase, roles: ['founder', 'investor', 'talent'] },
+  { href: '/theses', label: 'Theses', icon: FileText, roles: ['founder', 'investor', 'talent'] },
+  { href: '/applicants', label: 'Applicants', icon: UsersIcon, notificationType: 'applicant', roles: ['founder', 'investor'], premium: true },
 ];
 
 export function AppSidebar() {
@@ -112,40 +94,40 @@ export function AppSidebar() {
   
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
 
-  const menuItems = React.useMemo(() => {
+  const filteredMenuItems = React.useMemo(() => {
     if (!user) return [];
     
     const { role, profile } = user;
-
-    const isSeekingCoFounder = (role === 'founder' || role === 'talent') && (profile as FounderProfile | TalentProfile)?.isSeekingCoFounder;
-    const isCoFounderTalent = role === 'talent' && (profile as TalentProfile)?.subRole === 'co-founder';
     
-    let baseItems;
-    switch (role) {
-      case 'founder':
-        baseItems = menuItemsFounder.filter(item => !item.premium || isPremiumFounder);
-        break;
-      case 'investor':
-        baseItems = menuItemsInvestor;
-        break;
-      case 'talent':
-        let talentItems = [...menuItemsTalent];
-        if (!isSeekingCoFounder) {
-          talentItems = talentItems.filter((item) => item.href !== '/matches');
-        }
-        if (isCoFounderTalent) {
-          talentItems.push({ href: '/theses', label: 'Theses', icon: FileText, notificationType: 'applicant' });
-        }
-        baseItems = talentItems;
-        break;
-      default:
-        baseItems = [];
-    }
+    return allMenuItems.filter(item => {
+      if (!item.roles.includes(role)) {
+        return false;
+      }
+      
+      if (item.href === '/applicants' && role === 'talent') {
+        return false;
+      }
 
-    if (!isMobile) {
-      return baseItems.filter((item) => item.href !== '/matches');
-    }
-    return baseItems;
+      if (role === 'founder' && item.premium && !isPremiumFounder) {
+        return false;
+      }
+      
+      const isSeekingCoFounder = role === 'talent' && (profile as TalentProfile)?.isSeekingCoFounder;
+      if (item.href === '/matches' && role === 'talent' && !isSeekingCoFounder) {
+        return false;
+      }
+      
+      const isCoFounderTalent = role === 'talent' && (profile as TalentProfile)?.subRole === 'co-founder';
+      if(item.href === '/theses' && role === 'talent' && !isCoFounderTalent){
+        return false;
+      }
+      
+      if (isMobile === false && item.href === '/matches') {
+        return false;
+      }
+      
+      return true;
+    });
   }, [user, isMobile, isPremiumFounder]);
 
   if (authLoading || !user) {
@@ -188,11 +170,13 @@ export function AppSidebar() {
       </SidebarHeader>
       
       <SidebarMenu className="p-2 flex-1">
-        {menuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
+        {filteredMenuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
           const notificationCount = notifications.filter(
             (n) => n.type === notificationType && !n.isRead
           ).length;
           
+          const showPlusBadge = user.role === 'founder' && premium && !isPremiumFounder && !notificationCount;
+
           return (
             <SidebarMenuItem key={href}>
               <SidebarMenuButton
@@ -208,7 +192,7 @@ export function AppSidebar() {
                     {notificationCount > 0 && (
                       <SidebarMenuBadge>{notificationCount}</SidebarMenuBadge>
                     )}
-                    {user.role === 'founder' && premium && !isPremiumFounder && !notificationCount && (
+                    {showPlusBadge && (
                       <SidebarMenuBadge className="flex items-center justify-center w-5 h-5 p-0 text-xs">
                         <Plus className="w-3 h-3" />
                       </SidebarMenuBadge>
