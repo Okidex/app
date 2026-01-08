@@ -1,13 +1,14 @@
-# Updated for January 7, 2026 Stability
+# Updated for January 8, 2026 Stability
 name: Deploy to Firebase Hosting on PR
 
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
 
-# Prevents duplicate runs for the same PR
+# CRITICAL: Use a global string to force GitHub to queue/cancel all
+# Firebase deployments across ALL workflow files.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: global-firebase-deploy
   cancel-in-progress: true
 
 permissions:
@@ -60,4 +61,3 @@ jobs:
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-

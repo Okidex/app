@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, notFound } from "next/navigation";
 import { useState, useEffect } from "react";
+import PortfolioForm from "@/components/profile/portfolio-form";
+import ExitsForm from "@/components/profile/exits-form";
 import { investmentStages, founderObjectives } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateUserProfile, getStartupById, getUsersByIds, updateStartupData } from "@/lib/actions";
@@ -278,6 +280,10 @@ export default function GeneralProfileEditPage() {
                                         <SelectValue placeholder="Select your investor type" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="Angel">Angel</SelectItem>
+                                        <SelectItem value="Venture Capitalist">Venture Capitalist</SelectItem>
+                                        <SelectItem value="Crowdfunder">Crowdfunder</SelectItem>
+                                        <SelectItem value="Private Equity">Private Equity</SelectItem>
                                         <SelectItem value="GP">General Partner (GP)</SelectItem>
                                         <SelectItem value="LP">Limited Partner (LP)</SelectItem>
                                         <SelectItem value="Family Office Administrator">Family Office Administrator</SelectItem>
@@ -381,6 +387,12 @@ export default function GeneralProfileEditPage() {
                 </CardFooter>
             </Card>
           </form>
+           {isInvestor && investorProfile && (
+            <div className="space-y-6">
+                <PortfolioForm initialData={investorProfile.portfolio} />
+                <ExitsForm initialData={investorProfile.exits} />
+            </div>
+            )}
         </div>
       </div>
     </div>

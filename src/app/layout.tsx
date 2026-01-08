@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ClientProviders } from "./client-providers";
+import Script from "next/script";
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -28,6 +29,7 @@ export default function RootLayout({
           {children}
         </ClientProviders>
         <Toaster />
+        <Script async src="https://subscribe-forms.beehiiv.com/embed.js" />
       </body>
     </html>
   );

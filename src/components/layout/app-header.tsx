@@ -72,8 +72,12 @@ export default function AppHeader() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href={`/users/${user.id}`}>Profile</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/settings/billing">Oki+</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/profile/edit/financials">Financials</Link></DropdownMenuItem>
+                {user.role === 'founder' && (
+                  <>
+                    <DropdownMenuItem asChild><Link href="/settings/billing">Oki+</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/profile/edit/financials">Financials</Link></DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem asChild><Link href="/feedback">Feedback & Support</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>

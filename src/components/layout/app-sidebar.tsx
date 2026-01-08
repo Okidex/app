@@ -93,6 +93,7 @@ export function AppSidebar() {
   };
   
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
+  const isFounder = user?.role === 'founder';
 
   const filteredMenuItems = React.useMemo(() => {
     if (!user) return [];
@@ -205,14 +206,16 @@ export function AppSidebar() {
       </SidebarMenu>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Oki+">
-                <Link href="/settings/billing">
-                    <Plus />
-                    <span>Oki+</span>
-                </Link>
-            </SidebarMenuButton>
-        </SidebarMenuItem>
+        {isFounder && (
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Oki+">
+                    <Link href="/settings/billing">
+                        <Plus />
+                        <span>Oki+</span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        )}
         <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="Settings">
             <Link href="/settings">

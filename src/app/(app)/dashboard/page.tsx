@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FullUserProfile, Job, FounderProfile, TalentProfile, InvestmentThesis, Interest, Match } from "@/lib/types";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit, getCountFromServer } from 'firebase/firestore';
+import { collection, query, where, limit, getCountFromServer, getDocs } from 'firebase/firestore';
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,8 +38,7 @@ export default function DashboardPage() {
     , [db, founderJobIds]);
     const { data: founderJobApplicants, isLoading: founderJobApplicantsLoading } = useCollection<Interest>(founderJobApplicantsQuery);
     
-    // Founder: Investor Interest (Interests on theses posted by founder - this logic is for investors but founders can post jobs)
-    // Let's assume Investor Interest means interest in their startup/profile, which we can model as matches.
+    // Founder: Investor Interest & Matches
     const founderMatchesQuery = useMemoFirebase(() =>
         currentUser?.id && db
             ? query(collection(db, "matches"), where("participantIds", "array-contains", currentUser.id))
@@ -87,7 +86,14 @@ export default function DashboardPage() {
         : null
     , [db, jobIds]);
     const { data: jobInterests, isLoading: jobInterestsLoading } = useCollection<Interest>(jobInterestsQuery);
-
+    
+    // Investor: Matches
+    const investorMatchesQuery = useMemoFirebase(() =>
+        currentUser?.role === 'investor' && db && currentUser.id
+            ? query(collection(db, "matches"), where("participantIds", "array-contains", currentUser.id))
+            : null
+    , [currentUser, db]);
+    const { data: investorMatches, isLoading: investorMatchesLoading } = useCollection<Match>(investorMatchesQuery);
 
     // Talent: Recommended jobs and their applications
     const talentJobsQuery = useMemoFirebase(() =>
@@ -112,7 +118,7 @@ export default function DashboardPage() {
     const { data: talentMatches, isLoading: talentMatchesLoading } = useCollection<Match>(talentMatchesQuery);
 
 
-    const loading = isUserLoading || newFounderMatchesLoading || founderMatchesLoading || thesesLoading || jobsLoading || thesisInterestsLoading || jobInterestsLoading || talentJobsLoading || founderJobApplicantsLoading || talentApplicationsLoading || talentMatchesLoading;
+    const loading = isUserLoading || newFounderMatchesLoading || founderMatchesLoading || thesesLoading || jobsLoading || thesisInterestsLoading || jobInterestsLoading || talentJobsLoading || founderJobApplicantsLoading || talentApplicationsLoading || talentMatchesLoading || investorMatchesLoading;
     
     if (loading) {
         return (
@@ -212,9 +218,9 @@ export default function DashboardPage() {
                 <Link href="/theses"><StatsCard title="Theses Posted" value={myTheses?.length?.toString() ?? '0'} icon={FileText} description="Share your focus" /></Link>
                 <Link href="/applicants"><StatsCard title="Thesis Applicants" value={thesisInterests?.length?.toString() ?? '0'} icon={UsersIcon} description="Interest in your theses" /></Link>
                 <Link href="/applicants"><StatsCard title="Job Applicants" value={jobInterests?.length?.toString() ?? '0'} icon={Briefcase} description="Interest in your jobs" /></Link>
-                <StatsCard title="Startups Viewed" value="89" icon={Activity} description="+15 from last week" />
-                <Link href="/matches"><StatsCard title="Active Matches" value="5" icon={CheckCheck} description="Ready for outreach" /></Link>
-                <Link href="/search"><StatsCard title="New Opportunities" value="18" icon={DollarSign} description="In your target industries" /></Link>
+                <StatsCard title="Startups Viewed" value="0" icon={Activity} description="Track startups you view" />
+                <Link href="/matches"><StatsCard title="Active Matches" value={investorMatches?.length?.toString() ?? '0'} icon={CheckCheck} description="Ready for outreach" /></Link>
+                <Link href="/search"><StatsCard title="New Opportunities" value="0" icon={DollarSign} description="New startups to discover" /></Link>
             </div>
         );
     }
@@ -291,7 +297,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
-    
-
-    

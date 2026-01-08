@@ -28,6 +28,7 @@ export default function EditProfileLayout({ children }: { children: React.ReactN
     }
 
     const isFounder = user.role === 'founder';
+    const isInvestor = user.role === 'investor';
     const isIncorporated = isFounder && (user.profile as FounderProfile).companyId && true; // Placeholder for actual check
 
     const getActiveTab = () => {
@@ -47,24 +48,26 @@ export default function EditProfileLayout({ children }: { children: React.ReactN
                 <p className="text-muted-foreground">This is how others will see you on the site. Update your information to attract the right connections.</p>
             </div>
             <Separator />
-            <Tabs value={getActiveTab()} className="w-full">
-                <TabsList>
-                    <TabsTrigger value="general" asChild><Link href="/profile/edit/general">General</Link></TabsTrigger>
-                    {isFounder && (
-                        <>
-                            <TabsTrigger value="team" asChild><Link href="/profile/edit/team">Founding Team</Link></TabsTrigger>
-                            <TabsTrigger value="fundraising" asChild><Link href="/profile/edit/fundraising">Fundraising</Link></TabsTrigger>
-                            <TabsTrigger value="legal" asChild><Link href="/profile/edit/legal">Legal</Link></TabsTrigger>
-                            {isIncorporated && (
-                                <>
-                                    <TabsTrigger value="financials" asChild><Link href="/profile/edit/financials">Financials</Link></TabsTrigger>
-                                    <TabsTrigger value="captable" asChild><Link href="/profile/edit/captable">Cap Table</Link></TabsTrigger>
-                                </>
-                            )}
-                        </>
-                    )}
-                </TabsList>
-            </Tabs>
+            {!isInvestor && (
+                <Tabs value={getActiveTab()} className="w-full">
+                    <TabsList>
+                        <TabsTrigger value="general" asChild><Link href="/profile/edit/general">General</Link></TabsTrigger>
+                        {isFounder && (
+                            <>
+                                <TabsTrigger value="team" asChild><Link href="/profile/edit/team">Founding Team</Link></TabsTrigger>
+                                <TabsTrigger value="fundraising" asChild><Link href="/profile/edit/fundraising">Fundraising</Link></TabsTrigger>
+                                <TabsTrigger value="legal" asChild><Link href="/profile/edit/legal">Legal</Link></TabsTrigger>
+                                {isIncorporated && (
+                                    <>
+                                        <TabsTrigger value="financials" asChild><Link href="/profile/edit/financials">Financials</Link></TabsTrigger>
+                                        <TabsTrigger value="captable" asChild><Link href="/profile/edit/captable">Cap Table</Link></TabsTrigger>
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </TabsList>
+                </Tabs>
+            )}
             <div className="pt-4">
                 {children}
             </div>

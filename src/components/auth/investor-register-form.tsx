@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -33,47 +34,10 @@ export default function InvestorRegisterFormClient() {
   const firestore = useFirestore();
 
   useEffect(() => {
-    if (!sessionStorage.getItem('registrationDetails')) {
+    if (typeof window !== "undefined" && !sessionStorage.getItem('registrationDetails')) {
       router.push('/register');
     }
   }, [router]);
-
-  /**
-   * DEBUGGER SCRIPT: Detailed Permission Error Reporting
-   * Specifically designed to catch race conditions during new user creation.
-   */
-  const executeDebuggableWrite = async (docRef: any, data: any, currentUser: any) => {
-    console.log("[DEBUGGER] Verifying Session before Firestore Write:", {
-      uid: currentUser?.uid,
-      path: docRef.path
-    });
-
-    try {
-      // 2025 Buffer: Give Firebase Security Rules time to sync with the new Auth Token
-      await new Promise(resolve => setTimeout(resolve, 800)); 
-      
-      await setDoc(docRef, data, { merge: true });
-      console.log("[DEBUGGER] Success: Profile persisted to Firestore.");
-    } catch (error: any) {
-      console.error("[DEBUGGER] CRITICAL PERMISSION ERROR:", error);
-
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'create',
-        requestResourceData: data,
-        authContext: {
-            uid: currentUser?.uid,
-            token: !!(await currentUser?.getIdToken())
-        },
-        errorCode: error.code,
-        errorMessage: error.message
-      });
-
-      // Emit to your global error monitor/dashboard
-      errorEmitter.emit('permission-error', permissionError);
-      throw error; 
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,6 +51,7 @@ export default function InvestorRegisterFormClient() {
         variant: "destructive",
       });
       router.push('/register');
+      setIsSubmitting(false);
       return;
     }
     
@@ -100,7 +65,6 @@ export default function InvestorRegisterFormClient() {
     }
 
     try {
-        // 1. Authenticate User
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
@@ -129,10 +93,16 @@ export default function InvestorRegisterFormClient() {
 
         const userDocRef = doc(firestore, 'users', user.uid);
         
-        // 2. Execute Debuggable Firestore Write
-        await executeDebuggableWrite(userDocRef, fullUser, user);
+        await setDoc(userDocRef, fullUser, { merge: true }).catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: fullUser,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
 
-        // 3. Create Server-Side Session
         const idToken = await user.getIdToken();
         const result = await createUserAndSetSession(idToken);
         
@@ -146,9 +116,7 @@ export default function InvestorRegisterFormClient() {
     } catch(error: any) {
         toast({
             title: "Registration Failed",
-            description: error.code === 'permission-denied' 
-                ? "Debugger: Firestore permission denied. Check terminal/error logs." 
-                : error.message,
+            description: error.message,
             variant: "destructive",
         });
     } finally {
@@ -194,6 +162,10 @@ export default function InvestorRegisterFormClient() {
                     <Select name="investorType">
                         <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="Angel">Angel</SelectItem>
+                            <SelectItem value="Venture Capitalist">Venture Capitalist</SelectItem>
+                            <SelectItem value="Crowdfunder">Crowdfunder</SelectItem>
+                            <SelectItem value="Private Equity">Private Equity</SelectItem>
                             <SelectItem value="GP">General Partner (GP)</SelectItem>
                             <SelectItem value="LP">Limited Partner (LP)</SelectItem>
                             <SelectItem value="Family Office Administrator">Family Office Administrator</SelectItem>
