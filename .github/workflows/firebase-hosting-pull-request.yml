@@ -1,15 +1,7 @@
-# Updated for January 8, 2026 Stability
+
+# Updated for January 2, 2026 Stability
 name: Deploy to Firebase Hosting on PR
-
-'on':
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-# CRITICAL: Use a global string to force GitHub to queue/cancel all
-# Firebase deployments across ALL workflow files.
-concurrency:
-  group: global-firebase-deploy
-  cancel-in-progress: true
+'on': pull_request
 
 permissions:
   checks: write
@@ -31,9 +23,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # FIX: Handles React 19/Radix peer conflicts and avoids npm ci sync errors
         run: npm install --legacy-peer-deps
 
       - name: Build Application
+        # Verified: Prevents crash during static page generation
         run: npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
@@ -54,10 +48,9 @@ jobs:
           entryPoint: .
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+          # CRITICAL: Re-injecting here prevents the CLI from failing during
+          # SSR function verification and final site manifest creation.
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
-          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
