@@ -1,22 +1,31 @@
-
 'use server';
 
 import 'server-only';
 import { getFirebaseAdmin } from './firebase-server-init';
 import { toSerializable } from './serialize';
-import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown';
-import { financialBreakdown } from '@/ai/flows/financial-breakdown';
-import { profilePictureAutoTagging, ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging';
-import { populateProfileFromLinkedIn, PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator';
-import { smartSearch, SmartSearchInput, SmartSearchOutput } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile } from './types';
 
+// Updated Imports: Ensuring these match your renamed .mts files
+import { financialBreakdown } from '@/ai/flows/financial-breakdown';
+import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown';
+
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
+import type { ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging';
+
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
+import type { PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator';
+
+import { smartSearch } from '@/ai/flows/smart-search';
+import type { SmartSearchInput, SmartSearchOutput } from '@/ai/flows/smart-search';
 
 async function getDb() {
     const { firestore } = await getFirebaseAdmin();
     return firestore;
 }
 
+/**
+ * AI Actions
+ */
 export async function getFinancialBreakdown(input: FinancialBreakdownInput): Promise<FinancialBreakdownOutput> {
     return financialBreakdown(input);
 }
@@ -29,42 +38,68 @@ export async function getProfileFromLinkedIn(input: PopulateProfileFromLinkedInI
     return populateProfileFromLinkedIn(input);
 }
 
+/**
+ * Optimized Search for 2026:
+ * Uses .select() to reduce payload size sent to Genkit
+ */
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
     const db = await getDb();
     
-    const startupsSnapshot = await db.collection('startups').get();
-    const startups = startupsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Startup));
+    // 1. Fetch only necessary fields for AI analysis to save memory and bandwidth
+    const [startupsSnapshot, usersSnapshot] = await Promise.all([
+        db.collection('startups').select('companyName', 'industry', 'description').get(),
+        db.collection('users').select('name', 'role', 'profile.objectives').get()
+    ]);
 
-    const usersSnapshot = await db.collection('users').get();
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FullUserProfile));
+    const startupsData = startupsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const usersData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const searchableData = JSON.stringify({ startups, users });
+    const searchableData = JSON.stringify({ startups: startupsData, users: usersData });
+    
+    // 2. Perform AI Matching
     const result = await smartSearch({ query, searchableData });
 
-    const filteredStartups = startups.filter(s => result.startupIds.includes(s.id));
-    const filteredUsers = users.filter(u => result.userIds.includes(u.id));
+    // 3. Fetch full objects for the matches only
+    const [finalStartups, finalUsers] = await Promise.all([
+        fetchStartupsByIds(result.startupIds),
+        getUsersByIds(result.userIds)
+    ]);
 
-    return { startups: filteredStartups, users: filteredUsers };
+    return { startups: finalStartups, users: finalUsers };
+}
+
+/**
+ * Utility: Fetch Startups by IDs with 30-item chunking
+ */
+async function fetchStartupsByIds(ids: string[]): Promise<Startup[]> {
+    if (!ids || ids.length === 0) return [];
+    const db = await getDb();
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+
+    const results = await Promise.all(
+        chunks.map(chunk => db.collection('startups').where('id', 'in', chunk).get())
+    );
+
+    return results.flatMap(snap =>
+        snap.docs.map(doc => toSerializable({ id: doc.id, ...doc.data() }) as Startup)
+    );
 }
 
 export async function getUsersByIds(ids: string[]): Promise<FullUserProfile[]> {
     if (!ids || ids.length === 0) return [];
     const db = await getDb();
     try {
-        // Firestore 'in' queries are limited to 30 values.
-        const chunks: string[][] = [];
-        for (let i = 0; i < ids.length; i += 30) {
-            chunks.push(ids.slice(i, i + 30));
-        }
+        const chunks = [];
+        for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
 
         const results = await Promise.all(
-            chunks.map(chunk =>
-                db.collection('users').where('id', 'in', chunk).get()
-            )
+            chunks.map(chunk => db.collection('users').where('id', 'in', chunk).get())
         );
 
-        const allDocs = results.flatMap(snap => snap.docs);
-        return allDocs.map(doc => toSerializable({ id: doc.id, ...doc.data() }) as FullUserProfile);
+        return results.flatMap(snap =>
+            snap.docs.map(doc => toSerializable({ id: doc.id, ...doc.data() }) as FullUserProfile)
+        );
     } catch (error) {
         console.error("Error in getUsersByIds:", error);
         return [];
@@ -87,9 +122,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Pro
   const db = await getDb();
   try {
     const userRef = db.collection('users').doc(userId);
-    await userRef.set({
-      profile: profileData
-    }, { merge: true });
+    await userRef.set({ profile: profileData }, { merge: true });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -7,8 +7,6 @@ import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 
-export const dynamic = 'force-dynamic';
-
 export default function RegisterPage() {
   return (
     <div className="w-full max-w-md">

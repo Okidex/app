@@ -3,8 +3,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import InvestorRegisterFormClient from "@/components/auth/investor-register-form";
 
-export const dynamic = 'force-dynamic';
-
 export default function InvestorRegisterPage() {
   return (
     <Card className="w-full max-w-2xl">

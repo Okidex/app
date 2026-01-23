@@ -1,7 +1,6 @@
-module.exports = {
+// postcss.config.mjs
+export default {
   plugins: {
-    'tailwindcss/nesting': {},
-    tailwindcss: {},
-    autoprefixer: {},
+    '@tailwindcss/postcss': {}, // Required for Tailwind v4 in 2026
   },
-}
+};

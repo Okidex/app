@@ -3,8 +3,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import TalentRegisterFormClient from "@/components/auth/talent-register-form";
 
-export const dynamic = 'force-dynamic';
-
 export default function TalentRegisterPage() {
   return (
     <Card className="w-full max-w-2xl">

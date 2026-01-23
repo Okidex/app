@@ -2,8 +2,8 @@
 
 /*
   Tailwind v4 Theme Block
-  This replaces the need for tailwind.config.ts for most projects.
-  It maps your CSS variables to Tailwind utility classes.
+  This replaces tailwind.config.js. It maps your CSS variables
+  directly to Tailwind utility classes (e.g., bg-primary, font-sans).
 */
 @theme {
   --color-background: hsl(var(--background));
@@ -34,6 +34,7 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   
+  /* Sidebar-specific variables for the expandable layout */
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
@@ -47,10 +48,11 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* Custom Animations from your old config */
+  /* Custom Animations for Radix UI and Dashboards */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-calendar-fade: calendar-fade 0.1s ease-out;
+  --animate-in: fade-in 0.3s ease-out;
 
   @keyframes accordion-down {
     from { height: 0; }
@@ -64,9 +66,16 @@
     0% { opacity: 0; transform: scale(0.98); }
     100% { opacity: 1; transform: scale(1); }
   }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
-/* shadcn/ui variable definitions */
+/*
+  shadcn/ui Design Tokens
+  These raw HSL values are consumed by the @theme block above.
+*/
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -126,11 +135,19 @@
   }
 }
 
+/*
+  Base HTML resets and default styling.
+*/
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--border);
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    /* Improves 2026 anti-aliasing standards */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }

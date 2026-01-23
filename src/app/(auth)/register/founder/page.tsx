@@ -3,8 +3,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import FounderRegisterFormClient from "@/components/auth/founder-register-form";
 
-export const dynamic = 'force-dynamic';
-
 export default function FounderRegisterPage() {
   return (
     <Card className="w-full max-w-2xl">
