@@ -78,6 +78,7 @@ export interface Startup {
   fundsRaised?: number;
   showFundraisingProgress?: boolean;
   investors?: StartupInvestor[];
+  profileViewCount?: number;
 }
 
 export interface FounderProfile {
@@ -88,6 +89,7 @@ export interface FounderProfile {
   linkedinUrl?: string;
   isSeekingCoFounder?: boolean;
   objectives?: FounderObjective[];
+  profileViewCount?: number;
 }
 
 export interface PortfolioCompany {
@@ -112,6 +114,7 @@ export interface InvestorProfile {
   thesis?: string;
   about?: string;
   seeking?: string[];
+  profileViewCount?: number;
 }
 
 export interface TalentProfile {
@@ -127,6 +130,7 @@ export interface TalentProfile {
   isSeekingCoFounder?: boolean;
   isVendor?: boolean;
   isFractionalLeader?: boolean;
+  profileViewCount?: number;
 }
 
 export type Profile = FounderProfile | InvestorProfile | TalentProfile;

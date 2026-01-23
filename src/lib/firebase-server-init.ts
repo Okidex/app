@@ -1,4 +1,4 @@
-import 'server-only'; // Ensures this file never runs on the client
+import 'server-only';
 import admin from 'firebase-admin';
 
 interface FirebaseAdminServices {
@@ -7,27 +7,22 @@ interface FirebaseAdminServices {
   storage: admin.storage.Storage;
 }
 
-// Global variable to persist the admin instance during HMR/Build
 let adminServices: FirebaseAdminServices | null = null;
 
 function getServiceAccount(): admin.ServiceAccount {
   const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
 
-  if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
-    throw new Error('Firebase Admin environment variables are missing.');
-  }
+  if (!FIREBASE_PROJECT_ID) throw new Error('Missing FIREBASE_PROJECT_ID');
+  if (!FIREBASE_CLIENT_EMAIL) throw new Error('Missing FIREBASE_CLIENT_EMAIL');
+  if (!FIREBASE_PRIVATE_KEY) throw new Error('Missing FIREBASE_PRIVATE_KEY');
 
   return {
     projectId: FIREBASE_PROJECT_ID,
     clientEmail: FIREBASE_CLIENT_EMAIL,
-    // Fixes formatting issues with private keys in .env files
     privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
   };
 }
 
-/**
- * Modern 2025 initialization helper.
- */
 export function getFirebaseAdmin(): FirebaseAdminServices {
   if (adminServices) return adminServices;
 
@@ -37,10 +32,14 @@ export function getFirebaseAdmin(): FirebaseAdminServices {
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        // Fallback to newer 2025 storage bucket naming convention
+        // Use the modern 2026 .firebasestorage.app domain
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${serviceAccount.projectId}.firebasestorage.app`,
       });
       
+      admin.firestore().settings({
+        ignoreUndefinedProperties: true,
+      });
+
       console.log('Firebase Admin initialized successfully.');
     } catch (error: any) {
       console.error('Firebase Admin initialization error:', error.message);
@@ -57,8 +56,4 @@ export function getFirebaseAdmin(): FirebaseAdminServices {
   return adminServices;
 }
 
-/**
- * CRITICAL BUILD FIX:
- * Alias to support legacy code importing 'initializeAdminApp'
- */
 export const initializeAdminApp = getFirebaseAdmin;

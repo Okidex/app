@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { FullUserProfile, Job, FounderProfile, TalentProfile, InvestmentThesis, Interest, Match } from "@/lib/types";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit, getCountFromServer, getDocs } from 'firebase/firestore';
+import { FullUserProfile, Job, FounderProfile, TalentProfile, InvestmentThesis, Interest, Match, Startup, Notification } from "@/lib/types";
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit, getCountFromServer, getDocs, doc } from 'firebase/firestore';
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,11 +20,21 @@ export default function DashboardPage() {
     const db = useFirestore();
     const [isUpgradeCardVisible, setIsUpgradeCardVisible] = useState(true);
 
+    const companyId = currentUser?.role === 'founder' ? (currentUser.profile as FounderProfile).companyId : undefined;
+    
+    const startupDocRef = useMemoFirebase(() => {
+      if (!db || !companyId) return null;
+      return doc(db, "startups", companyId);
+    }, [db, companyId]);
+
+    const { data: startupData, isLoading: isStartupLoading } = useDoc<Startup>(startupDocRef);
+    
+
     // --- Data Fetching ---
 
     // Founder: Job Applicants (Interests on jobs posted by founder)
     const founderJobsQuery = useMemoFirebase(() =>
-        currentUser?.role === 'founder' && db
+        currentUser?.role === 'founder' && db && currentUser.id
             ? query(collection(db, "jobs"), where("founderId", "==", currentUser.id))
             : null
     , [currentUser, db]);
@@ -116,9 +126,17 @@ export default function DashboardPage() {
             : null
     , [currentUser, db]);
     const { data: talentMatches, isLoading: talentMatchesLoading } = useCollection<Match>(talentMatchesQuery);
+    
+    // Unread Messages for all roles
+    const unreadMessagesQuery = useMemoFirebase(() =>
+        currentUser?.id && db
+            ? query(collection(db, "notifications"), where("userId", "==", currentUser.id), where("type", "==", "message"), where("isRead", "==", false))
+            : null
+    , [currentUser, db]);
+    const { data: unreadMessages, isLoading: unreadMessagesLoading } = useCollection<Notification>(unreadMessagesQuery);
 
 
-    const loading = isUserLoading || newFounderMatchesLoading || founderMatchesLoading || thesesLoading || jobsLoading || thesisInterestsLoading || jobInterestsLoading || talentJobsLoading || founderJobApplicantsLoading || talentApplicationsLoading || talentMatchesLoading || investorMatchesLoading;
+    const loading = isUserLoading || newFounderMatchesLoading || founderMatchesLoading || thesesLoading || jobsLoading || thesisInterestsLoading || jobInterestsLoading || talentJobsLoading || founderJobApplicantsLoading || talentApplicationsLoading || talentMatchesLoading || investorMatchesLoading || isStartupLoading || unreadMessagesLoading;
     
     if (loading) {
         return (
@@ -177,10 +195,10 @@ export default function DashboardPage() {
                 </Card>
             )}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title="Profile Views" value="1,204" icon={UsersIcon} description="+20.1% from last month" />
+                <StatsCard title="Profile Views" value={startupData?.profileViewCount?.toLocaleString() ?? '0'} icon={UsersIcon} description="Total profile views" />
                 <Link href="/matches"><StatsCard title="Active Matches" value={founderMatches?.length.toString() ?? '0'} icon={CheckCheck} description="Connections made" /></Link>
                 <Link href="/applicants"><StatsCard title="Job Applicants" value={founderJobApplicants?.length.toString() ?? '0'} icon={Briefcase} description="Total applications received" /></Link>
-                <Link href="/matches"><StatsCard title="Investor Interest" value={founderMatches?.filter(m => (m.participants?.find(p => p.id !== currentUser.id)?.role === 'investor')).length.toString() ?? '0'} icon={DollarSign} description="Investors you've matched with" /></Link>
+                <Link href="/messages"><StatsCard title="Messages" value={unreadMessages?.length.toString() ?? '0'} icon={Mail} description="Unread messages" /></Link>
             </div>
             <div className="grid gap-4">
                 <Card>
@@ -218,7 +236,7 @@ export default function DashboardPage() {
                 <Link href="/theses"><StatsCard title="Theses Posted" value={myTheses?.length?.toString() ?? '0'} icon={FileText} description="Share your focus" /></Link>
                 <Link href="/applicants"><StatsCard title="Thesis Applicants" value={thesisInterests?.length?.toString() ?? '0'} icon={UsersIcon} description="Interest in your theses" /></Link>
                 <Link href="/applicants"><StatsCard title="Job Applicants" value={jobInterests?.length?.toString() ?? '0'} icon={Briefcase} description="Interest in your jobs" /></Link>
-                <StatsCard title="Startups Viewed" value="0" icon={Activity} description="Track startups you view" />
+                <Link href="/messages"><StatsCard title="Messages" value={unreadMessages?.length.toString() ?? '0'} icon={Mail} description="Unread messages" /></Link>
                 <Link href="/matches"><StatsCard title="Active Matches" value={investorMatches?.length?.toString() ?? '0'} icon={CheckCheck} description="Ready for outreach" /></Link>
                 <Link href="/search"><StatsCard title="New Opportunities" value="0" icon={DollarSign} description="New startups to discover" /></Link>
             </div>
@@ -240,7 +258,8 @@ export default function DashboardPage() {
     );
 
     const renderTalentDashboard = () => {
-        const isCoFounder = (currentUser.profile as TalentProfile).subRole === 'co-founder';
+        const profile = currentUser.profile as TalentProfile;
+        const isCoFounder = profile.subRole === 'co-founder';
         
         return (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -260,10 +279,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="lg:col-span-1 space-y-6">
                      <div className="grid gap-4">
-                        <StatsCard title="Profile Views" value="350" icon={UsersIcon} description="+32 from last week" />
+                        <StatsCard title="Profile Views" value={currentUser.profile?.profileViewCount?.toLocaleString() ?? '0'} icon={UsersIcon} description="Total profile views" />
                         <Link href="/jobs"><StatsCard title="Applications" value={talentApplications?.length.toString() ?? '0'} icon={FileText} description="Jobs you've applied to" /></Link>
                         {isCoFounder && <Link href="/matches"><StatsCard title="Co-founder Matches" value={talentMatches?.length.toString() ?? '0'} icon={UserCheck} description="Potential co-founders" /></Link>}
-                        <Link href="/messages"><StatsCard title="Messages" value="1" icon={Mail} description="From InnovateAI" /></Link>
+                        <Link href="/messages"><StatsCard title="Messages" value={unreadMessages?.length.toString() ?? '0'} icon={Mail} description="Unread messages" /></Link>
                     </div>
                 </div>
             </div>

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarHeader,
+  SidebarContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -14,6 +15,7 @@ import {
   SidebarMenuBadge,
   SidebarSeparator,
   useSidebar,
+  SidebarMenuSkeleton,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -40,6 +42,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import UserAvatar from '../shared/user-avatar';
 import { signOut } from 'firebase/auth';
+import { cn } from '@/lib/utils';
 
 const allMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'investor', 'talent'] },
@@ -70,7 +73,6 @@ export function AppSidebar() {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifs = snapshot.docs.map((doc) => doc.data() as Notification);
-      // Sort client-side
       notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setNotifications(notifs);
     },
@@ -134,94 +136,96 @@ export function AppSidebar() {
   if (authLoading || !user) {
     return (
       <Sidebar>
-        <SidebarHeader className="hidden md:flex">
-          <Link href="/" className="flex items-center gap-2 text-2xl font-headline font-normal tracking-tight">
-            <svg width="34" height="24" viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary h-6 w-auto shrink-0">
-                <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="2"/>
-                <path d="M34 1L23 12L34 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span className={`transition-all duration-300 ease-in-out ${sidebarState === 'collapsed' ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-                Okidex
-            </span>
-        </Link>
+        <SidebarHeader>
+          <Skeleton className="h-8 w-full" />
         </SidebarHeader>
-        <SidebarMenu className="p-2 flex-1">
-          {Array.from({ length: 7 }).map((_, i) => (
-             <SidebarMenuItem key={i} className="p-2">
-                <Skeleton className="h-5 w-full" />
-             </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        <SidebarContent>
+          <div className="flex flex-col gap-2 p-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+                <SidebarMenuSkeleton key={i} showIcon />
+            ))}
+          </div>
+        </SidebarContent>
       </Sidebar>
     );
   }
 
   return (
     <Sidebar>
-      <SidebarHeader className="h-16 p-2 justify-start">
+      <SidebarHeader className="h-16 p-2 justify-center">
          <Link href="/" className="flex items-center gap-2 font-headline font-normal tracking-tight">
             <svg width="34" height="24" viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary h-6 w-auto shrink-0">
                 <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="2"/>
                 <path d="M34 1L23 12L34 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span className={`text-2xl transition-all duration-300 ease-in-out ${sidebarState === 'collapsed' ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
+            <span className={cn('text-2xl transition-opacity duration-300 ease-in-out', sidebarState === 'collapsed' ? 'opacity-0 w-0' : 'opacity-100 w-auto')}>
                 Okidex
             </span>
         </Link>
       </SidebarHeader>
       
-      <SidebarMenu className="p-2 flex-1">
-        {filteredMenuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
-          const notificationCount = notifications.filter(
-            (n) => n.type === notificationType && !n.isRead
-          ).length;
-          
-          const showPlusBadge = user.role === 'founder' && premium && !isPremiumFounder && !notificationCount;
+      <SidebarContent>
+        <SidebarMenu className="p-2">
+            {filteredMenuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
+            const notificationCount = notifications.filter(
+                (n) => n.type === notificationType && !n.isRead
+            ).length;
+            
+            const showPlusBadge = user.role === 'founder' && premium && !isPremiumFounder && !notificationCount;
 
-          return (
-            <SidebarMenuItem key={href}>
-              <SidebarMenuButton
-                asChild
-                isActive={
-                  pathname.startsWith(href) && (href !== '/' || pathname === href)
-                }
-                tooltip={label}
-              >
-                <Link href={href}>
-                    {Icon && <Icon />}
-                    <span>{label}</span>
-                    {notificationCount > 0 && (
-                      <SidebarMenuBadge>{notificationCount}</SidebarMenuBadge>
-                    )}
-                    {showPlusBadge && (
-                      <SidebarMenuBadge className="flex items-center justify-center w-5 h-5 p-0 text-xs">
-                        <Plus className="w-3 h-3" />
-                      </SidebarMenuBadge>
-                    )}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          );
-        })}
-      </SidebarMenu>
-      <SidebarSeparator />
-      <SidebarFooter className="p-2">
-        {isFounder && (
-            <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Oki+">
-                    <Link href="/settings/billing">
-                        <Plus />
-                        <span>Oki+</span>
+            return (
+                <SidebarMenuItem key={href}>
+                <SidebarMenuButton
+                    asChild
+                    isActive={
+                    pathname.startsWith(href) && (href !== '/' || pathname === href)
+                    }
+                    tooltip={label}
+                >
+                    <Link href={href}>
+                        {Icon && <Icon className="shrink-0" />}
+                        <span className="group-data-[state=collapsed]:hidden">{label}</span>
+                        {notificationCount > 0 && (
+                        <SidebarMenuBadge>{notificationCount}</SidebarMenuBadge>
+                        )}
+                        {showPlusBadge && (
+                        <SidebarMenuBadge className="flex items-center justify-center w-5 h-5 p-0 text-xs">
+                            <Plus className="w-3 h-3" />
+                        </SidebarMenuBadge>
+                        )}
                     </Link>
                 </SidebarMenuButton>
-            </SidebarMenuItem>
-        )}
+                </SidebarMenuItem>
+            );
+            })}
+             {isFounder && (
+              <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Oki+">
+                      <Link href="/settings/billing">
+                          <Plus />
+                          <span className="group-data-[state=collapsed]:hidden">Oki+</span>
+                      </Link>
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+        </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter className="p-2">
+        <SidebarSeparator />
         <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="Settings">
             <Link href="/settings">
               <Settings />
-              <span>Settings</span>
+              <span className="group-data-[state=collapsed]:hidden">Settings</span>
             </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild tooltip="Logout" onClick={handleLogout}>
+            <button>
+              <LogOut />
+              <span className="group-data-[state=collapsed]:hidden">Logout</span>
+            </button>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarFooter>

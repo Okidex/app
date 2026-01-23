@@ -1,17 +1,17 @@
 
 'use client';
 
-import { FullUserProfile } from '@/lib/types';
+import { FullUserProfile, FounderProfile } from '@/lib/types';
 import UserProfileClient from './client';
 import { useUser, useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useParams, notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UserProfilePage() {
     const { id } = useParams();
-    const { user: currentUser } = useUser();
+    const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
     const [user, setUser] = useState<FullUserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const db = useFirestore();
@@ -30,6 +30,41 @@ export default function UserProfilePage() {
         };
         fetchUser();
     }, [id, db]);
+
+    useEffect(() => {
+        const incrementViewCount = async () => {
+            if (!db || !id || !currentUser || isCurrentUserLoading || currentUser.id === id || !user) {
+                return;
+            }
+
+            const viewedKey = `viewed-${id}`;
+            if (sessionStorage.getItem(viewedKey)) {
+                return;
+            }
+
+            try {
+                if (user.role === 'founder') {
+                    const companyId = (user.profile as FounderProfile).companyId;
+                    if (companyId) {
+                        const startupRef = doc(db, 'startups', companyId);
+                        await updateDoc(startupRef, {
+                            profileViewCount: increment(1)
+                        });
+                    }
+                } else {
+                     const userRef = doc(db, 'users', id as string);
+                     await updateDoc(userRef, {
+                        'profile.profileViewCount': increment(1)
+                     });
+                }
+                sessionStorage.setItem(viewedKey, 'true');
+            } catch (error) {
+                console.error("Failed to increment profile view count", error);
+            }
+        };
+
+        incrementViewCount();
+    }, [id, db, currentUser, isCurrentUserLoading, user]);
 
     if (loading || !user) {
         return (
