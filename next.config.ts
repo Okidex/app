@@ -1,20 +1,20 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // 1. Critical for Genkit/AI SDKs to work in Server Components
-  experimental: {
-    serverComponentsExternalPackages: [
-      "require-in-the-middle",
-      "import-in-the-middle",
-      "@genkit-ai/core",
-      "@genkit-ai/ai",
-      "genkit",
-      "fsevents"
-    ],
-  },
-  
-  // 2. Fixes "Critical dependency" and "Unexpected Token" browser errors
-  // by preventing Node.js-only modules from being bundled into the client build
+  // 1. Stabilized in Next.js 16 - No longer under experimental
+  serverExternalPackages: [
+    "require-in-the-middle",
+    "import-in-the-middle",
+    "@genkit-ai/core",
+    "@genkit-ai/ai",
+    "genkit",
+    "fsevents"
+  ],
+
+  // 2. Enable the stable React Compiler for v16+
+  reactCompiler: true,
+
+  // 3. Webpack fallback logic (Note: This forces Webpack and disables Turbopack)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
   },
 
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // Only use if you're handling types via separate CI step
   },
   
   eslint: {
@@ -41,10 +41,10 @@ const nextConfig: NextConfig = {
 
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'placehold.co', pathname: '/**' },
-      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
-      { protocol: 'https', hostname: 'picsum.photos', pathname: '/**' },
-      { protocol: 'https', hostname: 'firebasestorage.googleapis.com', pathname: '/**' }
+      { protocol: 'https', hostname: 'placehold.co' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' }
     ],
   },
 };
