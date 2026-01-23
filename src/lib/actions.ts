@@ -7,20 +7,20 @@ import { FullUserProfile, Startup, Profile } from './types';
 
 /**
  * AI Flow Imports
- * Under Node.js 22 / Next.js 16 ESM rules, .mts files are resolved
- * using the .mjs extension in the import path.
+ * In Next.js 16/Turbopack, we import from the base filename.
+ * Ensure your files in @/ai/flows/ are renamed to .ts extension.
  */
-import { financialBreakdown } from '@/ai/flows/financial-breakdown.mjs';
-import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown.mjs';
+import { financialBreakdown } from '@/ai/flows/financial-breakdown';
+import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown';
 
-import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging.mjs';
-import type { ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging.mjs';
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
+import type { ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging';
 
-import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator.mjs';
-import type { PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator.mjs';
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
+import type { PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator';
 
-import { smartSearch } from '@/ai/flows/smart-search.mjs';
-import type { SmartSearchInput, SmartSearchOutput } from '@/ai/flows/smart-search.mjs';
+import { smartSearch } from '@/ai/flows/smart-search';
+import type { SmartSearchInput, SmartSearchOutput } from '@/ai/flows/smart-search';
 
 async function getDb() {
     const { firestore } = await getFirebaseAdmin();
@@ -43,13 +43,32 @@ export async function getProfileFromLinkedIn(input: PopulateProfileFromLinkedInI
 }
 
 /**
+ * Messaging Action
+ * Fixes the "Export sendMessage doesn't exist" error in messages/client.tsx
+ */
+export async function sendMessage(chatId: string, content: string) {
+    const db = await getDb();
+    try {
+        const messageRef = db.collection('chats').doc(chatId).collection('messages').doc();
+        await messageRef.set({
+            content,
+            timestamp: new Date().toISOString(),
+            senderId: 'system', // Replace with actual auth logic in production
+        });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error sending message:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Optimized Search for 2026:
  * Uses .select() to reduce payload size sent to Genkit
  */
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
     const db = await getDb();
     
-    // 1. Fetch only necessary fields for AI analysis to save memory and bandwidth
     const [startupsSnapshot, usersSnapshot] = await Promise.all([
         db.collection('startups').select('companyName', 'industry', 'description').get(),
         db.collection('users').select('name', 'role', 'profile.objectives').get()
@@ -60,10 +79,8 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
 
     const searchableData = JSON.stringify({ startups: startupsData, users: usersData });
     
-    // 2. Perform AI Matching
     const result = await smartSearch({ query, searchableData });
 
-    // 3. Fetch full objects for the matches only
     const [finalStartups, finalUsers] = await Promise.all([
         fetchStartupsByIds(result.startupIds),
         getUsersByIds(result.userIds)
@@ -73,7 +90,7 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
 }
 
 /**
- * Utility: Fetch Startups by IDs with 30-item chunking for Firestore 2026 stability
+ * Utility: Fetch Startups by IDs with 30-item chunking
  */
 async function fetchStartupsByIds(ids: string[]): Promise<Startup[]> {
     if (!ids || ids.length === 0) return [];
