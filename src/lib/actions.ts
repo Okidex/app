@@ -5,18 +5,22 @@ import { getFirebaseAdmin } from './firebase-server-init';
 import { toSerializable } from './serialize';
 import { FullUserProfile, Startup, Profile } from './types';
 
-// Updated Imports: Ensuring these match your renamed .mts files
-import { financialBreakdown } from '@/ai/flows/financial-breakdown';
-import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown';
+/**
+ * AI Flow Imports
+ * Under Node.js 22 / Next.js 16 ESM rules, .mts files are resolved
+ * using the .mjs extension in the import path.
+ */
+import { financialBreakdown } from '@/ai/flows/financial-breakdown.mjs';
+import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown.mjs';
 
-import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging';
-import type { ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging';
+import { profilePictureAutoTagging } from '@/ai/flows/profile-picture-auto-tagging.mjs';
+import type { ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging.mjs';
 
-import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator';
-import type { PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator';
+import { populateProfileFromLinkedIn } from '@/ai/flows/linkedin-profile-populator.mjs';
+import type { PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator.mjs';
 
-import { smartSearch } from '@/ai/flows/smart-search';
-import type { SmartSearchInput, SmartSearchOutput } from '@/ai/flows/smart-search';
+import { smartSearch } from '@/ai/flows/smart-search.mjs';
+import type { SmartSearchInput, SmartSearchOutput } from '@/ai/flows/smart-search.mjs';
 
 async function getDb() {
     const { firestore } = await getFirebaseAdmin();
@@ -69,7 +73,7 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
 }
 
 /**
- * Utility: Fetch Startups by IDs with 30-item chunking
+ * Utility: Fetch Startups by IDs with 30-item chunking for Firestore 2026 stability
  */
 async function fetchStartupsByIds(ids: string[]): Promise<Startup[]> {
     if (!ids || ids.length === 0) return [];
