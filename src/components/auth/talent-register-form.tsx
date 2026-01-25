@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -53,12 +54,6 @@ export default function TalentRegisterFormClient() {
         path: docRef.path,
         operation: 'create',
         requestResourceData: data,
-        authContext: {
-            uid: currentUser?.uid,
-            hasValidToken: !!(await currentUser?.getIdToken())
-        },
-        errorCode: error.code,
-        errorMessage: error.message
       });
       errorEmitter.emit('permission-error', permissionError);
       throw error; 

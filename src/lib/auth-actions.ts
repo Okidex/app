@@ -11,7 +11,8 @@ async function createSessionCookie(idToken: string) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     
-    cookies().set('__session', sessionCookie, {
+    const cookieStore = await cookies();
+    cookieStore.set('__session', sessionCookie, {
         maxAge: expiresIn,
         httpOnly: true,
         secure: true,
@@ -35,7 +36,8 @@ export async function createUserAndSetSession(idToken: string) {
 
 export async function getCurrentUserId(): Promise<string | null> {
     const { auth } = await getFirebaseAdmin();
-    const sessionCookie = cookies().get('__session');
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('__session');
 
     if (!sessionCookie) return null;
     
@@ -43,14 +45,19 @@ export async function getCurrentUserId(): Promise<string | null> {
         const decodedToken = await auth.verifySessionCookie(sessionCookie.value, true);
         return decodedToken.uid;
     } catch (error) {
-        cookies().delete('__session');
+        // If the cookie is invalid, just return null.
+        // The client-side state will update, and the user will be prompted to log in again.
+        // Attempting to delete the cookie here can cause issues if this function is called
+        // in a read-only context (like a Server Component).
+        console.error("Session cookie verification failed:", error);
         return null;
     }
 }
 
 export async function logout() {
     const { auth: adminAuth } = await getFirebaseAdmin();
-    const sessionCookie = cookies().get('__session')?.value;
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('__session')?.value;
 
     if (sessionCookie) {
         try {
@@ -60,7 +67,7 @@ export async function logout() {
             // Stale cookie, ignore
         }
     }
-    cookies().delete('__session');
+    cookieStore.delete('__session');
 }
 
 export async function getCurrentUser(): Promise<FullUserProfile | null> {
@@ -107,7 +114,8 @@ export async function deleteCurrentUserAccount(userId: string, role: UserRole, c
         const bucket = storage.bucket();
         await bucket.deleteFiles({ prefix: profilePicturePath });
         
-        cookies().delete('__session');
+        const cookieStore = await cookies();
+        cookieStore.delete('__session');
 
         return { success: true };
     } catch (error: any) {

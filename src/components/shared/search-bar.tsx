@@ -34,7 +34,7 @@ export default function SearchBar({ userRole }: SearchBarProps) {
         const formData = new FormData(e.currentTarget);
         const query = formData.get('search') as string;
         
-        const params = new URLSearchParams(searchParams);
+        const params = new URLSearchParams(searchParams || '');
         if (query) {
             params.set('q', query);
         } else {
@@ -53,7 +53,7 @@ export default function SearchBar({ userRole }: SearchBarProps) {
                     name="search"
                     placeholder={getSearchPlaceholder()}
                     className="pl-10 w-full h-12 text-base"
-                    defaultValue={searchParams.get('q') || ''}
+                    defaultValue={searchParams?.get('q') || ''}
                 />
                  <Button type="submit" className="absolute right-1 top-1/2 -translate-y-1/2 h-10">Search</Button>
             </div>

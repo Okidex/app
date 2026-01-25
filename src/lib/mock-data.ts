@@ -141,12 +141,26 @@ export const startups: Startup[] = [
             const date = subMonths(new Date(), i);
             const revenue = 42000 * (1 - i * 0.05);
             const expenses = 25000 * (1 - i * 0.02);
+            const cogs = revenue * 0.3;
+            const interestExpense = 2000;
+            const ebit = revenue - cogs - (expenses - interestExpense);
+
             return {
                 month: format(date, 'yyyy-MM'),
                 revenue: revenue,
                 expenses: expenses,
                 netIncome: revenue - expenses,
                 monthlyRecurringRevenue: revenue,
+                cogs: cogs,
+                ebit: ebit,
+                interestExpense: interestExpense,
+                currentAssets: 150000 - i * 5000,
+                currentLiabilities: 50000 - i * 1000,
+                totalAssets: 300000 - i * 5000,
+                totalLiabilities: 100000 - i * 1000,
+                shareholdersEquity: (300000 - i * 5000) - (100000 - i * 1000),
+                accountsReceivable: 20000 * (1 - i * 0.1),
+                headcount: 10 + i,
             };
         }).reverse(),
         capTable: [

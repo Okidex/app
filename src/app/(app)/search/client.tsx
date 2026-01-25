@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -45,27 +46,33 @@ const UserResultCard = ({ user }: { user: FullUserProfile }) => {
 
     useEffect(() => {
         const getProfileDetails = async () => {
-            if (!db) return;
+            if (!db || !user.profile) {
+                setDetails('');
+                return;
+            };
+
             switch (user.role) {
                 case 'investor':
-                    setDetails((user.profile as InvestorProfile).investmentInterests.slice(0, 3).join(' / '));
+                    const investorProfile = user.profile as InvestorProfile;
+                    setDetails((investorProfile.investmentInterests || []).slice(0, 3).join(' / '));
                     break;
                 case 'talent':
                     const talentProfile = user.profile as TalentProfile;
-                    setDetails(talentProfile.headline || talentProfile.skills?.slice(0, 4).join(' / '));
+                    setDetails(talentProfile.headline || (talentProfile.skills || []).slice(0, 4).join(' / ') || '');
                     break;
                 case 'founder':
-                    const companyId = (user.profile as FounderProfile).companyId;
+                    const founderProfile = user.profile as FounderProfile;
+                    const companyId = founderProfile.companyId;
                     if (companyId) {
                         const startupDoc = await getDoc(doc(db, "startups", companyId));
                         if (startupDoc.exists()) {
                             const startup = startupDoc.data() as Startup;
-                            setDetails(`${(user.profile as FounderProfile).title} at ${startup.companyName}`);
+                            setDetails(`${founderProfile.title} at ${startup.companyName}`);
                         } else {
-                            setDetails((user.profile as FounderProfile).title || 'Founder');
+                            setDetails(founderProfile.title || 'Founder');
                         }
                     } else {
-                         setDetails((user.profile as FounderProfile).title || 'Founder');
+                         setDetails(founderProfile.title || 'Founder');
                     }
                     break;
                 default:
@@ -94,7 +101,7 @@ const UserResultCard = ({ user }: { user: FullUserProfile }) => {
 
 export default function SearchResults() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const query = searchParams?.get('q') || '';
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<{ startups: Startup[], users: FullUserProfile[] }>({ startups: [], users: [] });
   const { user: currentUser, isUserLoading: authLoading } = useUser();

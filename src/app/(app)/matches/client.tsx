@@ -91,7 +91,7 @@ const GenericUserCard = ({ user, style, ...props }: { user: FullUserProfile, sty
             const profile = user.profile as InvestorProfile;
             return {
                 title: 'Investor',
-                badges: profile.investmentInterests.slice(0, 2),
+                badges: profile.investmentInterests?.slice(0, 2) || [],
                 description: profile.thesis,
                 icon: DollarSign
             };
@@ -170,38 +170,41 @@ export default function MatchesPageClient() {
     const getMatchableUsers = (currentUser: FullUserProfile, allUsers: FullUserProfile[]): FullUserProfile[] => {
         switch (currentUser.role) {
             case 'investor':
+                // Investors can see other investors, all talent, and premium founders
                 return allUsers.filter(u => 
                     u.role === 'investor' || 
                     u.role === 'talent' ||
-                    (u.role === 'founder' && (u.profile as FounderProfile).isPremium)
+                    (u.role === 'founder' && !!(u.profile as FounderProfile).isPremium)
                 );
             case 'founder':
                 const founderProfile = currentUser.profile as FounderProfile;
+                const isFounderSeekingCoFounder = !!founderProfile.isSeekingCoFounder;
+
                 return allUsers.filter(u => {
-                    if (u.role === 'talent') {
-                        const talentProfile = u.profile as TalentProfile;
-                        if (founderProfile.isSeekingCoFounder) {
-                            return talentProfile.isSeekingCoFounder;
-                        }
-                        return !talentProfile.isSeekingCoFounder;
-                    }
-                    if (u.role === 'founder' && founderProfile.isSeekingCoFounder) {
-                        return (u.profile as FounderProfile).isSeekingCoFounder;
+                    // Founders seeking co-founders can see other founders and talent who are also seeking.
+                    if (isFounderSeekingCoFounder) {
+                        if (u.role === 'founder') return !!(u.profile as FounderProfile).isSeekingCoFounder;
+                        if (u.role === 'talent') return !!(u.profile as TalentProfile).isSeekingCoFounder;
+                    } 
+                    // Founders NOT seeking co-founders can see talent who are NOT seeking co-founders (i.e. employees).
+                    else {
+                        if (u.role === 'talent') return !(u.profile as TalentProfile).isSeekingCoFounder;
                     }
                     return false;
                 });
             case 'talent':
                 const talentProfile = currentUser.profile as TalentProfile;
+                const isTalentSeekingCoFounder = !!talentProfile.isSeekingCoFounder;
+
                 return allUsers.filter(u => {
-                    if (u.role === 'founder') {
-                         const founderProfile = u.profile as FounderProfile;
-                        if(talentProfile.isSeekingCoFounder) {
-                            return founderProfile.isSeekingCoFounder;
-                        }
-                        return true;
-                    }
-                    if (u.role === 'talent' && talentProfile.isSeekingCoFounder) {
-                        return (u.profile as TalentProfile).isSeekingCoFounder;
+                    // Talent seeking co-founders can see founders and other talent who are also seeking.
+                    if (isTalentSeekingCoFounder) {
+                        if (u.role === 'founder') return !!(u.profile as FounderProfile).isSeekingCoFounder;
+                        if (u.role === 'talent') return !!(u.profile as TalentProfile).isSeekingCoFounder;
+                    } 
+                    // Talent NOT seeking co-founders can see all founders (for job opportunities).
+                    else {
+                        if (u.role === 'founder') return true;
                     }
                     return false;
                 });

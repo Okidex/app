@@ -30,7 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    const { firestore } = initializeAdminApp();
+    const { firestore } = await initializeAdminApp();
 
     try {
         switch (event.type) {
@@ -46,7 +46,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
                     if(userDoc.exists) {
                         const profile = (userDoc.data() as { profile: FounderProfile }).profile;
                         const newStripeDetails = {
-                            ...profile.stripe,
+                            ...(profile.stripe || {}),
                             subscriptionId: stripeSubscriptionId,
                             plan: plan,
                             status: 'active'

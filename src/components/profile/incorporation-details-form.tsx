@@ -10,33 +10,33 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Calendar } from '@/components/ui/calendar';
 import { DateInput } from '../ui/date-input';
-
+import { updateStartupData } from '@/lib/actions';
 
 interface IncorporationDetailsFormProps {
+    startupId: string;
     initialData: IncorporationDetails;
 }
 
-export default function IncorporationDetailsForm({ initialData }: IncorporationDetailsFormProps) {
+export default function IncorporationDetailsForm({ startupId, initialData }: IncorporationDetailsFormProps) {
     const [isIncorporated, setIsIncorporated] = useState(initialData.isIncorporated);
     const [details, setDetails] = useState(initialData);
     const { toast } = useToast();
 
-    const handleSave = () => {
-        toast({
-            title: "Incorporation Details Saved",
-            description: "Your startup's legal information has been updated.",
-        });
-    };
+    const handleSave = async () => {
+        const updateData: IncorporationDetails = {
+            ...details,
+            isIncorporated,
+        };
+        const result = await updateStartupData(startupId, { incorporationDetails: updateData });
 
-    const handleDateSelect = (date: Date | undefined) => {
-        if (date) {
-            setDetails(prev => ({ ...prev, incorporationDate: date.toISOString() }));
+        if (result.success) {
+            toast({
+                title: "Incorporation Details Saved",
+                description: "Your startup's legal information has been updated.",
+            });
+        } else {
+            toast({ title: "Error", description: result.error, variant: 'destructive' });
         }
     };
     
@@ -85,7 +85,7 @@ export default function IncorporationDetailsForm({ initialData }: IncorporationD
                             <div className="space-y-2">
                                 <DateInput 
                                     label="Date of Incorporation"
-                                    value={details.incorporationDate ? format(parseISO(details.incorporationDate), 'yyyy-MM-dd') : ''}
+                                    value={details.incorporationDate ? new Date(details.incorporationDate).toISOString().split('T')[0] : ''}
                                     onChange={(e) => setDetails({ ...details, incorporationDate: e.target.value ? new Date(e.target.value).toISOString() : ''})}
                                 />
                             </div>

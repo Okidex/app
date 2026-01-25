@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -23,7 +24,7 @@ const newEntryDefault: Omit<PortfolioCompany, 'companyLogoUrl'> = {
 };
 
 export default function PortfolioForm({ initialData }: PortfolioFormProps) {
-    const [portfolio, setPortfolio] = useState<PortfolioCompany[]>(initialData);
+    const [portfolio, setPortfolio] = useState<PortfolioCompany[]>(initialData || []);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const { toast } = useToast();
     

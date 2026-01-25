@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ESNext",
     "lib": [
       "dom",
       "dom.iterable",
@@ -17,22 +17,27 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "allowImportingTsExtensions": true,
     "plugins": [
       {
         "name": "next"
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/logo": ["./src/logo.tsx"]
+      "@/*": [
+        "./src/*"
+      ],
+      "#ai/*": [
+        "./src/ai/*.mts"
+      ]
     },
-    "forceConsistentCasingInFileNames": true,
-    "strictNullChecks": true
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "**/*.mts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

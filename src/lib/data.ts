@@ -1,5 +1,6 @@
 
-import { users, startups, investmentStages, founderObjectives } from './mock-data';
+import { users, startups } from './mock-data';
+import { investmentStages, founderObjectives } from './constants';
 import { FullUserProfile } from './types';
 
 // This is a placeholder function to simulate fetching the current user.

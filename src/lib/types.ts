@@ -10,6 +10,13 @@ export interface User {
   avatarUrl: string;
 }
 
+export interface StripeDetails {
+    customerId?: string;
+    subscriptionId?: string;
+    plan?: 'monthly' | 'yearly';
+    status?: string;
+}
+
 export interface CapTableEntry {
   id: string;
   shareholderName: string;
@@ -90,6 +97,7 @@ export interface FounderProfile {
   isSeekingCoFounder?: boolean;
   objectives?: FounderObjective[];
   profileViewCount?: number;
+  stripe?: StripeDetails;
 }
 
 export interface PortfolioCompany {

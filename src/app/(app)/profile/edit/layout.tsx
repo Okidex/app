@@ -32,12 +32,17 @@ export default function EditProfileLayout({ children }: { children: React.ReactN
     const isIncorporated = isFounder && (user.profile as FounderProfile).companyId && true; // Placeholder for actual check
 
     const getActiveTab = () => {
-        if (pathname.includes('/general')) return 'general';
-        if (pathname.includes('/team')) return 'team';
-        if (pathname.includes('/fundraising')) return 'fundraising';
-        if (pathname.includes('/financials')) return 'financials';
-        if (pathname.includes('/captable')) return 'captable';
-        if (pathname.includes('/legal')) return 'legal';
+        /**
+         * 2026 Next.js 16 Fix: 
+         * usePathname() returns string | null. 
+         * Optional chaining (?.) ensures the build doesn't fail when pathname is null.
+         */
+        if (pathname?.includes('/general')) return 'general';
+        if (pathname?.includes('/team')) return 'team';
+        if (pathname?.includes('/fundraising')) return 'fundraising';
+        if (pathname?.includes('/financials')) return 'financials';
+        if (pathname?.includes('/captable')) return 'captable';
+        if (pathname?.includes('/legal')) return 'legal';
         return 'general';
     }
 

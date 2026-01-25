@@ -3,7 +3,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { getProfilePictureTags, updateUserProfile } from "@/lib/actions";
+import { getProfilePictureTags, updateUser } from "@/lib/actions";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Upload, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -135,7 +135,7 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
         const snapshot = await uploadBytes(storageRef, selectedFile);
         const downloadURL = await getDownloadURL(snapshot.ref);
 
-        const result = await updateUserProfile(user.id, { avatarUrl: downloadURL });
+        const result = await updateUser(user.id, { avatarUrl: downloadURL });
 
         if (result.success) {
             toast({ title: "Profile Picture Updated", description: "Your new photo has been saved." });
@@ -226,3 +226,5 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
     </div>
   );
 }
+
+    

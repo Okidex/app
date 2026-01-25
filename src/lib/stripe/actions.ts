@@ -1,19 +1,19 @@
-
 'use server';
 
 import { stripe } from './config';
 import { STRIPE_PRICE_IDS } from './config';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { initializeAdminApp } from '../firebase-server-init';
+import { getFirebaseAdmin } from '../firebase-server-init';
+import { FounderProfile, StripeDetails } from '../types';
 
 // This function is kept for potential future use with the API-based checkout
 // but is currently not used by the billing page, which now uses direct Payment Links.
 export async function createCheckoutSession(userId: string, userEmail: string, plan: 'monthly' | 'yearly') {
-    const { firestore } = initializeAdminApp();
+    const { firestore } = await getFirebaseAdmin();
     const userRef = firestore.collection('users').doc(userId);
     const userDoc = await userRef.get();
-    const userProfile = userDoc.data()?.profile;
+    const userProfile = userDoc.data()?.profile as FounderProfile | undefined;
 
     let stripeCustomerId = userProfile?.stripe?.customerId;
 
@@ -35,7 +35,8 @@ export async function createCheckoutSession(userId: string, userEmail: string, p
     }
 
     const priceId = STRIPE_PRICE_IDS[plan];
-    const origin = headers().get('origin');
+    const headersList = await headers();
+    const origin = headersList.get('origin');
     
     if (!origin) {
         throw new Error('Could not determine request origin.');

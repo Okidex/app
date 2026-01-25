@@ -1,9 +1,8 @@
-
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   Sidebar,
   SidebarHeader,
@@ -23,7 +22,6 @@ import {
   Briefcase,
   FileText,
   Settings,
-  LogOut,
   Smartphone,
   Plus,
   Search,
@@ -36,12 +34,10 @@ import {
   Notification,
 } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore, useAuth, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { logout as serverLogout } from "@/lib/auth-actions";
+import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import UserAvatar from '../shared/user-avatar';
-import { signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 
 const allMenuItems = [
@@ -56,12 +52,10 @@ const allMenuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, isUserLoading: authLoading } = useUser();
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const isMobile = useIsMobile();
   const db = useFirestore();
-  const auth = useAuth();
   const { state: sidebarState } = useSidebar();
 
   React.useEffect(() => {
@@ -87,13 +81,6 @@ export function AppSidebar() {
     return () => unsubscribe();
   }, [user, db]);
 
-  const handleLogout = async () => {
-    if (!auth) return;
-    await signOut(auth);
-    await serverLogout();
-    router.push("/");
-  };
-  
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
   const isFounder = user?.role === 'founder';
 
@@ -178,7 +165,7 @@ export function AppSidebar() {
                 <SidebarMenuButton
                     asChild
                     isActive={
-                    pathname.startsWith(href) && (href !== '/' || pathname === href)
+                    pathname?.startsWith(href) && (href !== '/' || pathname === href)
                     }
                     tooltip={label}
                 >
@@ -218,14 +205,6 @@ export function AppSidebar() {
               <Settings />
               <span className="group-data-[state=collapsed]:hidden">Settings</span>
             </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Logout" onClick={handleLogout}>
-            <button>
-              <LogOut />
-              <span className="group-data-[state=collapsed]:hidden">Logout</span>
-            </button>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarFooter>

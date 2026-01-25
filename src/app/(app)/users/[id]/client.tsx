@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { notFound, useParams } from "next/navigation";
@@ -102,7 +103,8 @@ const FounderProfileView = ({ user, currentUser }: { user: FullUserProfile, curr
         const investorName = isAnonymous ? 'Anonymous Investor' : currentUser.name;
 
         // Simulate equity calculation. In a real app this would be more complex.
-        const newEquity = (investmentAmount / ((startup.fundraisingGoal || 0) * 5)) * 100;
+        const baseValuation = (startup.fundraisingGoal || 0) * 5;
+        const newEquity = baseValuation > 0 ? (investmentAmount / baseValuation) * 100 : 0;
         const newShares = Math.round((newEquity / 100) * 10000000); // Assuming 10M total shares
 
         const newCapTableEntry: CapTableEntry = {
@@ -531,13 +533,15 @@ const InvestorProfileView = ({ user }: { user: FullUserProfile }) => {
                          <div>
                             <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><HandCoins className="w-4 h-4 text-muted-foreground"/>Industries</h4>
                             <div className="flex flex-wrap gap-2">
-                                {profile.investmentInterests.map(interest => <Badge key={interest} variant="secondary">{interest}</Badge>)}
+                                {profile.investmentInterests?.map(interest => <Badge key={interest} variant="secondary">{interest}</Badge>)}
+                                {(!profile.investmentInterests || profile.investmentInterests.length === 0) && <p className="text-sm text-muted-foreground">No industries specified.</p>}
                             </div>
                         </div>
                          <div>
                             <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><BarChart2 className="w-4 h-4 text-muted-foreground"/>Stages</h4>
                             <div className="flex flex-wrap gap-2">
                                 {profile.investmentStages?.map(stage => <Badge key={stage} variant="outline">{stage}</Badge>)}
+                                {(!profile.investmentStages || profile.investmentStages.length === 0) && <p className="text-sm text-muted-foreground">No stages specified.</p>}
                             </div>
                         </div>
                     </CardContent>
@@ -545,23 +549,24 @@ const InvestorProfileView = ({ user }: { user: FullUserProfile }) => {
                 <Card>
                     <CardHeader><CardTitle>Portfolio</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        {profile.portfolio.map(company => (
+                        {profile.portfolio?.map(company => (
                              <div key={company.companyName} className="flex items-center gap-3">
                                 <Image src={company.companyLogoUrl} alt={company.companyName} width={40} height={40} className="w-10 h-10 rounded-md border" data-ai-hint="logo"/>
                                 <a href={company.companyUrl} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{company.companyName}</a>
                             </div>
                         ))}
+                        {(!profile.portfolio || profile.portfolio.length === 0) && <p className="text-sm text-muted-foreground">No portfolio companies to display.</p>}
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader><CardTitle>Exits</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        {profile.exits.map(exit => (
+                        {profile.exits?.map(exit => (
                              <div key={exit.companyName} className="flex items-center gap-3">
                                 <a href={exit.companyUrl} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{exit.companyName}</a>
                             </div>
                         ))}
-                         {profile.exits.length === 0 && <p className="text-sm text-muted-foreground">No exits to display.</p>}
+                         {(!profile.exits || profile.exits.length === 0) && <p className="text-sm text-muted-foreground">No exits to display.</p>}
                     </CardContent>
                 </Card>
             </div>
@@ -604,81 +609,85 @@ const TalentProfileView = ({ user }: { user: FullUserProfile }) => {
     );
 };
 
+const FounderProfileHeader = ({ user, currentUser, onInvestClick }: { user: FullUserProfile, currentUser: FullUserProfile | null, onInvestClick: () => void }) => {
+    const profile = user.profile as FounderProfile;
+    const isOwnProfile = currentUser?.id === user.id;
+    const showInvestButton = currentUser?.role === 'investor';
+    const [startup, setStartup] = useState<Startup | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStartup = async () => {
+            if (profile.companyId) {
+                const startupData = await getStartupById(profile.companyId);
+                setStartup(startupData);
+            }
+            setLoading(false);
+        };
+        fetchStartup();
+    }, [profile.companyId]);
+
+    if (loading) {
+        return (
+            <Card>
+                <CardContent className="p-6 flex items-center gap-6">
+                    <Skeleton className="w-24 h-24 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-5 w-72" />
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    if (!startup) {
+        return <Card><CardContent><p>Startup data not found.</p></CardContent></Card>
+    }
+
+    return (
+        <Card>
+            <CardContent className="p-6 flex flex-col sm:flex-row items-start gap-6 relative">
+                <Image src={startup.companyLogoUrl || ''} alt={startup.companyName || ''} width={96} height={96} className="w-24 h-24 rounded-full border" data-ai-hint="logo" />
+                <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-2xl font-bold font-headline">{startup.companyName}</h1>
+                    </div>
+                    <p className="text-muted-foreground">{startup.tagline}</p>
+                    
+                    {!isOwnProfile && (
+                        <div className="flex items-center gap-4 mt-4">
+                            <Button>Connect</Button>
+                            <Button variant="outline">Message</Button>
+                            {showInvestButton && (
+                                <Button variant="outline" onClick={onInvestClick}>
+                                    <HandCoins className="mr-2 h-4 w-4" />
+                                    Acknowledge Investment
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                </div>
+                 {isOwnProfile && (
+                    <div className="absolute top-1/2 right-6 -translate-y-1/2 flex items-center justify-center">
+                        <Button asChild>
+                            <Link href="/profile/edit">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Profile
+                            </Link>
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 const UserProfileHeader = ({ user, currentUser, onInvestClick }: { user: FullUserProfile, currentUser: FullUserProfile | null, onInvestClick: () => void }) => {
     const isOwnProfile = currentUser?.id === user.id;
 
-    const showInvestButton = currentUser?.role === 'investor' && user.role === 'founder';
-
     if (user.role === 'founder') {
-        const profile = user.profile as FounderProfile;
-        const [startup, setStartup] = useState<Startup | null>(null);
-        const [loading, setLoading] = useState(true);
-
-        useEffect(() => {
-            const fetchStartup = async () => {
-                if (profile.companyId) {
-                    const startupData = await getStartupById(profile.companyId);
-                    setStartup(startupData);
-                }
-                setLoading(false);
-            };
-            fetchStartup();
-        }, [profile.companyId]);
-
-        if (loading) {
-            return (
-                <Card>
-                    <CardContent className="p-6 flex items-center gap-6">
-                        <Skeleton className="w-24 h-24 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                            <Skeleton className="h-8 w-48" />
-                            <Skeleton className="h-5 w-72" />
-                        </div>
-                    </CardContent>
-                </Card>
-            );
-        }
-        
-        if (!startup) {
-            return <Card><CardContent><p>Startup data not found.</p></CardContent></Card>
-        }
-
-        return (
-            <Card>
-                <CardContent className="p-6 flex flex-col sm:flex-row items-start gap-6 relative">
-                    <Image src={startup.companyLogoUrl || ''} alt={startup.companyName || ''} width={96} height={96} className="w-24 h-24 rounded-full border" data-ai-hint="logo" />
-                    <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-2xl font-bold font-headline">{startup.companyName}</h1>
-                        </div>
-                        <p className="text-muted-foreground">{startup.tagline}</p>
-                        
-                        {!isOwnProfile && (
-                            <div className="flex items-center gap-4 mt-4">
-                                <Button>Connect</Button>
-                                <Button variant="outline">Message</Button>
-                                {showInvestButton && (
-                                    <Button variant="outline" onClick={onInvestClick}>
-                                        <HandCoins className="mr-2 h-4 w-4" />
-                                        Acknowledge Investment
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                     {isOwnProfile && (
-                        <div className="absolute top-1/2 right-6 -translate-y-1/2 flex items-center justify-center">
-                            <Button asChild>
-                                <Link href="/profile/edit">
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Edit Profile
-                                </Link>
-                            </Button>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        )
+        return <FounderProfileHeader user={user} currentUser={currentUser} onInvestClick={onInvestClick} />;
     }
 
     if (user.role === 'investor') {
@@ -752,8 +761,8 @@ const UserProfileHeader = ({ user, currentUser, onInvestClick }: { user: FullUse
                 )}
             </CardContent>
         </Card>
-    )
-}
+    );
+};
 
 
 interface UserProfileClientProps {

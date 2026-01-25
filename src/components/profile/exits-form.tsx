@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -22,7 +23,7 @@ const newEntryDefault: Exit = {
 };
 
 export default function ExitsForm({ initialData }: ExitsFormProps) {
-    const [exits, setExits] = useState<Exit[]>(initialData);
+    const [exits, setExits] = useState<Exit[]>(initialData || []);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const { toast } = useToast();
     

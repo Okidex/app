@@ -10,7 +10,9 @@ import { useParams, notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UserProfilePage() {
-    const { id } = useParams();
+    const params = useParams();
+    const idFromParams = params?.id;
+    const id = Array.isArray(idFromParams) ? idFromParams[0] : idFromParams;
     const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
     const [user, setUser] = useState<FullUserProfile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -20,7 +22,7 @@ export default function UserProfilePage() {
         const fetchUser = async () => {
             if (!db || !id) return;
             setLoading(true);
-            const userDoc = await getDoc(doc(db, 'users', id as string));
+            const userDoc = await getDoc(doc(db, 'users', id));
             if (userDoc.exists()) {
                 setUser(userDoc.data() as FullUserProfile);
             } else {
@@ -52,7 +54,7 @@ export default function UserProfilePage() {
                         });
                     }
                 } else {
-                     const userRef = doc(db, 'users', id as string);
+                     const userRef = doc(db, 'users', id);
                      await updateDoc(userRef, {
                         'profile.profileViewCount': increment(1)
                      });
