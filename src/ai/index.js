@@ -1,6 +1,5 @@
-const { onRequest } = require("firebase-functions/v2/https");
+import { onRequest } from "firebase-functions/v2/https";
 
-exports.helloAI = onRequest((request, response) => {
+export const helloAI = onRequest((request, response) => {
   response.send("AI Function is active!");
 });
-
