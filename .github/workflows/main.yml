@@ -20,8 +20,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Use Node.js 20, a supported LTS version for Firebase Functions
-          node-version: 20
+          # Use Node.js 22, which matches the project's package.json requirement
+          node-version: 22
           cache: 'npm'
 
       # Optimization: Persist Next.js build cache to prevent SSR build timeouts
