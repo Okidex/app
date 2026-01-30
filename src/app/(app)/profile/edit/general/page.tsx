@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -22,7 +21,7 @@ import PortfolioForm from "@/components/profile/portfolio-form";
 import ExitsForm from "@/components/profile/exits-form";
 import { investmentStages, founderObjectives } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
-import { updateUserProfile, getStartupById, getUsersByIds, updateStartupData } from "@/lib/actions";
+import { updateUser, getStartupById, getUsersByIds, updateStartupData } from "@/lib/actions";
 import { useUser } from '@/firebase';
 
 
@@ -121,7 +120,7 @@ export default function GeneralProfileEditPage() {
         };
 
         await updateStartupData(startup.id, startupUpdateData);
-        await updateUserProfile(user.id, profileUpdateData);
+        await updateUser(user.id, { profile: { ...founderProfile, ...profileUpdateData } });
     }
     
     if (isInvestor && investorProfile) {
@@ -131,7 +130,7 @@ export default function GeneralProfileEditPage() {
             investorType: data.investorType,
             about: data.about,
         };
-        await updateUserProfile(user.id, profileUpdateData);
+        await updateUser(user.id, { profile: { ...investorProfile, ...profileUpdateData } });
     }
 
     if (isTalent && talentProfile) {
@@ -152,7 +151,7 @@ export default function GeneralProfileEditPage() {
             isSeekingCoFounder: talentProfile.isSeekingCoFounder,
             subRole,
         };
-        await updateUserProfile(user.id, profileUpdateData);
+        await updateUser(user.id, { profile: { ...talentProfile, ...profileUpdateData } });
     }
     
     toast({ title: "Profile Saved", description: "Your general information has been updated." });

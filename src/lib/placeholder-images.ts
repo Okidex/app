@@ -6,8 +6,7 @@ export type ImagePlaceholder = {
   imageHint: string;
 };
 
-const data: { placeholderImages: ImagePlaceholder[] } = {
-  "placeholderImages": [
+export const placeholderImages: ImagePlaceholder[] = [
     {
       "id": "user-1",
       "description": "Avatar for Ada Lovelace",
@@ -61,11 +60,32 @@ const data: { placeholderImages: ImagePlaceholder[] } = {
       "description": "Logo for ConnectSphere",
       "imageUrl": "https://images.unsplash.com/photo-1761811144123-98b7202541b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxsb2dvJTIwbmV0d29ya3xlbnwwfHx8fDE3NjkyMzcyMjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "logo network"
+    },
+    {
+      "id": "user-7",
+      "description": "Avatar for Pepper Potts",
+      "imageUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2OTIxNzA3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "business woman"
+    },
+    {
+      "id": "user-8",
+      "description": "Avatar for Mario Rossi",
+      "imageUrl": "https://images.unsplash.com/photo-1557862921-37829c790f19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjkyMjQ4NjZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "founder portrait"
+    },
+    {
+      "id": "logo-4",
+      "description": "Logo for XpandTree",
+      "imageUrl": "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxsb2dvfGVufDB8fHx8MTc2OTI5MjY4NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tree logo"
+    },
+    {
+      "id": "user-9",
+      "description": "Avatar for Landon Ricketts",
+      "imageUrl": "https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjkyMjQ4NjZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
     }
-  ]
-};
-
-export const placeholderImages: ImagePlaceholder[] = data.placeholderImages;
+  ];
 
 export const getImage = (id: string): ImagePlaceholder => {
     const image = placeholderImages.find(img => img.id === id);

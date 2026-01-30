@@ -1,0 +1,20 @@
+{
+  "node": {
+    "4003297ed52adc7ccc6e3b84f9b58ca9e867754422": {
+      "workers": {
+        "app/(auth)/register/investor/page": {
+          "moduleId": 57853,
+          "async": false,
+          "exportedName": "createUserAndSetSession",
+          "filename": "src/lib/auth-actions.ts"
+        }
+      },
+      "layer": {
+        "app/(auth)/register/investor/page": "action-browser"
+      },
+      "exportedName": "createUserAndSetSession",
+      "filename": "src/lib/auth-actions.ts"
+    }
+  },
+  "edge": {}
+}

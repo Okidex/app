@@ -1,0 +1,18 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(app)/layout,_N_T_/(app)/profile/layout,_N_T_/(app)/profile/edit/layout,_N_T_/(app)/profile/edit/captable/layout,_N_T_/(app)/profile/edit/captable/page,_N_T_/profile/edit/captable"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KGFwcCk/profile/edit/captable/__PAGE__",
+    "/!KGFwcCk/profile/edit/captable",
+    "/!KGFwcCk/profile/edit",
+    "/!KGFwcCk/profile",
+    "/!KGFwcCk",
+    "/_index",
+    "/_head"
+  ]
+}

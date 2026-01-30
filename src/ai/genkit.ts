@@ -1,18 +1,15 @@
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
-/**
- * Genkit Instance - 2026 Stable
- * This instance is used across all flows via extensionless imports.
- */
 export const ai = genkit({
   plugins: [
-    googleAI(), // Automatically loads GOOGLE_GENAI_API_KEY from environment
+    googleAI({
+      // Ensure GOOGLE_GENAI_API_KEY is defined in your .env.local
+      apiKey: process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY,
+      // FORCE: v1 ensures we hit the production router instead of the beta one
+      apiVersion: 'v1',
+    }),
   ],
+  // UPGRADE: Use the -preview suffix which is required for Gemini 3 in early 2026
+  model: googleAI.model('gemini-3-flash-preview'),
 });
-
-/**
- * Stable 2026 Model Reference
- * Gemini 2.5 Flash-Lite is the standard for low-latency AI flows in 2026.
- */
-export const geminiModel = 'googleai/gemini-2.5-flash-lite';

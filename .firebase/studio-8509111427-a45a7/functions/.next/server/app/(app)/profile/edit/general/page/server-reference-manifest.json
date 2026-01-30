@@ -1,0 +1,125 @@
+{
+  "node": {
+    "400b0a2084e48a80be713a1ab5de51bd4494a7b4bd": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "getUsersByIds",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "getUsersByIds",
+      "filename": "src/lib/actions.ts"
+    },
+    "00fe7e16530741863f14e50dbe40c652eea7a606d5": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "logout",
+          "filename": "src/lib/auth-actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "logout",
+      "filename": "src/lib/auth-actions.ts"
+    },
+    "401cc4be18234619fa742b488fdcf277109406f5bd": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "getStartupById",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "getStartupById",
+      "filename": "src/lib/actions.ts"
+    },
+    "402944bb13014208881662ed0c4469f6aef21e9e1c": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "getProfilePictureTags",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "getProfilePictureTags",
+      "filename": "src/lib/actions.ts"
+    },
+    "6031c46405f276d085e2df347a09879362dfc24127": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "updateUser",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "updateUser",
+      "filename": "src/lib/actions.ts"
+    },
+    "4000ace7b548ec6b3eaaa0bb10cedc8de2b86dd82b": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "getProfileFromLinkedIn",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "getProfileFromLinkedIn",
+      "filename": "src/lib/actions.ts"
+    },
+    "60f2e09aa5964f8bb06dc6337e3bced83b6cb1573e": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "updateUserProfile",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "updateUserProfile",
+      "filename": "src/lib/actions.ts"
+    },
+    "60438f0b58ada8dfd08d1f2d08a9780ad7a16ae04d": {
+      "workers": {
+        "app/(app)/profile/edit/general/page": {
+          "moduleId": 26523,
+          "async": false,
+          "exportedName": "updateStartupData",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/general/page": "action-browser"
+      },
+      "exportedName": "updateStartupData",
+      "filename": "src/lib/actions.ts"
+    }
+  },
+  "edge": {}
+}

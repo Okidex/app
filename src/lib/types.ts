@@ -114,7 +114,7 @@ export interface Exit {
 export interface InvestorProfile {
   companyName?: string;
   companyUrl?: string;
-  investorType?: 'LP' | 'GP' | 'Family Office Administrator';
+  investorType?: 'Angel' | 'Venture Capitalist' | 'Crowdfunder' | 'Private Equity' | 'LP' | 'GP' | 'Family Office Administrator';
   investmentInterests: string[];
   investmentStages?: InvestmentStage[];
   portfolio: PortfolioCompany[];

@@ -1,5 +1,5 @@
 
-import { FullUserProfile, Startup, Job, InvestmentThesis, Conversation, Notification, Interest } from './types';
+import { FullUserProfile, Startup, Job, InvestmentThesis, Conversation, Notification, Interest, FounderObjective } from './types';
 import { subMonths, format } from 'date-fns';
 import { getImage } from './placeholder-images';
 
@@ -15,6 +15,7 @@ export const users: FullUserProfile[] = [
             isLead: true,
             isPremium: true,
             title: 'CEO & Co-founder',
+            objectives: ['fundraising', 'lookingToHire', 'networking'],
         },
     },
     {
@@ -111,6 +112,57 @@ export const users: FullUserProfile[] = [
             isPremium: false,
         },
     },
+    {
+        id: 'user-7',
+        name: 'Pepper Potts',
+        email: 'pepper@example.com',
+        role: 'talent',
+        avatarUrl: getImage('user-7').imageUrl,
+        profile: {
+            subRole: 'fractional-leader',
+            headline: 'Fractional COO & Operations Expert',
+            skills: ['Operations', 'Strategy', 'Scaling', 'HR'],
+            experience: 'Results-driven operations leader with a decade of experience scaling startups from seed to Series C. I specialize in building efficient systems, optimizing processes, and leading high-performing teams.',
+            linkedin: 'https://www.linkedin.com/in/pepperpotts',
+            github: '',
+            isSeekingCoFounder: false,
+            about: "I'm a fractional COO dedicated to helping startups build a solid operational foundation for growth.",
+            organization: 'Stark Industries',
+            education: 'MBA from Harvard Business School'
+        },
+    },
+    {
+        id: 'user-8',
+        name: 'Mario Rossi',
+        email: 'mario@example.com',
+        role: 'founder',
+        avatarUrl: getImage('user-8').imageUrl,
+        profile: {
+            companyId: 'startup-3',
+            isLead: true,
+            isPremium: true,
+            title: 'Founder & CEO',
+            objectives: ['lookingToHire', 'fundraising', 'networking'] as FounderObjective[],
+        },
+    },
+    {
+        id: 'user-9',
+        name: 'Landon Ricketts',
+        email: 'landon@example.com',
+        role: 'investor',
+        avatarUrl: getImage('user-9').imageUrl,
+        profile: {
+            companyName: 'Frontier Investments',
+            companyUrl: 'https://frontier.vc',
+            investorType: 'Angel',
+            investmentInterests: ['E-commerce', 'Logistics', 'Marketplaces'],
+            investmentStages: ['Seed', 'Series A'],
+            portfolio: [],
+            exits: [],
+            thesis: 'Backing ambitious founders building the future of commerce.',
+            about: 'Early-stage investor and former operator. I love helping founders with product strategy and go-to-market.',
+        },
+    },
 ];
 
 export const startups: Startup[] = [
@@ -205,7 +257,42 @@ export const startups: Startup[] = [
         incorporationDetails: {
             isIncorporated: false,
         },
-    }
+    },
+    {
+        id: 'startup-3',
+        companyName: 'XpandTree',
+        companyLogoUrl: getImage('logo-4').imageUrl,
+        founderIds: ['user-8'],
+        industry: 'E-commerce',
+        stage: 'Series A',
+        tagline: 'Grow your business exponentially.',
+        website: 'https://xpandtree.com',
+        description: 'XpandTree provides AI-powered logistics and supply chain management for D2C e-commerce brands, helping them scale efficiently and compete with major retailers.',
+        financials: {
+            companyName: 'XpandTree',
+            revenue: 2500000,
+            expenses: 1800000,
+            netIncome: 700000,
+            grossProfitMargin: 45,
+            ebitda: 900000,
+            customerAcquisitionCost: 1200,
+            customerLifetimeValue: 8000,
+            monthlyRecurringRevenue: 210000,
+            cashBurnRate: -58000, // This is cash flow positive
+            runway: 0,
+        },
+        monthlyFinancials: [],
+        capTable: [],
+        incorporationDetails: {
+            isIncorporated: true,
+            country: 'USA',
+            incorporationType: 'LLC',
+            incorporationDate: '2022-06-20T00:00:00.000Z',
+        },
+        fundraisingGoal: 5000000,
+        fundsRaised: 1200000,
+        showFundraisingProgress: true,
+    },
 ];
 
 export const jobs: Job[] = [

@@ -1,0 +1,50 @@
+{
+  "node": {
+    "400b0a2084e48a80be713a1ab5de51bd4494a7b4bd": {
+      "workers": {
+        "app/(app)/profile/edit/team/page": {
+          "moduleId": 77701,
+          "async": false,
+          "exportedName": "getUsersByIds",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/team/page": "action-browser"
+      },
+      "exportedName": "getUsersByIds",
+      "filename": "src/lib/actions.ts"
+    },
+    "00fe7e16530741863f14e50dbe40c652eea7a606d5": {
+      "workers": {
+        "app/(app)/profile/edit/team/page": {
+          "moduleId": 77701,
+          "async": false,
+          "exportedName": "logout",
+          "filename": "src/lib/auth-actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/team/page": "action-browser"
+      },
+      "exportedName": "logout",
+      "filename": "src/lib/auth-actions.ts"
+    },
+    "401cc4be18234619fa742b488fdcf277109406f5bd": {
+      "workers": {
+        "app/(app)/profile/edit/team/page": {
+          "moduleId": 77701,
+          "async": false,
+          "exportedName": "getStartupById",
+          "filename": "src/lib/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(app)/profile/edit/team/page": "action-browser"
+      },
+      "exportedName": "getStartupById",
+      "filename": "src/lib/actions.ts"
+    }
+  },
+  "edge": {}
+}
