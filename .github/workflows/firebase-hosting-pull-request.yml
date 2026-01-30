@@ -27,6 +27,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Decode and Set Up Google Cloud Credentials
+        # Use the Base64 secret to create a service account file for the build step.
         run: echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > service_account_key.json
         
       - name: Build Application
@@ -47,13 +48,14 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
+          # CRITICAL FIX: The deploy action requires this input.
+          # We use the original secret here, as the action handles parsing.
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: studio-8509111427-a45a7
           entryPoint: .
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
-          # CRITICAL: By setting GOOGLE_APPLICATION_CREDENTIALS, we ensure the CLI authenticates correctly.
-          # The firebaseServiceAccount input is removed from the 'with' block to avoid conflicts.
-          GOOGLE_APPLICATION_CREDENTIALS: ./service_account_key.json
+          # Env vars needed by the deployed Cloud Function for SSR.
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
