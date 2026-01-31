@@ -44,3 +44,4 @@ next-env.d.ts
 # IMPORTANT: Never commit service account keys.
 *service-account.json
 *service_account.json
+service_account_key.json
