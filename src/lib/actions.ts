@@ -1,4 +1,3 @@
-
 'use server';
 
 import { getDb, firebaseAdmin } from './firebase-server-init';
@@ -23,11 +22,12 @@ async function getStartupById(id: string): Promise<Startup | null> {
     }
 }
 
-async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
+export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
     const db = getDb();
     const currentUser = await getCurrentUser();
 
     if (!currentUser) {
+        console.warn("Search attempted without a logged-in user.");
         return { startups: [], users: [] };
     }
 
@@ -35,57 +35,72 @@ async function getSearchResults(query: string): Promise<{ startups: Startup[], u
         const userPromises: Promise<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>>[] = [];
         let startupPromise: Promise<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>> | null = null;
         
-        let allSearchableUsers: FullUserProfile[];
+        let allSearchableUsers: FullUserProfile[] = [];
         let allSearchableStartups: Startup[] = [];
 
-        // Define queries based on user role
+        /**
+         * ROLE-BASED VISIBILITY RULES:
+         * 1. Talent: See Founders + Startups
+         * 2. Founders: See Talent
+         * 3. Investors: See Talent, other Investors, and ONLY Paid Founders (isPremium)
+         */
         if (currentUser.role === 'investor') {
-            // Investors see premium founders and all talent.
-            userPromises.push(db.collection('users').where('role', '==', 'founder').where('profile.isPremium', '==', true).get());
+            // Investors see other Investors
+            userPromises.push(db.collection('users').where('role', '==', 'investor').get());
+            // Investors see all Talent
             userPromises.push(db.collection('users').where('role', '==', 'talent').get());
-        } else if (currentUser.role === 'founder') {
-            // Founders see talent.
-            userPromises.push(db.collection('users').where('role', '==', 'talent').get());
-        } else if (currentUser.role === 'talent') {
-            // Talent sees founders.
-            userPromises.push(db.collection('users').where('role', '==', 'founder').get());
-        }
+            // Investors see ONLY Paid Founders (Premium)
+            // NOTE: This requires a Composite Index on 'role' and 'profile.isPremium'
+            userPromises.push(db.collection('users')
+                .where('role', '==', 'founder')
+                .where('profile.isPremium', '==', true)
+                .get()
+            );
+            // Investors search startups
+            startupPromise = db.collection('startups').get();
 
-        // Only investors and talent can search for startups
-        if (currentUser.role === 'investor' || currentUser.role === 'talent') {
+        } else if (currentUser.role === 'founder') {
+            // Founders only see Talent
+            userPromises.push(db.collection('users').where('role', '==', 'talent').get());
+
+        } else if (currentUser.role === 'talent') {
+            // Talent see all Founders
+            userPromises.push(db.collection('users').where('role', '==', 'founder').get());
+            // Talent search startups
             startupPromise = db.collection('startups').get();
         }
 
-        // Execute queries
+        // Execute User Queries
         const userSnapshots = await Promise.all(userPromises);
-        const allUsers = userSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FullUserProfile)));
+        const allUsersRaw = userSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FullUserProfile)));
 
-        // De-duplicate users and remove current user
+        // De-duplicate and remove self
         const userMap = new Map<string, FullUserProfile>();
-        for (const user of allUsers) {
-            if (user.id !== currentUser.id) {
-                userMap.set(user.id, user);
-            }
+        for (const u of allUsersRaw) {
+            if (u.id !== currentUser.id) userMap.set(u.id, u);
         }
         allSearchableUsers = Array.from(userMap.values());
 
-        // Process startups if the query was made
+        // Process Startups (Filter for Investors)
         if (startupPromise) {
             const startupSnapshot = await startupPromise;
             const allStartups = startupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Startup));
 
             if (currentUser.role === 'investor') {
+                // Investors only see startups where the founder is premium
                 const premiumFounderIds = new Set(allSearchableUsers.filter(u => u.role === 'founder').map(u => u.id));
-                allSearchableStartups = allStartups.filter(startup => startup.founderIds.some(id => premiumFounderIds.has(id)));
-            } else if (currentUser.role === 'talent') {
+                allSearchableStartups = allStartups.filter(s => s.founderIds.some(fid => premiumFounderIds.has(fid)));
+            } else {
                 allSearchableStartups = allStartups;
             }
         }
 
         if (allSearchableUsers.length === 0 && allSearchableStartups.length === 0) {
+            console.log("No records found within visibility rules for user:", currentUser.id);
             return { startups: [], users: [] };
         }
 
+        // Prepare data for AI Smart Search
         const searchableData = JSON.stringify({
             startups: allSearchableStartups.map(s => ({
                 id: s.id,
@@ -102,120 +117,43 @@ async function getSearchResults(query: string): Promise<{ startups: Startup[], u
                     details += ` ${p.title || ''} ${(p.objectives || []).join(' ')}`;
                 } else if (u.role === 'investor') {
                     const p = u.profile as InvestorProfile;
-                    details += ` ${p.investorType || ''} ${p.companyName || ''} ${(p.investmentInterests || []).join(' ')} ${(p.investmentStages || []).join(' ')} ${p.thesis || ''} ${(p.seeking || []).join(' ')}`;
+                    details += ` ${p.investorType || ''} ${p.companyName || ''} ${(p.investmentInterests || []).join(' ')}`;
                 } else if (u.role === 'talent') {
                     const p = u.profile as TalentProfile;
-                    details += ` ${p.headline || ''} ${(p.skills || []).join(' ')} ${p.experience || ''} ${p.organization || ''} ${p.education || ''}`;
+                    details += ` ${p.headline || ''} ${(p.skills || []).join(' ')} ${p.experience || ''}`;
                 }
                 return { id: u.id, name: u.name, role: u.role, details: details.trim().replace(/\s+/g, ' ') };
             })
         });
 
+        // Call the AI Flow
         const result = await smartSearch({ query, searchableData });
 
+        // Filter original objects based on AI result IDs
         const finalStartups = allSearchableStartups.filter(s => result.startupIds.includes(s.id));
         let finalUsers = allSearchableUsers.filter(u => result.userIds.includes(u.id));
 
+        // APPLY ROLE-BASED SORTING LOGIC
         if (currentUser.role === 'founder') {
-            const founderProfile = currentUser.profile as FounderProfile;
+            const fProf = currentUser.profile as FounderProfile;
             finalUsers.sort((a, b) => {
-                if (a.role !== 'talent' || b.role !== 'talent') return 0;
-
-                const aProfile = a.profile as TalentProfile;
-                const bProfile = b.profile as TalentProfile;
-                let aScore = 0;
-                let bScore = 0;
-
-                if (founderProfile.objectives?.includes('seekingCoFounders')) {
-                    if (aProfile.isSeekingCoFounder) aScore += 2;
-                    if (bProfile.isSeekingCoFounder) bScore += 2;
+                let aS = 0, bS = 0;
+                const ap = a.profile as TalentProfile, bp = b.profile as TalentProfile;
+                if (fProf.objectives?.includes('seekingCoFounders')) {
+                    if (ap?.isSeekingCoFounder) aS += 2;
+                    if (bp?.isSeekingCoFounder) bS += 2;
                 }
-                if (founderProfile.objectives?.includes('seekingProfessionalAdvice')) {
-                    if (aProfile.subRole === 'fractional-leader' || aProfile.subRole === 'vendor') aScore += 1;
-                    if (bProfile.subRole === 'fractional-leader' || bProfile.subRole === 'vendor') bScore += 1;
-                }
-                return bScore - aScore;
+                return bS - aS;
             });
         }
-        
-        if (currentUser.role === 'talent') {
-            const talentProfile = currentUser.profile as TalentProfile;
-            finalUsers.sort((a, b) => {
-                let aScore = 0;
-                let bScore = 0;
-
-                if (a.role === 'founder') {
-                    const aFounderProfile = a.profile as FounderProfile;
-                    if (talentProfile.isSeekingCoFounder && aFounderProfile.objectives?.includes('seekingCoFounders')) aScore += 2;
-                    if (!talentProfile.isSeekingCoFounder && aFounderProfile.objectives?.includes('lookingToHire')) aScore += 1;
-                }
-
-                if (b.role === 'founder') {
-                    const bFounderProfile = b.profile as FounderProfile;
-                    if (talentProfile.isSeekingCoFounder && bFounderProfile.objectives?.includes('seekingCoFounders')) bScore += 2;
-                    if (!talentProfile.isSeekingCoFounder && bFounderProfile.objectives?.includes('lookingToHire')) bScore += 1;
-                }
-                
-                return bScore - aScore;
-            });
-        }
-
 
         return {
             startups: toSerializable(finalStartups),
             users: toSerializable(finalUsers)
         };
+
     } catch (error) {
-        console.error("Smart Search failed:", error);
+        console.error("CRITICAL: Smart Search Action Failed:", error);
         return { startups: [], users: [] };
     }
 }
-
-async function sendMessage(conversationId: string, message: Omit<Message, 'id' | 'timestamp'>): Promise<{ success: boolean; error?: string }> {
-    try {
-        const db = getDb();
-        const newMessage = { ...message, id: `msg-${Date.now()}`, timestamp: new Date().toISOString() };
-        await db.collection('conversations').doc(conversationId).update({
-            messages: firebaseAdmin.firestore.FieldValue.arrayUnion(newMessage)
-        });
-        return { success: true };
-    } catch (error: any) {
-        console.error("Error sending message:", error);
-        return { success: false, error: error.message };
-    }
-}
-
-async function getUsersByIds(ids: string[]): Promise<FullUserProfile[]> {
-    if (!ids.length) return [];
-    const db = getDb();
-    const results = await db.collection('users').where('id', 'in', ids.slice(0, 30)).get();
-    return results.docs.map(doc => toSerializable({ id: doc.id, ...doc.data() }) as FullUserProfile);
-}
-
-async function updateUser(userId: string, userData: Partial<FullUserProfile>): Promise<{ success: boolean; error?: string }> {
-    try {
-        const db = getDb();
-        await db.collection('users').doc(userId).update(userData);
-        return { success: true };
-    } catch (error: any) {
-        console.error("Error updating user:", error);
-        return { success: false, error: error.message };
-    }
-}
-
-async function updateStartupData(startupId: string, startupData: Partial<Startup>): Promise<{ success: boolean; message?: string; error?: string }> {
-    try {
-        const db = getDb();
-        await db.collection('startups').doc(startupId).update(startupData);
-        return { success: true, message: 'Startup updated' };
-    } catch (error: any) {
-        console.error("Error updating startup data:", error);
-        return { success: false, error: error.message };
-    }
-}
-
-async function getFinancialBreakdown(input: FinancialBreakdownInput) { return financialBreakdown(input); }
-async function getProfilePictureTags(input: ProfilePictureAutoTaggingInput) { return profilePictureAutoTagging(input); }
-async function getProfileFromLinkedIn(input: PopulateProfileFromLinkedInInput) { return populateProfileFromLinkedIn(input); }
-
-export { getStartupById, getSearchResults, sendMessage, getUsersByIds, updateUser, updateStartupData, getFinancialBreakdown, getProfilePictureTags, getProfileFromLinkedIn };
