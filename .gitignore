@@ -1,47 +1,49 @@
-# Created by App Prototyper
-
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
+# Dependencies
+node_modules/
+/dist/
 /.next/
 /out/
+/build/
 
-# production
-/build
+# Firebase (Crucial)
+.firebase/
+firebase-debug.log*
+ui-debug.log*
+firestore-debug.log*
+pubsub-debug.log*
+functions/node_modules/
+functions/lib/
+functions/dist/
 
-# misc
+# SECRETS - Never commit these
+.env
+.env*.local
+*.json
+!package.json
+!tsconfig.json
+!firebase.json
+!storage.rules
+!firestore.rules
+# Explicitly block your specific leaked file:
+service_account_key.json
+
+# Vercel
+.vercel
+
+# Testing
+/coverage
+.nyc_output
+
+# Misc
 .DS_Store
 *.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# service account keys
-# IMPORTANT: Never commit service account keys.
-*service-account.json
-*service_account.json
-service_account_key.json
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

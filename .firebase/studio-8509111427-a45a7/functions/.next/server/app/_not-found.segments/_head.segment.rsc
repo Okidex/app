@@ -1,5 +1,0 @@
-1:"$Sreact.fragment"
-2:I[97367,["/_next/static/chunks/0ac2c33f74cfed15.js","/_next/static/chunks/b36267e4f182996d.js","/_next/static/chunks/3677defb19fe9037.js","/_next/static/chunks/8f1077a2eabc4606.js"],"ViewportBoundary"]
-3:I[97367,["/_next/static/chunks/0ac2c33f74cfed15.js","/_next/static/chunks/b36267e4f182996d.js","/_next/static/chunks/3677defb19fe9037.js","/_next/static/chunks/8f1077a2eabc4606.js"],"MetadataBoundary"]
-4:"$Sreact.suspense"
-0:{"buildId":"_VlzF7zlDJcSMzHDY77Ym","rsc":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L2",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","div",null,{"hidden":true,"children":["$","$L3",null,{"children":["$","$4",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Okidex"}],["$","meta","1",{"name":"description","content":"The Nexus for Innovation and Investment"}]]}]}]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"loading":null,"isPartial":false}
