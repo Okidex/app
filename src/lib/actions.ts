@@ -10,21 +10,19 @@ import { smartSearch } from '@/ai/flows/smart-search';
 import { FullUserProfile, Startup, Profile, Message, FounderProfile, TalentProfile, InvestorProfile, FounderObjective } from './types';
 import { getCurrentUser } from './auth-actions';
 import { revalidatePath } from 'next/cache';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // --- SEARCH ACTIONS ---
 
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
     const db = getDb();
     const currentUser = await getCurrentUser();
-
     if (!currentUser) return { startups: [], users: [] };
 
     try {
-        const userPromises: Promise<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>>[] = [];
-        let startupPromise: Promise<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>> | null = null;
-        let allSearchableUsers: FullUserProfile[] = [];
-        let allSearchableStartups: Startup[] = [];
-
+        const userPromises: Promise<FirebaseFirestore.QuerySnapshot>[] = [];
+        let startupPromise: Promise<FirebaseFirestore.QuerySnapshot> | null = null;
+        
         if (currentUser.role === 'investor') {
             userPromises.push(db.collection('users').where('role', '==', 'investor').get());
             userPromises.push(db.collection('users').where('role', '==', 'talent').get());
@@ -44,8 +42,9 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
         for (const u of allUsersRaw) {
             if (u.id !== currentUser.id) userMap.set(u.id, u);
         }
-        allSearchableUsers = Array.from(userMap.values());
+        const allSearchableUsers = Array.from(userMap.values());
 
+        let allSearchableStartups: Startup[] = [];
         if (startupPromise) {
             const startupSnapshot = await startupPromise;
             const allStartups = startupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Startup));
@@ -57,21 +56,52 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
             }
         }
 
-        if (allSearchableUsers.length === 0 && allSearchableStartups.length === 0) return { startups: [], users: [] };
-
         const searchableData = JSON.stringify({
             startups: allSearchableStartups.map(s => ({ id: s.id, name: s.companyName, description: s.description, tagline: s.tagline, industry: s.industry, stage: s.stage })),
             users: allSearchableUsers.map(u => ({ id: u.id, name: u.name, role: u.role, details: (u.profile as any)?.about || '' }))
         });
 
         const result = await smartSearch({ query, searchableData });
-        const finalStartups = allSearchableStartups.filter(s => result.startupIds.includes(s.id));
-        const finalUsers = allSearchableUsers.filter(u => result.userIds.includes(u.id));
-
-        return { startups: toSerializable(finalStartups), users: toSerializable(finalUsers) };
+        return {
+            startups: toSerializable(allSearchableStartups.filter(s => result.startupIds.includes(s.id))),
+            users: toSerializable(allSearchableUsers.filter(u => result.userIds.includes(u.id)))
+        };
     } catch (error) {
         console.error("Smart Search failed:", error);
         return { startups: [], users: [] };
+    }
+}
+
+// --- MESSAGING ACTIONS ---
+
+export async function sendMessage(conversationId: string, text: string) {
+    try {
+        const db = getDb();
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("Not authenticated");
+
+        const messageData = {
+            text,
+            senderId: currentUser.id,
+            createdAt: FieldValue.serverTimestamp(),
+        };
+
+        const batch = db.batch();
+        const messageRef = db.collection('conversations').doc(conversationId).collection('messages').doc();
+        const convRef = db.collection('conversations').doc(conversationId);
+
+        batch.set(messageRef, messageData);
+        batch.update(convRef, {
+            lastMessage: text,
+            updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        await batch.commit();
+        revalidatePath(`/messages/${conversationId}`);
+        return { success: true };
+    } catch (error: any) {
+        console.error("SendMessage failed:", error);
+        return { success: false, error: error.message };
     }
 }
 
@@ -85,10 +115,16 @@ export async function getUsersByIds(ids: string[]): Promise<FullUserProfile[]> {
 }
 
 export async function updateUser(userId: string, data: Partial<FullUserProfile>) {
-    const db = getDb();
-    await db.collection('users').doc(userId).update(data);
-    revalidatePath(`/users/${userId}`);
-    revalidatePath('/profile/edit');
+    try {
+        const db = getDb();
+        await db.collection('users').doc(userId).update(data);
+        revalidatePath(`/users/${userId}`);
+        revalidatePath('/profile/edit');
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating user:", error);
+        return { success: false, error: "Failed to update profile" };
+    }
 }
 
 // --- STARTUP ACTIONS ---
@@ -101,12 +137,19 @@ export async function getStartupById(id: string): Promise<Startup | null> {
 }
 
 export async function updateStartupData(id: string, data: Partial<Startup>) {
-    const db = getDb();
-    await db.collection('startups').doc(id).update(data);
-    revalidatePath('/profile/edit');
+    try {
+        const db = getDb();
+        await db.collection('startups').doc(id).update(data);
+        revalidatePath('/profile/edit');
+        revalidatePath(`/users/${id}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating startup data:", error);
+        return { success: false, error: "Failed to update startup data" };
+    }
 }
 
-// --- AI FLOW ACTIONS (RESTORED) ---
+// --- AI FLOW ACTIONS ---
 
 export async function getFinancialBreakdown(input: FinancialBreakdownInput): Promise<FinancialBreakdownOutput> {
     return await financialBreakdown(input);

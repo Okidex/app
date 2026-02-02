@@ -1,13 +1,11 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { sendMessage } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Send } from "lucide-react";
 import UserAvatar from "@/components/shared/user-avatar";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Conversation, FullUserProfile, Message } from "@/lib/types";
 import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
@@ -22,8 +20,17 @@ export default function MessagesClientContent() {
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState("");
     const [isSending, setIsSending] = useState(false);
+    
+    const scrollRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
     const db = useFirestore();
+
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [conversations, activeConversationId]);
 
     const conversationsQuery = useMemoFirebase(() => 
         currentUser?.id && db 
@@ -35,7 +42,7 @@ export default function MessagesClientContent() {
         if (!conversationsQuery) {
             if (!authLoading) setLoading(false);
             return;
-        };
+        }
 
         setLoading(true);
         const unsubscribe = onSnapshot(conversationsQuery, async (snapshot) => {
@@ -44,15 +51,19 @@ export default function MessagesClientContent() {
             const otherParticipantIds = convos.flatMap(c => c.participantIds).filter(id => id !== currentUser?.id);
             const uniqueParticipantIds = [...new Set(otherParticipantIds)];
 
-            if (uniqueParticipantIds.length > 0) {
-                const usersQuery = query(collection(db!, "users"), where("id", "in", uniqueParticipantIds));
+            if (uniqueParticipantIds.length > 0 && db) {
+                const usersQuery = query(collection(db, "users"), where("id", "in", uniqueParticipantIds));
                 const usersSnap = await getDocs(usersQuery);
                 const usersData = usersSnap.docs.map(doc => doc.data() as FullUserProfile);
                 
                 const populatedConvos = convos.map(convo => {
                     const otherParticipant = usersData.find(u => convo.participantIds.includes(u.id) && u.id !== currentUser?.id);
                     const participants = [currentUser, otherParticipant].filter(Boolean) as FullUserProfile[];
-                    return { ...convo, participants, messages: convo.messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) };
+                    return { 
+                        ...convo, 
+                        participants, 
+                        messages: (convo.messages || []).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) 
+                    };
                 });
                 
                 setConversations(populatedConvos);
@@ -63,7 +74,6 @@ export default function MessagesClientContent() {
             } else {
                  setConversations([]);
             }
-            
             setLoading(false);
         }, (error) => {
             console.error("Error fetching conversations:", error);
@@ -78,150 +88,141 @@ export default function MessagesClientContent() {
         if (!newMessage.trim() || !activeConversationId || !currentUser) return;
 
         setIsSending(true);
+        const originalConversations = [...conversations];
+        const textToSend = newMessage.trim();
 
         const optimisticMessage: Message = {
             id: `temp-${Date.now()}`,
             senderId: currentUser.id,
-            text: newMessage,
+            text: textToSend,
             timestamp: new Date().toISOString()
         };
 
-        // Optimistic UI update
-        const updatedConversations = conversations.map(c => {
+        setConversations(prev => prev.map(c => {
             if (c.id === activeConversationId) {
-                return { ...c, messages: [...c.messages, optimisticMessage] };
+                return { ...c, messages: [...(c.messages || []), optimisticMessage] };
             }
             return c;
-        });
-        setConversations(updatedConversations);
+        }));
         setNewMessage("");
 
-        const result = await sendMessage(activeConversationId, {
-            senderId: currentUser.id,
-            text: newMessage,
-        });
-
-        if (!result.success) {
+        try {
+            const response = await sendMessage(activeConversationId, textToSend);
+            if (response && !response.success) {
+                throw new Error(response.error || "Failed to send");
+            }
+        } catch (error: any) {
             toast({
                 title: "Error Sending Message",
-                description: result.error,
+                description: error.message || "Something went wrong",
                 variant: "destructive",
             });
-            // Revert optimistic update
-            setConversations(conversations);
+            setConversations(originalConversations);
+        } finally {
+            setIsSending(false);
         }
-        setIsSending(false);
     };
 
     if (authLoading || loading) {
        return (
-            <div className="h-[calc(100vh-10rem)] flex">
-                 <div className="w-1/3 border-r pr-4 flex flex-col">
-                    <Skeleton className="h-8 w-40 mb-4" />
-                    <Skeleton className="h-16 w-full mb-2" />
-                    <Skeleton className="h-16 w-full mb-2" />
+            <div className="h-[calc(100vh-10rem)] flex gap-4">
+                 <div className="w-1/3 border-r pr-4 space-y-4">
+                    <Skeleton className="h-8 w-40" />
+                    <Skeleton className="h-16 w-full" />
                     <Skeleton className="h-16 w-full" />
                 </div>
-                 <div className="w-2/3 pl-4 flex flex-col">
-                    <Skeleton className="h-6 w-48 mb-4 border-b pb-2" />
-                    <div className="flex-1 space-y-4 p-4">
-                        <Skeleton className="h-12 w-3/4" />
-                        <Skeleton className="h-12 w-3/4 ml-auto" />
-                        <Skeleton className="h-12 w-3/4" />
-                    </div>
-                    <form className="mt-4 flex gap-2">
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 w-10" />
-                    </form>
+                 <div className="w-2/3 space-y-4">
+                    <Skeleton className="h-10 w-48" />
+                    <Skeleton className="h-full w-full" />
                 </div>
             </div>
-        )
+        );
     }
 
-    if (!currentUser) {
-        return <div className="flex items-center justify-center h-full">Please log in to view your messages.</div>
-    }
-
-    const activeConversation = conversations.find(c => c.id === activeConversationId);
+    if (!currentUser) return <div className="flex items-center justify-center h-full">Please log in to view messages.</div>;
     
-    if (conversations.length === 0) {
-        return <div className="flex items-center justify-center h-full">No conversations yet. Start a new one!</div>
-    }
-
-    if (conversations.length > 0 && !activeConversation) {
-         return <div className="flex items-center justify-center h-full">Select a conversation to start chatting.</div>
-    }
-
-    const otherParticipant = (activeConversation!.participants as FullUserProfile[]).find(p => p.id !== currentUser.id)!;
-
+    const activeConversation = conversations.find(c => c.id === activeConversationId);
+    const otherParticipant = activeConversation?.participants?.find(p => p.id !== currentUser.id);
 
     return (
-        <div className="h-[calc(100vh-10rem)] flex">
+        <div className="h-[calc(100vh-10rem)] flex overflow-hidden">
+            {/* Sidebar */}
             <div className="w-1/3 border-r pr-4 flex flex-col">
                 <h1 className="text-2xl font-bold font-headline mb-4">Messages</h1>
                 <div className="flex-1 overflow-y-auto space-y-2">
-                    {conversations.map(convo => {
-                        const otherUser = (convo.participants as FullUserProfile[]).find(p => p.id !== currentUser!.id)!;
-                        if (!otherUser) return null;
-                        const lastMessage = convo.messages[convo.messages.length - 1];
+                    {conversations.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center mt-8">No conversations yet.</p>
+                    ) : (
+                        conversations.map(convo => {
+                            const otherUser = convo.participants?.find(p => p.id !== currentUser.id);
+                            if (!otherUser) return null;
+                            const lastMsg = convo.messages[convo.messages.length - 1];
 
-                        return (
-                            <Link href="#" key={convo.id} onClick={() => setActiveConversationId(convo.id)}>
-                                <div className={cn(
-                                    "p-3 rounded-lg flex gap-3 items-start",
-                                    convo.id === activeConversationId ? "bg-accent" : "hover:bg-accent/50"
-                                )}>
+                            return (
+                                <button 
+                                    key={convo.id} 
+                                    onClick={() => setActiveConversationId(convo.id)}
+                                    className={cn(
+                                        "w-full text-left p-3 rounded-lg flex gap-3 items-start transition-colors",
+                                        convo.id === activeConversationId ? "bg-accent" : "hover:bg-accent/50"
+                                    )}
+                                >
                                     <UserAvatar name={otherUser.name} avatarUrl={otherUser.avatarUrl} />
                                     <div className="flex-1 overflow-hidden">
                                         <p className="font-semibold truncate">{otherUser.name}</p>
-                                        <p className="text-sm text-muted-foreground truncate">{lastMessage?.text}</p>
+                                        <p className="text-sm text-muted-foreground truncate">{lastMsg?.text || "Started a conversation"}</p>
                                     </div>
-                                </div>
-                            </Link>
-                        )
-                    })}
+                                </button>
+                            );
+                        })
+                    )}
                 </div>
             </div>
-           {activeConversation && otherParticipant && (
-             <div className="w-2/3 pl-4 flex flex-col">
-                <div className="border-b pb-2 mb-4">
-                    <h2 className="text-xl font-semibold">{otherParticipant.name}</h2>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-4 p-4 bg-background rounded-md">
-                    {activeConversation.messages.map(message => (
-                        <div key={message.id} className={cn(
-                            "flex gap-3",
-                            message.senderId === currentUser!.id ? "justify-end" : "justify-start"
-                        )}>
-                            {message.senderId !== currentUser!.id && (
-                                <UserAvatar name={otherParticipant.name} avatarUrl={otherParticipant.avatarUrl} />
-                            )}
-                             <div className={cn(
-                                "p-3 rounded-lg max-w-xs lg:max-w-md",
-                                message.senderId === currentUser!.id ? "bg-primary text-primary-foreground" : "bg-muted"
-                            )}>
-                                <p>{message.text}</p>
-                            </div>
-                            {message.senderId === currentUser!.id && (
-                                <UserAvatar name={currentUser!.name} avatarUrl={currentUser!.avatarUrl} />
-                            )}
+
+            {/* Chat Area */}
+            <div className="w-2/3 pl-4 flex flex-col">
+                {activeConversation && otherParticipant ? (
+                    <>
+                        <div className="border-b pb-3 mb-4 flex items-center gap-3">
+                            <UserAvatar name={otherParticipant.name} avatarUrl={otherParticipant.avatarUrl} className="w-8 h-8" />
+                            <h2 className="text-lg font-semibold">{otherParticipant.name}</h2>
                         </div>
-                    ))}
-                </div>
-                <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
-                    <Input 
-                        placeholder="Type a message..." 
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        disabled={isSending}
-                    />
-                    <Button type="submit" disabled={isSending || !newMessage.trim()}>
-                        {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        <span className="sr-only">Send</span>
-                    </Button>
-                </form>
+                        
+                        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-2 scroll-smooth">
+                            {activeConversation.messages.map((msg) => (
+                                <div 
+                                    key={msg.id} 
+                                    className={cn(
+                                        "max-w-[75%] p-3 rounded-2xl text-sm",
+                                        msg.senderId === currentUser.id 
+                                            ? "ml-auto bg-primary text-primary-foreground rounded-tr-none" 
+                                            : "bg-muted rounded-tl-none"
+                                    )}
+                                >
+                                    {msg.text}
+                                </div>
+                            ))}
+                        </div>
+
+                        <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
+                            <Input 
+                                value={newMessage} 
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder="Write a message..."
+                                disabled={isSending}
+                                className="focus-visible:ring-primary"
+                            />
+                            <Button type="submit" disabled={isSending || !newMessage.trim()}>
+                                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            </Button>
+                        </form>
+                    </>
+                ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                        Select a conversation to start chatting
+                    </div>
+                )}
             </div>
-           )}
         </div>
     );
 }
