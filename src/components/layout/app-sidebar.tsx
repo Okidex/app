@@ -35,7 +35,7 @@ import {
 } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import UserAvatar from '../shared/user-avatar';
 import { cn } from '@/lib/utils';
@@ -59,18 +59,23 @@ export function AppSidebar() {
   const { state: sidebarState } = useSidebar();
 
   React.useEffect(() => {
-    if (!user || !db) return;
+    // CRITICAL FIX: Guard against undefined/null user ID to prevent Security Rule rejection
+    if (!user?.id || !db) return;
 
+    // Use query that matches deployed firestore.rules exactly
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', user.id)
+      where('userId', '==', user.id),
+      orderBy('timestamp', 'desc'),
+      limit(50)
     );
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs = snapshot.docs.map((doc) => doc.data() as Notification);
-      notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const notifs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Notification));
       setNotifications(notifs);
     },
     (serverError) => {
+        console.error("Sidebar Notification Sync Error:", serverError);
         const contextualError = new FirestorePermissionError({
             path: `notifications`,
             operation: 'list',
@@ -79,7 +84,7 @@ export function AppSidebar() {
     });
 
     return () => unsubscribe();
-  }, [user, db]);
+  }, [user?.id, db]); // Watch the specific string ID rather than the whole user object
 
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
   const isFounder = user?.role === 'founder';
@@ -90,31 +95,17 @@ export function AppSidebar() {
     const { role, profile } = user;
     
     return allMenuItems.filter(item => {
-      if (!item.roles.includes(role)) {
-        return false;
-      }
-      
-      if (item.href === '/applicants' && role === 'talent') {
-        return false;
-      }
-
-      if (role === 'founder' && item.premium && !isPremiumFounder) {
-        return false;
-      }
+      if (!item.roles.includes(role)) return false;
+      if (item.href === '/applicants' && role === 'talent') return false;
+      if (role === 'founder' && item.premium && !isPremiumFounder) return false;
       
       const isSeekingCoFounder = role === 'talent' && (profile as TalentProfile)?.isSeekingCoFounder;
-      if (item.href === '/matches' && role === 'talent' && !isSeekingCoFounder) {
-        return false;
-      }
+      if (item.href === '/matches' && role === 'talent' && !isSeekingCoFounder) return false;
       
       const isCoFounderTalent = role === 'talent' && (profile as TalentProfile)?.subRole === 'co-founder';
-      if(item.href === '/theses' && role === 'talent' && !isCoFounderTalent){
-        return false;
-      }
+      if(item.href === '/theses' && role === 'talent' && !isCoFounderTalent) return false;
       
-      if (isMobile === false && item.href === '/matches') {
-        return false;
-      }
+      if (isMobile === false && item.href === '/matches') return false;
       
       return true;
     });
@@ -123,8 +114,8 @@ export function AppSidebar() {
   if (authLoading || !user) {
     return (
       <Sidebar>
-        <SidebarHeader>
-          <Skeleton className="h-8 w-full" />
+        <SidebarHeader className="h-16 p-2 justify-center">
+            <Skeleton className="h-8 w-32" />
         </SidebarHeader>
         <SidebarContent>
           <div className="flex flex-col gap-2 p-2">
@@ -189,7 +180,7 @@ export function AppSidebar() {
               <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Oki+">
                       <Link href="/settings/billing">
-                          <Plus />
+                          <Plus className="shrink-0" />
                           <span className="group-data-[state=collapsed]:hidden">Oki+</span>
                       </Link>
                   </SidebarMenuButton>
@@ -202,7 +193,7 @@ export function AppSidebar() {
         <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="Settings">
             <Link href="/settings">
-              <Settings />
+              <Settings className="shrink-0" />
               <span className="group-data-[state=collapsed]:hidden">Settings</span>
             </Link>
           </SidebarMenuButton>

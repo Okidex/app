@@ -23,6 +23,8 @@ import {
   onSnapshot,
   doc,
   writeBatch,
+  limit,
+  orderBy
 } from 'firebase/firestore';
 import { getUsersByIds } from '@/lib/actions';
 
@@ -45,11 +47,15 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   useEffect(() => {
-    if (!authUser || !db) return;
+    // CRITICAL FIX: Guard against undefined ID which triggers permission errors
+    if (!authUser?.id || !db) return;
 
+    // Use a specific query that matches your Firestore Security Rules exactly
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', authUser.id)
+      where('userId', '==', authUser.id),
+      orderBy('timestamp', 'desc'),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -57,31 +63,28 @@ export default function Notifications() {
         (doc) => ({ id: doc.id, ...doc.data() } as Notification)
       );
       
-      notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setNotifications(notifs);
 
-      // Optimize sender fetching: Only fetch if we don't already have them in the Map
       const senderIds = [...new Set(notifs.map((n) => n.senderId).filter(Boolean))] as string[];
       
       if (senderIds.length > 0) {
-        setSenders(prev => {
-          const idsToFetch = senderIds.filter((id) => !prev.has(id));
-          if (idsToFetch.length > 0) {
-            // Move fetch outside the Map update to prevent blocking
-            getUsersByIds(idsToFetch).then(users => {
-              if (users.length > 0) {
-                setSenders(current => {
-                  const next = new Map(current);
-                  users.forEach(u => next.set(u.id, u));
-                  return next;
-                });
-              }
-            });
-          }
-          return prev;
-        });
+        const idsToFetch = senderIds.filter((id) => !senders.has(id));
+        if (idsToFetch.length > 0) {
+          getUsersByIds(idsToFetch).then(users => {
+            if (users && users.length > 0) {
+              setSenders(current => {
+                const next = new Map(current);
+                users.forEach(u => next.set(u.id, u));
+                return next;
+              });
+            }
+          });
+        }
       }
     }, (err) => {
+      // Log the actual error for debugging before emitting
+      console.error("Firestore Notification Sync Error:", err);
+      
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'notifications',
         operation: 'list'
@@ -89,10 +92,10 @@ export default function Notifications() {
     });
 
     return () => unsubscribe();
-  }, [authUser, db]);
+  }, [authUser?.id, db]); // Only re-run when the specific ID string changes
 
   const markAllAsRead = () => {
-    if (!authUser || unreadCount === 0 || !db) return;
+    if (!authUser?.id || unreadCount === 0 || !db) return;
     
     startTransition(async () => {
       const batch = writeBatch(db);
@@ -142,10 +145,12 @@ export default function Notifications() {
             {notifications.length > 0 ? (
               notifications.map((notification, index) => {
                 const sender = notification.senderId ? senders.get(notification.senderId) : null;
+                const timestamp = notification.timestamp ? new Date(notification.timestamp) : new Date();
+                
                 return (
                   <div key={notification.id}>
                     <Link
-                      href={notification.link}
+                      href={notification.link || '#'}
                       className={cn(
                         'flex items-start gap-3 p-4 transition-colors hover:bg-muted/50',
                         !notification.isRead && 'bg-primary/5'
@@ -167,7 +172,7 @@ export default function Notifications() {
                           )}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+                          {formatDistanceToNow(timestamp, { addSuffix: true })}
                         </p>
                       </div>
                       {!notification.isRead && (

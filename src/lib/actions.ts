@@ -30,8 +30,10 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
             startupPromise = db.collection('startups').get();
         } else if (currentUser.role === 'founder') {
             userPromises.push(db.collection('users').where('role', '==', 'talent').get());
+            userPromises.push(db.collection('users').where('role', '==', 'investor').get());
         } else if (currentUser.role === 'talent') {
             userPromises.push(db.collection('users').where('role', '==', 'founder').get());
+            userPromises.push(db.collection('users').where('role', '==', 'investor').get());
             startupPromise = db.collection('startups').get();
         }
 
@@ -58,7 +60,11 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
 
         const searchableData = JSON.stringify({
             startups: allSearchableStartups.map(s => ({ id: s.id, name: s.companyName, description: s.description, tagline: s.tagline, industry: s.industry, stage: s.stage })),
-            users: allSearchableUsers.map(u => ({ id: u.id, name: u.name, role: u.role, details: (u.profile as any)?.about || '' }))
+            users: allSearchableUsers.map(u => {
+                const p = u.profile as any;
+                const details = [p?.about, p?.title, p?.headline, p?.investorType, p?.investmentInterests?.join(' '), p?.skills?.join(' ')].filter(Boolean).join(' ');
+                return { id: u.id, name: u.name, role: u.role, details };
+            })
         });
 
         const result = await smartSearch({ query, searchableData });
@@ -131,9 +137,14 @@ export async function updateUser(userId: string, data: Partial<FullUserProfile>)
 
 export async function getStartupById(id: string): Promise<Startup | null> {
     const db = getDb();
-    const doc = await db.collection('startups').doc(id).get();
-    if (!doc.exists) return null;
-    return toSerializable({ id: doc.id, ...doc.data() }) as Startup;
+    try {
+        const doc = await db.collection('startups').doc(id).get();
+        if (!doc.exists) return null;
+        return toSerializable({ id: doc.id, ...doc.data() }) as Startup;
+    } catch (error) {
+        console.error("Error in getStartupById:", error);
+        return null;
+    }
 }
 
 export async function updateStartupData(id: string, data: Partial<Startup>) {
