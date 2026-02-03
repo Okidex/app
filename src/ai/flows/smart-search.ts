@@ -1,4 +1,3 @@
-
 'use server';
 
 import { ai } from '../genkit';
@@ -28,15 +27,27 @@ export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchO
 const prompt = ai.definePrompt({
   name: 'smartSearchPrompt',
   input: { schema: SmartSearchInputSchema },
-  output: { schema: SmartSearchOutputSchema },
-  prompt: `You are a search engine for a professional network. Your task is to find relevant startups and users from the provided JSON data based on a search query.
+  // Notice we use config to set model parameters if needed
+  prompt: `
+    <system>
+    You are a high-precision search engine for Okidex, a professional network. 
+    Your goal is to match a search query against a list of users and startups.
+    
+    CRITICAL RULES:
+    1. If the user searches for a role (e.g., "investors", "founders", "talent"), you MUST return all IDs belonging to that role in the data, even if their specific 'details' field is brief.
+    2. Use semantic matching. If a user asks for "VCs" or "funding", match people with the role "investor".
+    3. If a user asks for "jobs" or "hiring", match people with the role "talent" or startups with relevant descriptions.
+    4. If no results are found, return empty arrays: {"startupIds": [], "userIds": []}.
+    </system>
 
-Search Query: "{{query}}"
+    Search Query: "{{query}}"
 
-Searchable Data (JSON):
-{{{searchableData}}}
+    Searchable Data (JSON):
+    {{{searchableData}}}
 
-Analyze the query and the data. A match occurs if the query text appears in any of the fields for a startup or user (e.g., name, description, industry, skills). Return the 'id' of every startup and user that matches.`,
+    Task: Return a JSON object with "startupIds" and "userIds" that are relevant. 
+    Output ONLY raw JSON. No markdown, no backticks, no preamble.
+  `,
 });
 
 const smartSearchFlow = ai.defineFlow(
@@ -46,10 +57,28 @@ const smartSearchFlow = ai.defineFlow(
     outputSchema: SmartSearchOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    if (!output) {
-      throw new Error("Search flow failed to generate a valid output.");
+    const response = await prompt(input);
+    const jsonString = response.text;
+
+    if (!jsonString) {
+      console.error("LLM returned an empty response for query:", input.query);
+      return { startupIds: [], userIds: [] };
     }
-    return output;
+    
+    try {
+      // Robust cleaning to handle cases where LLM ignores "no backticks" rule
+      const cleanedJsonString = jsonString
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+        
+      const parsedOutput = JSON.parse(cleanedJsonString);
+      
+      return SmartSearchOutputSchema.parse(parsedOutput);
+    } catch (e) {
+      console.error("Failed to parse LLM search results. Raw text:", jsonString);
+      // Return empty results instead of crashing the build/app
+      return { startupIds: [], userIds: [] };
+    }
   }
 );

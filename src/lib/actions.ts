@@ -23,23 +23,30 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
         const userPromises: Promise<FirebaseFirestore.QuerySnapshot>[] = [];
         let startupPromise: Promise<FirebaseFirestore.QuerySnapshot> | null = null;
         
+        /**
+         * VISIBILITY RULES:
+         * - Investor: Sees other Investors, all Talent, and Premium Founders.
+         * - Founder: Sees all Talent and all Investors.
+         * - Talent: Sees all Founders and all Investors.
+         */
         if (currentUser.role === 'investor') {
-            userPromises.push(db.collection('users').where('role', '==', 'investor').get());
-            userPromises.push(db.collection('users').where('role', '==', 'talent').get());
-            userPromises.push(db.collection('users').where('role', '==', 'founder').where('profile.isPremium', '==', true).get());
+            userPromises.push(db.collection('users').where('role', 'in', ['investor', 'Investor']).get());
+            userPromises.push(db.collection('users').where('role', 'in', ['talent', 'Talent']).get());
+            userPromises.push(db.collection('users').where('role', 'in', ['founder', 'Founder']).where('profile.isPremium', '==', true).get());
             startupPromise = db.collection('startups').get();
         } else if (currentUser.role === 'founder') {
-            userPromises.push(db.collection('users').where('role', '==', 'talent').get());
-            userPromises.push(db.collection('users').where('role', '==', 'investor').get());
+            userPromises.push(db.collection('users').where('role', 'in', ['talent', 'Talent']).get());
+            userPromises.push(db.collection('users').where('role', 'in', ['investor', 'Investor']).get());
         } else if (currentUser.role === 'talent') {
-            userPromises.push(db.collection('users').where('role', '==', 'founder').get());
-            userPromises.push(db.collection('users').where('role', '==', 'investor').get());
+            userPromises.push(db.collection('users').where('role', 'in', ['founder', 'Founder']).get());
+            userPromises.push(db.collection('users').where('role', 'in', ['investor', 'Investor']).get());
             startupPromise = db.collection('startups').get();
         }
 
         const userSnapshots = await Promise.all(userPromises);
         const allUsersRaw = userSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FullUserProfile)));
 
+        // De-duplicate by ID and remove the current user
         const userMap = new Map<string, FullUserProfile>();
         for (const u of allUsersRaw) {
             if (u.id !== currentUser.id) userMap.set(u.id, u);
@@ -50,7 +57,9 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
         if (startupPromise) {
             const startupSnapshot = await startupPromise;
             const allStartups = startupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Startup));
+            
             if (currentUser.role === 'investor') {
+                // Investors only see startups for premium founders they are allowed to see
                 const premiumFounderIds = new Set(allSearchableUsers.filter(u => u.role === 'founder').map(u => u.id));
                 allSearchableStartups = allStartups.filter(s => s.founderIds.some(fid => premiumFounderIds.has(fid)));
             } else {
@@ -58,16 +67,41 @@ export async function getSearchResults(query: string): Promise<{ startups: Start
             }
         }
 
+        // Prepare data for AI matching with safe string conversions
         const searchableData = JSON.stringify({
-            startups: allSearchableStartups.map(s => ({ id: s.id, name: s.companyName, description: s.description, tagline: s.tagline, industry: s.industry, stage: s.stage })),
+            startups: allSearchableStartups.map(s => ({
+                id: s.id,
+                name: s.companyName || 'Unknown Startup',
+                description: s.description || '',
+                tagline: s.tagline || '',
+                industry: s.industry || ''
+            })),
             users: allSearchableUsers.map(u => {
-                const p = u.profile as any;
-                const details = [p?.about, p?.title, p?.headline, p?.investorType, p?.investmentInterests?.join(' '), p?.skills?.join(' ')].filter(Boolean).join(' ');
+                const p = u.profile || {};
+                const details = [
+                    u.name,
+                    u.role,
+                    (p as any).about,
+                    (p as any).title,
+                    (p as any).investorType,
+                    (p as any).investmentInterests?.join(' '),
+                    (p as any).skills?.join(' '),
+                    (p as any).headline
+                ].filter(Boolean).join(' ');
+
                 return { id: u.id, name: u.name, role: u.role, details };
             })
         });
 
+        // Backend Logging for troubleshooting
+        console.log(`[Search] User: ${currentUser.id} (${currentUser.role}) | Query: "${query}" | Pool: ${allSearchableUsers.length} users, ${allSearchableStartups.length} startups`);
+
+        if (allSearchableUsers.length === 0 && allSearchableStartups.length === 0) {
+            return { startups: [], users: [] };
+        }
+
         const result = await smartSearch({ query, searchableData });
+        
         return {
             startups: toSerializable(allSearchableStartups.filter(s => result.startupIds.includes(s.id))),
             users: toSerializable(allSearchableUsers.filter(u => result.userIds.includes(u.id)))
