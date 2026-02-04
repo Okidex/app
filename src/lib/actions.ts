@@ -1,169 +1,88 @@
 'use server';
 
-import { getDb, firebaseAdmin } from './firebase-server-init';
+import { getDb } from './firebase-server-init';
 import { toSerializable } from './serialize';
-import type { FinancialBreakdownInput, FinancialBreakdownOutput } from '@/ai/flows/financial-breakdown';
-import { financialBreakdown } from '@/ai/flows/financial-breakdown';
-import { profilePictureAutoTagging, ProfilePictureAutoTaggingInput, ProfilePictureAutoTaggingOutput } from '@/ai/flows/profile-picture-auto-tagging';
-import { populateProfileFromLinkedIn, PopulateProfileFromLinkedInInput, PopulateProfileFromLinkedInOutput } from '@/ai/flows/linkedin-profile-populator';
-import { smartSearch } from '@/ai/flows/smart-search';
-import { FullUserProfile, Startup, Profile, Message, FounderProfile, TalentProfile, InvestorProfile, FounderObjective } from './types';
-import { getCurrentUser } from './auth-actions';
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCurrentUser, getCurrentUserId } from './auth-actions';
 
-// --- SEARCH ACTIONS ---
+// Use 'import type' to prevent circular dependency and build errors
+import type {
+  FullUserProfile,
+  Startup
+} from './types';
+
+// --- SEARCH & POLLING ACTIONS ---
 
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
     const db = getDb();
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return { startups: [], users: [] };
-
     try {
-        const userPromises: Promise<FirebaseFirestore.QuerySnapshot>[] = [];
-        let startupPromise: Promise<FirebaseFirestore.QuerySnapshot> | null = null;
+        const currentUserId = await getCurrentUserId();
         
-        /**
-         * VISIBILITY RULES:
-         * - Investor: Sees other Investors, all Talent, and Premium Founders.
-         * - Founder: Sees all Talent and all Investors.
-         * - Talent: Sees all Founders and all Investors.
-         */
-        if (currentUser.role === 'investor') {
-            userPromises.push(db.collection('users').where('role', 'in', ['investor', 'Investor']).get());
-            userPromises.push(db.collection('users').where('role', 'in', ['talent', 'Talent']).get());
-            userPromises.push(db.collection('users').where('role', 'in', ['founder', 'Founder']).where('profile.isPremium', '==', true).get());
-            startupPromise = db.collection('startups').get();
-        } else if (currentUser.role === 'founder') {
-            userPromises.push(db.collection('users').where('role', 'in', ['talent', 'Talent']).get());
-            userPromises.push(db.collection('users').where('role', 'in', ['investor', 'Investor']).get());
-        } else if (currentUser.role === 'talent') {
-            userPromises.push(db.collection('users').where('role', 'in', ['founder', 'Founder']).get());
-            userPromises.push(db.collection('users').where('role', 'in', ['investor', 'Investor']).get());
-            startupPromise = db.collection('startups').get();
-        }
+        const [usersSnap, startupsSnap] = await Promise.all([
+            db.collection('users').get(),
+            db.collection('startups').get()
+        ]);
 
-        const userSnapshots = await Promise.all(userPromises);
-        const allUsersRaw = userSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FullUserProfile)));
+        const allUsers = usersSnap.docs
+            .map(doc => ({
+                ...doc.data(),
+                id: doc.id
+            }))
+            .filter(user => {
+                if (!currentUserId) return true;
 
-        // De-duplicate by ID and remove the current user
-        const userMap = new Map<string, FullUserProfile>();
-        for (const u of allUsersRaw) {
-            if (u.id !== currentUser.id) userMap.set(u.id, u);
-        }
-        const allSearchableUsers = Array.from(userMap.values());
+                const docId = String(user.id);
+                // Use a safe access for 'uid' to satisfy the TypeScript compiler
+                const internalUid = (user as any).uid ? String((user as any).uid) : null;
+                const targetId = String(currentUserId);
 
-        let allSearchableStartups: Startup[] = [];
-        if (startupPromise) {
-            const startupSnapshot = await startupPromise;
-            const allStartups = startupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Startup));
-            
-            if (currentUser.role === 'investor') {
-                // Investors only see startups for premium founders they are allowed to see
-                const premiumFounderIds = new Set(allSearchableUsers.filter(u => u.role === 'founder').map(u => u.id));
-                allSearchableStartups = allStartups.filter(s => s.founderIds.some(fid => premiumFounderIds.has(fid)));
-            } else {
-                allSearchableStartups = allStartups;
-            }
-        }
-
-        // Prepare data for AI matching with safe string conversions
-        const searchableData = JSON.stringify({
-            startups: allSearchableStartups.map(s => ({
-                id: s.id,
-                name: s.companyName || 'Unknown Startup',
-                description: s.description || '',
-                tagline: s.tagline || '',
-                industry: s.industry || ''
-            })),
-            users: allSearchableUsers.map(u => {
-                const p = u.profile || {};
-                const details = [
-                    u.name,
-                    u.role,
-                    (p as any).about,
-                    (p as any).title,
-                    (p as any).investorType,
-                    (p as any).investmentInterests?.join(' '),
-                    (p as any).skills?.join(' '),
-                    (p as any).headline
-                ].filter(Boolean).join(' ');
-
-                return { id: u.id, name: u.name, role: u.role, details };
+                // Exclude if EITHER the document ID or the internal UID matches
+                return docId !== targetId && internalUid !== targetId;
             })
-        });
+            .map(user => toSerializable(user) as FullUserProfile);
 
-        // Backend Logging for troubleshooting
-        console.log(`[Search] User: ${currentUser.id} (${currentUser.role}) | Query: "${query}" | Pool: ${allSearchableUsers.length} users, ${allSearchableStartups.length} startups`);
+        const allStartups = startupsSnap.docs.map(doc =>
+            toSerializable({ id: doc.id, ...doc.data() }) as Startup
+        );
 
-        if (allSearchableUsers.length === 0 && allSearchableStartups.length === 0) {
-            return { startups: [], users: [] };
-        }
-
-        const result = await smartSearch({ query, searchableData });
-        
         return {
-            startups: toSerializable(allSearchableStartups.filter(s => result.startupIds.includes(s.id))),
-            users: toSerializable(allSearchableUsers.filter(u => result.userIds.includes(u.id)))
+            startups: allStartups,
+            users: allUsers
         };
+
     } catch (error) {
-        console.error("Smart Search failed:", error);
+        console.error("Error in getSearchResults:", error);
         return { startups: [], users: [] };
     }
 }
 
-// --- MESSAGING ACTIONS ---
-
-export async function sendMessage(conversationId: string, text: string) {
-    try {
-        const db = getDb();
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("Not authenticated");
-
-        const messageData = {
-            text,
-            senderId: currentUser.id,
-            createdAt: FieldValue.serverTimestamp(),
-        };
-
-        const batch = db.batch();
-        const messageRef = db.collection('conversations').doc(conversationId).collection('messages').doc();
-        const convRef = db.collection('conversations').doc(conversationId);
-
-        batch.set(messageRef, messageData);
-        batch.update(convRef, {
-            lastMessage: text,
-            updatedAt: FieldValue.serverTimestamp(),
-        });
-
-        await batch.commit();
-        revalidatePath(`/messages/${conversationId}`);
-        return { success: true };
-    } catch (error: any) {
-        console.error("SendMessage failed:", error);
-        return { success: false, error: error.message };
-    }
-}
-
-// --- PROFILE & USER ACTIONS ---
+// --- USER & PROFILE ACTIONS ---
 
 export async function getUsersByIds(ids: string[]): Promise<FullUserProfile[]> {
     const db = getDb();
-    if (!ids.length) return [];
-    const snapshots = await Promise.all(ids.map(id => db.collection('users').doc(id).get()));
-    return toSerializable(snapshots.filter(s => s.exists).map(s => ({ id: s.id, ...s.data() }))) as FullUserProfile[];
+    if (!ids || ids.length === 0) return [];
+    try {
+        const uniqueIds = [...new Set(ids)];
+        const userRefs = uniqueIds.map(id => db.collection('users').doc(id));
+        const userDocs = await db.getAll(...userRefs);
+        return toSerializable(userDocs.filter(doc => doc.exists).map(doc => ({ id: doc.id, ...doc.data() }))) as FullUserProfile[];
+    } catch (error) {
+        return [];
+    }
 }
 
 export async function updateUser(userId: string, data: Partial<FullUserProfile>) {
     try {
         const db = getDb();
-        await db.collection('users').doc(userId).update(data);
+        const currentUser = await getCurrentUser();
+        if (!currentUser || currentUser.id !== userId) throw new Error("Unauthorized");
+        await db.collection('users').doc(userId).set(data, { merge: true });
         revalidatePath(`/users/${userId}`);
-        revalidatePath('/profile/edit');
+        revalidatePath(`/profile/edit`, 'layout');
         return { success: true };
-    } catch (error) {
-        console.error("Error updating user:", error);
-        return { success: false, error: "Failed to update profile" };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 
@@ -184,26 +103,61 @@ export async function getStartupById(id: string): Promise<Startup | null> {
 export async function updateStartupData(id: string, data: Partial<Startup>) {
     try {
         const db = getDb();
-        await db.collection('startups').doc(id).update(data);
-        revalidatePath('/profile/edit');
-        revalidatePath(`/users/${id}`);
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("Unauthorized");
+        const startupRef = db.collection('startups').doc(id);
+        await startupRef.update({ ...data, updatedAt: FieldValue.serverTimestamp() });
+        revalidatePath(`/profile/edit`, 'layout');
         return { success: true };
-    } catch (error) {
-        console.error("Error updating startup data:", error);
-        return { success: false, error: "Failed to update startup data" };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+// --- MESSAGING ACTIONS ---
+
+export async function sendMessage(conversationId: string, text: string) {
+    try {
+        const db = getDb();
+        const currentUser = await getCurrentUser();
+        if (!currentUser) throw new Error("Not authenticated");
+
+        const batch = db.batch();
+        const messageRef = db.collection('conversations').doc(conversationId).collection('messages').doc();
+        batch.set(messageRef, {
+            text,
+            senderId: currentUser.id,
+            timestamp: FieldValue.serverTimestamp(),
+        });
+
+        const conversationRef = db.collection('conversations').doc(conversationId);
+        batch.update(conversationRef, {
+            lastMessage: text,
+            lastActivity: FieldValue.serverTimestamp()
+        });
+
+        await batch.commit();
+        revalidatePath(`/messages/${conversationId}`);
+        return { success: true };
+    } catch (error: any) {
+        console.error("SendMessage Error:", error);
+        return { success: false, error: error.message };
     }
 }
 
 // --- AI FLOW ACTIONS ---
 
-export async function getFinancialBreakdown(input: FinancialBreakdownInput): Promise<FinancialBreakdownOutput> {
+export async function getFinancialBreakdown(input: any) {
+    const { financialBreakdown } = await import('@/ai/flows/financial-breakdown');
     return await financialBreakdown(input);
 }
 
-export async function getProfileFromLinkedIn(input: PopulateProfileFromLinkedInInput): Promise<PopulateProfileFromLinkedInOutput> {
-    return await populateProfileFromLinkedIn(input);
+export async function getProfilePictureTags(input: any) {
+    const { profilePictureAutoTagging } = await import('@/ai/flows/profile-picture-auto-tagging');
+    return await profilePictureAutoTagging(input);
 }
 
-export async function getProfilePictureTags(input: ProfilePictureAutoTaggingInput): Promise<ProfilePictureAutoTaggingOutput> {
-    return await profilePictureAutoTagging(input);
+export async function getProfileFromLinkedIn(input: any) {
+    const { populateProfileFromLinkedIn } = await import('@/ai/flows/linkedin-profile-populator');
+    return await populateProfileFromLinkedIn(input);
 }

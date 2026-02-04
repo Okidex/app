@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -9,18 +8,19 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import UserAvatar from "@/components/shared/user-avatar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getSearchResults } from "@/lib/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchBar from "@/components/shared/search-bar";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, getDoc, doc } from "firebase/firestore";
+import { getDoc, doc } from "firebase/firestore";
 
 const StartupResultCard = ({ startup }: { startup: Startup }) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-start gap-4">
-        <Image src={startup.companyLogoUrl} alt={startup.companyName} width={56} height={56} className="rounded-full border" data-ai-hint="logo" />
+        {/* Note: Ensure storage.googleapis.com is in next.config.ts for this to work */}
+        <Image src={startup.companyLogoUrl} alt={startup.companyName} width={56} height={56} className="rounded-full border object-cover" data-ai-hint="logo" />
         <div className="flex-1">
           <CardTitle>{startup.companyName}</CardTitle>
           <CardDescription>{startup.tagline}</CardDescription>
@@ -29,7 +29,7 @@ const StartupResultCard = ({ startup }: { startup: Startup }) => {
             <Badge variant="outline">{startup.stage}</Badge>
           </div>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" size="sm">
             <Link href={`/users/${startup.founderIds[0]}`}>View</Link>
         </Button>
       </CardHeader>
@@ -89,9 +89,9 @@ const UserResultCard = ({ user }: { user: FullUserProfile }) => {
         <div className="flex-1">
           <CardTitle>{user.name}</CardTitle>
           <CardDescription className="capitalize">{user.role}</CardDescription>
-          <p className="text-sm text-muted-foreground mt-1">{details || <Skeleton className="h-4 w-48" />}</p>
+          <div className="text-sm text-muted-foreground mt-1">{details || <Skeleton className="h-4 w-48" />}</div>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" size="sm">
             <Link href={`/users/${user.id}`}>View Profile</Link>
         </Button>
       </CardHeader>
@@ -122,14 +122,22 @@ export default function SearchResults() {
     }
   }, [query]);
 
+  // --- CLIENT-SIDE FAIL-SAFE ---
+  // We use useMemo to filter out the current user even if the server action missed them.
+  const filteredUsers = useMemo(() => {
+    if (!currentUser) return results.users;
+    return results.users.filter(u => u.id !== currentUser.id);
+  }, [results.users, currentUser]);
+
   if (authLoading) {
-    return <div className="space-y-8">
+    return (
+      <div className="space-y-8 p-4">
         <div className="flex flex-col items-center text-center gap-4">
             <Skeleton className="h-10 w-96" />
             <Skeleton className="h-6 w-full max-w-2xl" />
-            <Skeleton className="h-12 w-full max-w-2xl" />
         </div>
-    </div>
+      </div>
+    );
   }
 
   const getSearchCopy = () => {
@@ -166,42 +174,49 @@ export default function SearchResults() {
   const { headline, subtext } = getSearchCopy();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-7xl mx-auto p-4 md:p-6">
         <div className="flex flex-col items-center text-center gap-4">
-            <h1 className="text-3xl font-bold font-headline">{headline}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{headline}</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
                 {subtext}
             </p>
-            <div className="w-full max-w-2xl">
+            <div className="w-full max-w-2xl mt-2">
                 <SearchBar userRole={currentUser?.role} />
             </div>
         </div>
 
       {loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-40 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <Skeleton className="h-40 w-full rounded-xl" />
+          <Skeleton className="h-40 w-full rounded-xl" />
         </div>
-      ) : query && (results.startups.length > 0 || results.users.length > 0) ? (
+      ) : query && (results.startups.length > 0 || filteredUsers.length > 0) ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             {results.startups.length > 0 && (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">Startups ({results.startups.length})</h2>
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      Startups <Badge variant="secondary">{results.startups.length}</Badge>
+                    </h2>
                     {results.startups.map(startup => <StartupResultCard key={startup.id} startup={startup} />)}
                 </div>
             )}
-            {results.users.length > 0 && (
+            {filteredUsers.length > 0 && (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">People ({results.users.length})</h2>
-                    {results.users.map(user => <UserResultCard key={user.id} user={user} />)}
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      People <Badge variant="secondary">{filteredUsers.length}</Badge>
+                    </h2>
+                    {/* Using filteredUsers instead of results.users */}
+                    {filteredUsers.map(user => <UserResultCard key={user.id} user={user} />)}
                 </div>
             )}
         </div>
       ) : query ? (
-        <Card className="text-center p-8 max-w-2xl mx-auto">
+        <Card className="text-center p-12 max-w-2xl mx-auto mt-8">
             <CardHeader>
-                <CardTitle>No Results Found</CardTitle>
-                <CardDescription>We couldn't find anything matching your search for "{query}". Try a different term.</CardDescription>
+                <CardTitle>No results found for "{query}"</CardTitle>
+                <CardDescription>
+                  Try adjusting your search terms or role filters.
+                </CardDescription>
             </CardHeader>
         </Card>
       ) : null}

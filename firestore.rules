@@ -5,76 +5,93 @@ service cloud.firestore {
     // --- HELPER FUNCTIONS ---
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
-    function isParticipant() { return isSignedIn() && request.auth.uid in resource.data.participantIds; }
-    function willBeParticipant() { return isSignedIn() && request.auth.uid in request.resource.data.participantIds; }
+    
+    // Check existing data for participation
+    function isParticipant() {
+      return isSignedIn() && request.auth.uid in resource.data.participantIds;
+    }
+    // Check incoming data for participation (crucial for creation/updates)
+    function willBeParticipant() {
+      return isSignedIn() && request.auth.uid in request.resource.data.participantIds;
+    }
 
-    // Users & Profiles: Open read for search, restricted write for owners
+    // --- USERS & SEARCHABLE PROFILES ---
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId);
+      allow delete: if false; // Safer to disable deletion or handle via Admin SDK
     }
     
     match /user_profiles/{profileId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isOwner(profileId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // Notifications: Simplified list for better hook compatibility
+    // --- NOTIFICATIONS ---
     match /notifications/{notificationId} {
-      // Allows listing as long as every returned doc belongs to the user.
-      // This is the most compatible way to handle generic useCollection hooks.
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      // resource.data check ensures users can only query their own notifications
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
     
-    // Conversations: Participant-based access
+    // --- MESSAGING & CONVERSATIONS ---
     match /conversations/{conversationId} {
-      allow get, update: if isParticipant();
-      // Allow listing if the user is a participant in the resulting docs
-      allow list: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      // willBeParticipant allows a user to add themselves to a conversation or create one
+      allow read: if isParticipant();
       allow create: if willBeParticipant();
+      allow update: if isParticipant() || willBeParticipant();
 
       match /messages/{messageId} {
-        allow read, write: if isSignedIn() && (
-          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
-        );
+        // Efficiency note: get() calls inside rules incur a read cost.
+        allow read, write: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }
     }
 
-    // Startups, Jobs, and Theses
+    // --- MATCHES ---
+    match /matches/{matchId} {
+      allow read: if isParticipant();
+      allow create: if willBeParticipant();
+      allow update: if isParticipant() || willBeParticipant();
+      
+      match /messages/{messageId} {
+        allow read, create: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.participantIds;
+      }
+    }
+
+    // --- DISCOVERY COLLECTIONS ---
     match /startups/{startupId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      // Split write into create/update to handle resource vs request.resource
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.founderIds;
+      allow update: if isSignedIn() && (
+        request.auth.uid in resource.data.founderIds ||
+        request.auth.uid in request.resource.data.founderIds
+      );
     }
 
     match /theses/{thesisId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.investorId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.investorId == request.auth.uid;
     }
     
     match /jobs/{jobId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.founderId == request.auth.uid;
     }
 
     match /interests/{interestId} {
-      allow read, create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // Matches
-    match /matches/{matchId} {
-      allow read: if isParticipant();
-      allow create: if willBeParticipant();
-      
-      match /messages/{messageId} {
-        allow read, create: if isSignedIn();
-      }
-    }
-
-    // General fallback for public collections
+    // --- GLOBAL FALLBACK & SHARED COLLECTIONS ---
     match /{collection}/{docId} {
       allow read: if collection in [
         'job_postings',
