@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
-import { createUserAndSetSession } from "@/lib/auth-actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import ProfilePhotoUploader from "./profile-photo-uploader";
@@ -15,6 +14,7 @@ import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { TalentProfile, FullUserProfile } from "@/lib/types";
 import { doc, setDoc } from "firebase/firestore";
+import { createSession } from "@/lib/auth-actions";
 
 export default function TalentRegisterFormClient() {
   const router = useRouter();
@@ -42,12 +42,9 @@ export default function TalentRegisterFormClient() {
     // Guard: Prevent execution during Next.js prerendering
     if (typeof window === "undefined" || !firestore) return;
 
-    console.log("[DEBUGGER] Checking Permission State for UID:", currentUser?.uid);
-
     try {
       await new Promise(resolve => setTimeout(resolve, 800)); 
       await setDoc(docRef, data, { merge: true });
-      console.log("[DEBUGGER] Profile Write Successful.");
     } catch (error: any) {
       console.error("[DEBUGGER] Firestore Permission Denial Details:", error);
       const permissionError = new FirestorePermissionError({
@@ -83,6 +80,7 @@ export default function TalentRegisterFormClient() {
         variant: "destructive",
       });
       router.push('/register');
+      setIsSubmitting(false);
       return;
     }
 
@@ -94,6 +92,7 @@ export default function TalentRegisterFormClient() {
         const { user } = userCredential;
         
         const avatarUrl = 'https://picsum.photos/seed/new-talent-avatar/400/400';
+        const isLooking = registrationDetails.subRole === 'co-founder';
 
         const profile: TalentProfile = {
           subRole: registrationDetails.subRole,
@@ -105,7 +104,6 @@ export default function TalentRegisterFormClient() {
           about: formData.get('about') as string,
           organization: formData.get('organization') as string,
           education: formData.get('education') as string,
-          isSeekingCoFounder: registrationDetails.subRole === 'co-founder',
         };
 
         const fullUser: FullUserProfile = {
@@ -115,22 +113,25 @@ export default function TalentRegisterFormClient() {
             role: 'talent',
             avatarUrl,
             profile,
+            isLookingForCoFounder: isLooking,
         };
         
         const userDocRef = doc(firestore, 'users', user.uid);
         await executeDebuggableWrite(userDocRef, fullUser, user);
 
         const idToken = await user.getIdToken();
-        const result = await createUserAndSetSession(idToken);
+        const sessionResult = await createSession(idToken, window.location.origin);
 
-        if (result.success) {
-            sessionStorage.removeItem('registrationDetails');
-            router.push("/dashboard");
-        } else {
-            throw new Error(result.error || "Session initialization failed.");
+        if (!sessionResult.success) {
+          throw new Error(sessionResult.error || "Failed to create server session after registration.");
         }
+
+        sessionStorage.removeItem('registrationDetails');
+        if (typeof window !== "undefined") {
+          window.location.assign("/dashboard");
+        }
+
     } catch(error: any) {
-        console.error("Submission Error:", error);
         toast({
             title: "Registration Failed",
             description: error.code === 'permission-denied' 

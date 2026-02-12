@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ Added useEffect
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -20,8 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { login } from "@/lib/auth-actions";
-
+import { createSession } from "@/lib/auth-actions";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -35,10 +35,16 @@ const resetSchema = z.object({
 export default function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false); // ✅ Added for hydration fix
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const auth = useAuth();
+
+  // ✅ Fix hydration by only rendering once mounted on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -55,18 +61,38 @@ export default function LoginForm() {
     },
   });
 
+  // Prevents the "Tree Hydrated" mismatch error by returning null during SSR
+  if (!mounted) return null;
+
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setIsLoggingIn(true);
+
     if (!auth) {
         toast({ title: "Auth service not available", variant: "destructive" });
         setIsLoggingIn(false);
         return;
     }
     try {
+      // 1. Sign in on client
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      
+      // 2. Get ID token
       const idToken = await userCredential.user.getIdToken();
-      await login(idToken);
-      router.push("/dashboard");
+
+      // 3. POST to server to create session cookie via Server Action
+      const sessionResult = await createSession(idToken, window.location.origin);
+
+      if (!sessionResult.success) {
+        throw new Error(sessionResult.error || "Failed to create server session.");
+      }
+      
+      toast({ title: "Login Successful", description: "Redirecting..." });
+
+      // 4. Redirect on success using a full page load to ensure cookie is sent
+      if (typeof window !== "undefined") {
+        window.location.assign("/dashboard");
+      }
+      
     } catch(error: any) {
        setIsLoggingIn(false);
        toast({

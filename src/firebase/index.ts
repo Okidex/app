@@ -7,10 +7,10 @@ import {
   useAuth,
   useFirestore,
   useFirebaseApp,
-  useUser,
   useMemoFirebase,
   useStorage,
 } from './provider';
+import { useUser } from './auth/use-user';
 import { FirebaseClientProvider } from './client-provider';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
@@ -26,9 +26,10 @@ export {
   useAuth,
   useFirestore,
   useFirebaseApp,
-  useUser,
   useMemoFirebase,
   useStorage,
+  // auth
+  useUser,
   // client-provider
   FirebaseClientProvider,
   // firestore

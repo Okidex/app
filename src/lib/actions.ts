@@ -1,95 +1,60 @@
+
 'use server';
 
-import { getDb } from './firebase-server-init';
+import { db } from './firebase-server-init';
 import { toSerializable } from './serialize';
-import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getCurrentUser, getCurrentUserId } from './auth-actions';
-
-// Use 'import type' to prevent circular dependency and build errors
 import type {
   FullUserProfile,
-  Startup
+  Startup,
+  FounderProfile
 } from './types';
 
-// --- SEARCH & POLLING ACTIONS ---
+
+// =======================================================
+// EXPORTED ACTIONS
+// =======================================================
+
+// getSessionUser, createSession, deleteSession, deleteUser have been moved to auth-actions.ts
 
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
-    const db = getDb();
     try {
-        const currentUserId = await getCurrentUserId();
-        
-        const [usersSnap, startupsSnap] = await Promise.all([
-            db.collection('users').get(),
-            db.collection('startups').get()
-        ]);
-
-        const allUsers = usersSnap.docs
-            .map(doc => ({
-                ...doc.data(),
-                id: doc.id
-            }))
-            .filter(user => {
-                if (!currentUserId) return true;
-
-                const docId = String(user.id);
-                // Use a safe access for 'uid' to satisfy the TypeScript compiler
-                const internalUid = (user as any).uid ? String((user as any).uid) : null;
-                const targetId = String(currentUserId);
-
-                // Exclude if EITHER the document ID or the internal UID matches
-                return docId !== targetId && internalUid !== targetId;
-            })
-            .map(user => toSerializable(user) as FullUserProfile);
-
-        const allStartups = startupsSnap.docs.map(doc =>
-            toSerializable({ id: doc.id, ...doc.data() }) as Startup
-        );
+        const usersSnap = await db.collection('users').get();
+        const allUsers = usersSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as FullUserProfile[];
 
         return {
-            startups: allStartups,
-            users: allUsers
+            startups: [],
+            users: toSerializable(allUsers) as FullUserProfile[]
         };
-
     } catch (error) {
         console.error("Error in getSearchResults:", error);
         return { startups: [], users: [] };
     }
 }
 
-// --- USER & PROFILE ACTIONS ---
-
 export async function getUsersByIds(ids: string[]): Promise<FullUserProfile[]> {
-    const db = getDb();
     if (!ids || ids.length === 0) return [];
+    
     try {
-        const uniqueIds = [...new Set(ids)];
+        const uniqueIds = [...new Set(ids)].slice(0, 30);
         const userRefs = uniqueIds.map(id => db.collection('users').doc(id));
         const userDocs = await db.getAll(...userRefs);
-        return toSerializable(userDocs.filter(doc => doc.exists).map(doc => ({ id: doc.id, ...doc.data() }))) as FullUserProfile[];
+        
+        const users = userDocs
+            .filter(doc => doc.exists)
+            .map(doc => ({ id: doc.id, ...doc.data() }));
+
+        return toSerializable(users) as FullUserProfile[];
     } catch (error) {
+        console.error("Error in getUsersByIds:", error);
         return [];
     }
 }
 
-export async function updateUser(userId: string, data: Partial<FullUserProfile>) {
-    try {
-        const db = getDb();
-        const currentUser = await getCurrentUser();
-        if (!currentUser || currentUser.id !== userId) throw new Error("Unauthorized");
-        await db.collection('users').doc(userId).set(data, { merge: true });
-        revalidatePath(`/users/${userId}`);
-        revalidatePath(`/profile/edit`, 'layout');
-        return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
-    }
-}
-
-// --- STARTUP ACTIONS ---
-
 export async function getStartupById(id: string): Promise<Startup | null> {
-    const db = getDb();
     try {
         const doc = await db.collection('startups').doc(id).get();
         if (!doc.exists) return null;
@@ -101,32 +66,45 @@ export async function getStartupById(id: string): Promise<Startup | null> {
 }
 
 export async function updateStartupData(id: string, data: Partial<Startup>) {
+    // This action needs auth, so it needs to import getSessionUser from auth-actions
+    const { getSessionUser } = await import('./auth-actions');
+    
     try {
-        const db = getDb();
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("Unauthorized");
+        const uid = await getSessionUser();
+        if (!uid) throw new Error("Unauthorized: No valid session.");
+
         const startupRef = db.collection('startups').doc(id);
-        await startupRef.update({ ...data, updatedAt: FieldValue.serverTimestamp() });
-        revalidatePath(`/profile/edit`, 'layout');
+        const startupDoc = await startupRef.get();
+
+        if (!startupDoc.exists || !startupDoc.data()?.founderIds?.includes(uid)) {
+            throw new Error("Unauthorized: You do not own this startup profile.");
+        }
+
+        await startupRef.update({
+            ...data,
+            updatedAt: FieldValue.serverTimestamp()
+        });
+
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
 
-// --- MESSAGING ACTIONS ---
-
 export async function sendMessage(conversationId: string, text: string) {
+    // This action needs auth, so it needs to import getSessionUser from auth-actions
+    const { getSessionUser } = await import('./auth-actions');
+    
     try {
-        const db = getDb();
-        const currentUser = await getCurrentUser();
-        if (!currentUser) throw new Error("Not authenticated");
+        const uid = await getSessionUser();
+        if (!uid) throw new Error("Not authenticated");
 
         const batch = db.batch();
         const messageRef = db.collection('conversations').doc(conversationId).collection('messages').doc();
+        
         batch.set(messageRef, {
             text,
-            senderId: currentUser.id,
+            senderId: uid,
             timestamp: FieldValue.serverTimestamp(),
         });
 
@@ -137,16 +115,38 @@ export async function sendMessage(conversationId: string, text: string) {
         });
 
         await batch.commit();
-        revalidatePath(`/messages/${conversationId}`);
         return { success: true };
     } catch (error: any) {
-        console.error("SendMessage Error:", error);
         return { success: false, error: error.message };
     }
 }
 
-// --- AI FLOW ACTIONS ---
+export async function incrementProfileView(viewedUserId: string) {
+    try {
+        const viewedUserDoc = await db.collection('users').doc(viewedUserId).get();
+        if (!viewedUserDoc.exists) return { success: false };
 
+        const viewedUser = viewedUserDoc.data() as FullUserProfile;
+
+        if (viewedUser.role === 'founder') {
+            const companyId = (viewedUser.profile as FounderProfile).companyId;
+            if (companyId) {
+                await db.collection('startups').doc(companyId).update({
+                    profileViewCount: FieldValue.increment(1)
+                });
+            }
+        } else {
+             await db.collection('users').doc(viewedUserId).update({
+                'profile.profileViewCount': FieldValue.increment(1)
+             });
+        }
+        return { success: true };
+    } catch (error) {
+        return { success: false };
+    }
+}
+
+// AI FLOWS
 export async function getFinancialBreakdown(input: any) {
     const { financialBreakdown } = await import('@/ai/flows/financial-breakdown');
     return await financialBreakdown(input);

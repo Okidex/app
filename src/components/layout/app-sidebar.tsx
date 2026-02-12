@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -99,7 +100,7 @@ export function AppSidebar() {
       if (item.href === '/applicants' && role === 'talent') return false;
       if (role === 'founder' && item.premium && !isPremiumFounder) return false;
       
-      const isSeekingCoFounder = role === 'talent' && (profile as TalentProfile)?.isSeekingCoFounder;
+      const isSeekingCoFounder = role === 'talent' && user.isLookingForCoFounder;
       if (item.href === '/matches' && role === 'talent' && !isSeekingCoFounder) return false;
       
       const isCoFounderTalent = role === 'talent' && (profile as TalentProfile)?.subRole === 'co-founder';

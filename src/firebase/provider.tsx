@@ -1,31 +1,29 @@
-
 'use client';
 
-import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
+import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { FullUserProfile } from '@/lib/types';
 import { FirestorePermissionError } from './errors';
 import { errorEmitter } from './error-emitter';
 
+// The UserHookResult type is now defined here as the single source of truth.
 export interface UserHookResult {
   user: FullUserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
+  refreshUser: () => void;
 }
 
-interface FirebaseContextState {
+interface FirebaseContextState extends UserHookResult {
   areServicesAvailable: boolean;
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
   storage: FirebaseStorage | null;
-  user: FullUserProfile | null;
-  isUserLoading: boolean;
-  userError: Error | null;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -45,32 +43,39 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
   storage,
 }) => {
-  const [userAuthState, setUserAuthState] = useState<UserHookResult>({
+  const [userAuthState, setUserAuthState] = useState<Omit<UserHookResult, 'refreshUser'>>({
     user: null,
     isUserLoading: true,
     userError: null,
   });
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const refreshUser = useCallback(() => setRefreshTrigger(t => t + 1), []);
+
   useEffect(() => {
     let unsubscribeProfile: () => void = () => {};
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-        unsubscribeProfile(); // Unsubscribe from previous profile listener
+        unsubscribeProfile();
 
         if (firebaseUser) {
+            setUserAuthState(prev => ({ ...prev, isUserLoading: true }));
+
             const userDocRef = doc(firestore, 'users', firebaseUser.uid);
             unsubscribeProfile = onSnapshot(userDocRef, 
                 (userDocSnap) => {
                     if (userDocSnap.exists()) {
-                        setUserAuthState({ user: userDocSnap.data() as FullUserProfile, isUserLoading: false, userError: null });
+                        setUserAuthState({ 
+                            user: { ...userDocSnap.data(), uid: firebaseUser.uid } as FullUserProfile, 
+                            isUserLoading: false, 
+                            userError: null 
+                        });
                     } else {
-                        // User exists in auth, but not in firestore yet (e.g. during sign up).
-                        // Keep loading until profile is created.
-                         setUserAuthState(prev => ({ ...prev, user: null, isUserLoading: true, userError: null }));
+                         setUserAuthState({ user: null, isUserLoading: false, userError: null });
                     }
                 },
                 (error) => {
-                    console.error("FirebaseProvider: onSnapshot error", error);
+                    console.error("FirebaseProvider: Firestore error", error);
                     const contextualError = new FirestorePermissionError({
                         path: `users/${firebaseUser.uid}`,
                         operation: 'get',
@@ -83,7 +88,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             setUserAuthState({ user: null, isUserLoading: false, userError: null });
         }
     }, (error) => {
-        console.error("FirebaseProvider: onAuthStateChanged error:", error);
+        console.error("FirebaseProvider: Auth Error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
     });
 
@@ -91,7 +96,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         unsubscribeAuth();
         unsubscribeProfile();
     };
-  }, [auth, firestore]);
+  }, [auth, firestore, refreshTrigger]);
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth && storage);
@@ -104,8 +109,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
+      refreshUser
     };
-  }, [firebaseApp, firestore, auth, storage, userAuthState]);
+  }, [firebaseApp, firestore, auth, storage, userAuthState, refreshUser]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -123,6 +129,7 @@ export const useFirebase = (): FirebaseContextState => {
   return context;
 };
 
+// Raw service hooks
 export const useAuth = (): Auth | null => {
   const { auth } = useFirebase();
   return auth;
@@ -143,10 +150,6 @@ export const useStorage = (): FirebaseStorage | null => {
   return storage;
 };
 
-export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
-};
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps

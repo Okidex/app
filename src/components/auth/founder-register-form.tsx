@@ -7,16 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { investmentStages } from "@/lib/constants";
+import { investmentStages, founderObjectives } from "@/lib/constants";
 import { useState, useEffect } from "react";
-import { FounderProfile, FullUserProfile, Startup } from "@/lib/types";
+import { FounderProfile, FullUserProfile, Startup, FounderObjective } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import LogoUploader from "./logo-uploader";
 import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, collection } from "firebase/firestore";
-import { createUserAndSetSession } from "@/lib/auth-actions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { createSession } from "@/lib/auth-actions";
 
 export default function FounderRegisterFormClient() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function FounderRegisterFormClient() {
     if (!registrationDetailsString) {
       toast({ title: "Registration Error", description: "Session expired.", variant: "destructive" });
       router.push('/register');
+      setIsSubmitting(false);
       return;
     }
     
@@ -94,12 +96,19 @@ export default function FounderRegisterFormClient() {
         
         await setDoc(startupRef, newStartup);
 
+        const objectives: FounderObjective[] = founderObjectives
+            .map(obj => formData.get(`objective-${obj.id}`) as FounderObjective)
+            .filter(Boolean);
+        const isLookingForCoFounder = objectives.includes('seekingCoFounders');
+
         // 2. Create User Document
         const profile: FounderProfile = {
           companyId: startupId,
           isLead: true,
           isPremium: false, // Default to non-premium
           title: 'Founder',
+          objectives: objectives,
+          isLookingForCoFounder: isLookingForCoFounder,
         };
 
         const fullUser: FullUserProfile = {
@@ -109,6 +118,7 @@ export default function FounderRegisterFormClient() {
             role: 'founder',
             avatarUrl: 'https://picsum.photos/seed/new-founder-avatar/400/400',
             profile,
+            isLookingForCoFounder: isLookingForCoFounder,
         };
         
         const userDocRef = doc(firestore, 'users', user.uid);
@@ -122,16 +132,20 @@ export default function FounderRegisterFormClient() {
             throw permissionError;
         });
 
-        // 3. Create session and redirect
+        // 3. Create server session
         const idToken = await user.getIdToken();
-        const result = await createUserAndSetSession(idToken);
+        const sessionResult = await createSession(idToken, window.location.origin);
 
-        if (result.success) {
-            sessionStorage.removeItem('registrationDetails');
-            router.push("/dashboard");
-        } else {
-            throw new Error(result.error || "Session creation failed.");
+        if (!sessionResult.success) {
+          throw new Error(sessionResult.error || "Failed to create server session after registration.");
         }
+
+        // 4. Clean up and redirect
+        sessionStorage.removeItem('registrationDetails');
+        if (typeof window !== "undefined") {
+          window.location.assign("/dashboard");
+        }
+
     } catch(error: any) {
         toast({
             title: "Registration Failed",
@@ -185,6 +199,21 @@ export default function FounderRegisterFormClient() {
                  <div className="space-y-2">
                     <Label htmlFor="description">Company Description</Label>
                     <Textarea id="description" name="description" placeholder="What does your company do?" required />
+                </div>
+                <div className="space-y-2 pt-4">
+                    <Label>What are your initial objectives?</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        {founderObjectives.map(objective => (
+                            <div key={objective.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`objective-${objective.id}`}
+                                    name={`objective-${objective.id}`}
+                                    value={objective.id}
+                                />
+                                <Label htmlFor={`objective-${objective.id}`} className="font-normal">{objective.label}</Label>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

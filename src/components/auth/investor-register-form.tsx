@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { investmentStages } from "@/lib/constants";
+import { investmentStages, investorSeekingOptions } from "@/lib/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
@@ -15,11 +15,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlusCircle, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { createUserAndSetSession } from "@/lib/auth-actions";
 import ProfilePhotoUploader from "./profile-photo-uploader";
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { createSession } from "@/lib/auth-actions";
 
 export default function InvestorRegisterFormClient() {
   const router = useRouter();
@@ -71,6 +71,12 @@ export default function InvestorRegisterFormClient() {
         const avatarUrl = 'https://picsum.photos/seed/new-investor-avatar/400/400';
         const investmentStagesChecked = investmentStages.filter(stage => formData.get(`stage-${stage}`));
         
+        const seeking: string[] = investorSeekingOptions
+            .filter(option => option.id !== 'hiring')
+            .map(option => formData.get(`seeking-${option.id}`) ? option.label : null)
+            .filter((label): label is string => label !== null);
+        const isHiring = formData.get('seeking-hiring') === 'on';
+
         const profile: InvestorProfile = {
             companyName: formData.get('investorCompanyName') as string,
             companyUrl: formData.get('investorCompanyUrl') as string,
@@ -80,6 +86,8 @@ export default function InvestorRegisterFormClient() {
             investmentStages: investmentStagesChecked,
             exits: exits,
             portfolio: [],
+            seeking: seeking,
+            isHiring: isHiring,
         };
         
         const fullUser: FullUserProfile = {
@@ -89,6 +97,7 @@ export default function InvestorRegisterFormClient() {
             role: 'investor',
             avatarUrl,
             profile,
+            isHiring: isHiring,
         };
 
         const userDocRef = doc(firestore, 'users', user.uid);
@@ -104,13 +113,15 @@ export default function InvestorRegisterFormClient() {
         });
 
         const idToken = await user.getIdToken();
-        const result = await createUserAndSetSession(idToken);
-        
-        if (result.success) {
-          sessionStorage.removeItem('registrationDetails');
-          router.push("/dashboard");
-        } else {
-          throw new Error(result.error || "Failed to establish session.");
+        const sessionResult = await createSession(idToken, window.location.origin);
+
+        if (!sessionResult.success) {
+          throw new Error(sessionResult.error || "Failed to create server session after registration.");
+        }
+
+        sessionStorage.removeItem('registrationDetails');
+        if (typeof window !== "undefined") {
+          window.location.assign("/dashboard");
         }
 
     } catch(error: any) {
@@ -219,6 +230,20 @@ export default function InvestorRegisterFormClient() {
                             <div key={stage} className="flex items-center space-x-2">
                                 <Checkbox id={`stage-${stage}`} name={`stage-${stage}`} />
                                 <Label htmlFor={`stage-${stage}`} className="text-sm font-normal cursor-pointer capitalize">{stage}</Label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="space-y-3 pt-2">
+                    <Label>I am open to...</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                        {investorSeekingOptions.map(option => (
+                            <div key={option.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`seeking-${option.id}`}
+                                    name={`seeking-${option.id}`}
+                                />
+                                <Label htmlFor={`seeking-${option.id}`} className="font-normal">{option.label}</Label>
                             </div>
                         ))}
                     </div>

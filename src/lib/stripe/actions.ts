@@ -1,41 +1,44 @@
-
 'use server';
-
-export const runtime = 'nodejs';
 
 import { stripe } from './config';
 import { STRIPE_PRICE_IDS } from './config';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-
-import { getDb } from '../firebase-server-init';
-import { FounderProfile, StripeDetails } from '../types';
+// Use the 'db' export directly as it is already initialized in your firebase-server-init.ts
+import { db } from '../firebase-server-init';
+import { FounderProfile } from '../types';
 
 export async function createCheckoutSession(userId: string, userEmail: string, plan: 'monthly' | 'yearly') {
-    const firestore = getDb();
-    const userRef = firestore.collection('users').doc(userId);
+    const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     
     const userProfile = userDoc.data()?.profile as FounderProfile | undefined;
     let stripeCustomerId = userProfile?.stripe?.customerId;
 
     if (!stripeCustomerId) {
-        const customer = await stripe.customers.create({ email: userEmail, metadata: { firebaseUID: userId } });
+        const customer = await stripe.customers.create({
+            email: userEmail,
+            metadata: { firebaseUID: userId }
+        });
         stripeCustomerId = customer.id;
-        await userRef.set({ profile: { stripe: { customerId: stripeCustomerId } } }, { merge: true });
+        await userRef.set({
+            profile: {
+                stripe: { customerId: stripeCustomerId }
+            }
+        }, { merge: true });
     }
 
     const priceId = STRIPE_PRICE_IDS[plan];
     
-    // ✅ 2026 FIX: Cast through 'unknown' to safely bridge the type gap
-    // between Next.js internal types and standard Web API 'Headers'.
-    const headersList = (headers() as unknown) as Headers;
-    
+    // FIX: Await headers() for Next.js 15/16 compatibility
+    const headersList = await headers();
     const origin = headersList.get('origin');
     
     if (!origin) {
         throw new Error('Could not determine request origin.');
     }
+
+    let sessionUrl: string | null = null;
 
     try {
         const session = await stripe.checkout.sessions.create({
@@ -48,15 +51,17 @@ export async function createCheckoutSession(userId: string, userEmail: string, p
             metadata: { firebaseUID: userId, plan }
         });
         
-        if (session.url) {
-            redirect(session.url);
-        } else {
-            throw new Error('Stripe API returned no session URL.');
-        }
+        sessionUrl = session.url;
 
     } catch (error: any) {
         console.error('Error creating Stripe checkout session:', error);
         throw new Error(`There was a problem creating the checkout session: ${error.message}`);
     }
-}
 
+    // Call redirect() outside of the try/catch block
+    if (sessionUrl) {
+        redirect(sessionUrl);
+    } else {
+        throw new Error('Stripe API returned no session URL.');
+    }
+}

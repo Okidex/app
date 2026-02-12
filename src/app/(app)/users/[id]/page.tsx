@@ -1,13 +1,13 @@
-
 'use client';
 
-import { FullUserProfile, FounderProfile } from '@/lib/types';
+import { FullUserProfile } from '@/lib/types';
 import UserProfileClient from './client';
 import { useUser, useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import { useParams, notFound } from 'next/navigation';
+import { doc, getDoc } from 'firebase/firestore';
+import { useParams, useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { incrementProfileView } from '@/lib/actions';
 
 export default function UserProfilePage() {
     const params = useParams();
@@ -17,6 +17,7 @@ export default function UserProfilePage() {
     const [user, setUser] = useState<FullUserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const db = useFirestore();
+    const router = useRouter();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -26,16 +27,19 @@ export default function UserProfilePage() {
             if (userDoc.exists()) {
                 setUser(userDoc.data() as FullUserProfile);
             } else {
-                notFound();
+                router.replace('/search');
             }
             setLoading(false);
         };
         fetchUser();
-    }, [id, db]);
+    }, [id, db, router]);
 
     useEffect(() => {
-        const incrementViewCount = async () => {
-            if (!db || !id || !currentUser || isCurrentUserLoading || currentUser.id === id || !user) {
+        const handleView = async () => {
+            if (!id || isCurrentUserLoading) return;
+
+            // Don't count view if it's the user's own profile or they are not logged in
+            if (!currentUser || currentUser.id === id) {
                 return;
             }
 
@@ -43,32 +47,16 @@ export default function UserProfilePage() {
             if (sessionStorage.getItem(viewedKey)) {
                 return;
             }
-
-            try {
-                if (user.role === 'founder') {
-                    const companyId = (user.profile as FounderProfile).companyId;
-                    if (companyId) {
-                        const startupRef = doc(db, 'startups', companyId);
-                        await updateDoc(startupRef, {
-                            profileViewCount: increment(1)
-                        });
-                    }
-                } else {
-                     const userRef = doc(db, 'users', id);
-                     await updateDoc(userRef, {
-                        'profile.profileViewCount': increment(1)
-                     });
-                }
-                sessionStorage.setItem(viewedKey, 'true');
-            } catch (error) {
-                console.error("Failed to increment profile view count", error);
-            }
+            
+            // Call the server action
+            await incrementProfileView(id);
+            sessionStorage.setItem(viewedKey, 'true');
         };
 
-        incrementViewCount();
-    }, [id, db, currentUser, isCurrentUserLoading, user]);
+        handleView();
+    }, [id, currentUser, isCurrentUserLoading]);
 
-    if (loading || !user) {
+    if (loading || isCurrentUserLoading || !user) {
         return (
             <div className="space-y-6">
                 <Skeleton className="h-40 w-full" />
@@ -87,6 +75,6 @@ export default function UserProfilePage() {
     }
 
     return (
-        <UserProfileClient serverUser={user} serverCurrentUser={currentUser} />
+        <UserProfileClient initialUser={user} />
     );
 }

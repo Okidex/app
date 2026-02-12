@@ -1,44 +1,51 @@
 import 'server-only';
 import admin from 'firebase-admin';
 
-function initializeAdmin() {
-  if (admin.apps.length > 0) {
-    return admin.app();
-  }
+const ADMIN_APP_NAME = 'okidex-admin-app';
 
-  // 1. Look for the Base64 variable first
-  const base64ServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-  const rawServiceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-  
-  let serviceAccount: any;
+let app: admin.app.App;
 
+if (!admin.apps.some((a) => a?.name === ADMIN_APP_NAME)) {
   try {
-    if (base64ServiceAccount) {
-      // 2. Decode the Base64 string into a JSON string, then parse it
-      const decodedJson = Buffer.from(base64ServiceAccount, 'base64').toString('utf8');
-      serviceAccount = JSON.parse(decodedJson);
-    } else if (rawServiceAccountJson) {
-      // Fallback for raw JSON string
-      serviceAccount = JSON.parse(rawServiceAccountJson);
-    } else {
-      throw new Error('Neither FIREBASE_SERVICE_ACCOUNT_BASE64 nor FIREBASE_SERVICE_ACCOUNT is set.');
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || process.env.FIREBASE_SERVICE_ACCOUNT;
+    
+    if (!serviceAccountString) {
+      throw new Error("Firebase service account credentials not found.");
     }
 
-    // 3. Fix the private key formatting
+    const isBase64 = !serviceAccountString.trim().startsWith('{');
+    const serviceAccountJson = isBase64
+      ? Buffer.from(serviceAccountString, 'base64').toString('utf8')
+      : serviceAccountString;
+
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
     if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
     }
 
-    return admin.initializeApp({
+    app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-    });
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    }, ADMIN_APP_NAME);
+
   } catch (error: any) {
-    console.error('❌ Firebase Admin initialization failed:', error.message);
-    throw new Error(`Firebase Admin failed: ${error.message}`);
+    console.error("Firebase Admin initialization failed:", error.message);
+    const existingApp = admin.apps.find(a => a?.name === ADMIN_APP_NAME);
+    if (existingApp) {
+      app = existingApp;
+    } else {
+      throw error;
+    }
   }
+} else {
+  app = admin.app(ADMIN_APP_NAME);
 }
 
-export function getDb() { return initializeAdmin().firestore(); }
-export function getAuth() { return initializeAdmin().auth(); }
-export function getStorage() { return initializeAdmin().storage(); }
-export { admin as firebaseAdmin };
+// Fixed: Added getDb export to satisfy imports in Stripe actions
+export const getDb = () => app.firestore();
+
+export const db = app.firestore();
+export const auth = app.auth();
+export const storage = app.storage();
+export { admin as firebaseAdmin }; // Renamed from 'admin' to avoid local naming collisions

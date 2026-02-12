@@ -2,7 +2,7 @@
 'use client';
 
 import { Startup, FounderProfile } from "@/lib/types";
-import { notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import IncorporationDetailsForm from "@/components/profile/incorporation-details-form";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,11 +13,12 @@ export default function LegalPage() {
   const { user, isUserLoading } = useUser();
   const [startup, setStartup] = useState<Startup | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     if (isUserLoading) return;
     if (!user || user.role !== 'founder') {
-      notFound();
+      router.replace('/dashboard');
       return;
     }
 
@@ -26,13 +27,15 @@ export default function LegalPage() {
       const founderProfile = user.profile as FounderProfile;
       if (founderProfile.companyId) {
         const startupData = await getStartupById(founderProfile.companyId);
-        setStartup(startupData);
+        if (startupData) {
+            setStartup(startupData);
+        }
       }
       setLoading(false);
     };
 
     fetchData();
-  }, [user, isUserLoading]);
+  }, [user, isUserLoading, router]);
 
 
   if (isUserLoading || loading) {
@@ -49,7 +52,11 @@ export default function LegalPage() {
 
   return (
     <div className="space-y-6">
-        <IncorporationDetailsForm startupId={startup.id} initialData={startup.incorporationDetails} />
+        {/* FIXED: Added fallback object to satisfy TypeScript strict mode */}
+        <IncorporationDetailsForm 
+          startupId={startup.id} 
+          initialData={startup.incorporationDetails ?? { isIncorporated: false }} 
+        />
     </div>
   );
 }

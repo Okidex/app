@@ -1,9 +1,8 @@
-
 'use client';
 
 import CapTableForm from "@/components/profile/cap-table-form";
 import { FounderProfile, Startup } from "@/lib/types";
-import { notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getStartupById } from "@/lib/actions";
 import { useUser } from '@/firebase';
@@ -17,11 +16,12 @@ export default function CapTablePage() {
   const { user, isUserLoading } = useUser();
   const [startup, setStartup] = useState<Startup | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   
   useEffect(() => {
     if (isUserLoading) return;
     if (!user || user.role !== 'founder') {
-      notFound();
+      router.replace('/dashboard');
       return;
     }
 
@@ -36,7 +36,7 @@ export default function CapTablePage() {
     };
 
     fetchData();
-  }, [user, isUserLoading]);
+  }, [user, isUserLoading, router]);
 
 
   if (isUserLoading || loading) {
@@ -51,7 +51,7 @@ export default function CapTablePage() {
       return <div>Startup not found</div>;
   }
   
-  const isIncorporated = startup?.incorporationDetails.isIncorporated ?? false;
+  const isIncorporated = startup?.incorporationDetails?.isIncorporated ?? false;
 
   if (!isIncorporated) {
       return (
@@ -71,7 +71,7 @@ export default function CapTablePage() {
 
   return (
     <div className="space-y-6">
-        <CapTableForm startupId={startup.id} initialData={startup.capTable} />
+        <CapTableForm startupId={startup.id} initialData={startup.capTable ?? []} />
     </div>
   );
 }

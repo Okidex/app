@@ -2,7 +2,7 @@
 import { buffer } from 'micro';
 import Stripe from 'stripe';
 import { stripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe/config';
-import { getDb } from '@/lib/firebase-server-init';
+import { db } from '@/lib/firebase-server-init';
 
 export const config = {
   api: {
@@ -12,6 +12,7 @@ export const config = {
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
     return res.status(405).send('Method Not Allowed');
   }
 
@@ -27,27 +28,68 @@ export default async function handler(req: any, res: any) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.firebaseUID;
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.firebaseUID;
+      const plan = session.metadata?.plan || 'monthly';
+      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+      const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
-    if (userId) {
-      try {
-        const db = getDb();
-        await db.collection('users').doc(userId).set({
-          profile: {
-            stripe: {
-              subscriptionStatus: 'active',
-              plan: session.metadata?.plan || 'monthly',
-              lastUpdated: new Date().toISOString()
+      if (userId && customerId && subscriptionId) {
+        try {
+          await db.collection('users').doc(userId).set({
+            profile: {
+              isPremium: true,
+              stripe: {
+                customerId,
+                subscriptionId,
+                plan,
+                status: 'active',
+              }
             }
-          }
-        }, { merge: true });
-        console.log(`✅ Updated subscription for user: ${userId}`);
-      } catch (error) {
-        console.error('Error updating user subscription:', error);
+          }, { merge: true });
+          console.log(`✅ Activated subscription for user: ${userId}`);
+        } catch (error) {
+          console.error('Error updating user subscription:', error);
+        }
       }
+      break;
     }
+    case 'customer.subscription.deleted':
+    case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
+        
+        const usersRef = db.collection('users');
+        const q = usersRef.where('profile.stripe.customerId', '==', customerId).limit(1);
+        const snapshot = await q.get();
+
+        if (!snapshot.empty) {
+            const userDoc = snapshot.docs[0];
+            const newStatus = subscription.status;
+            const isPremium = newStatus === 'active' || newStatus === 'trialing';
+
+            try {
+                await userDoc.ref.set({
+                    profile: {
+                        isPremium: isPremium,
+                        stripe: {
+                            subscriptionId: subscription.id,
+                            status: newStatus,
+                        }
+                    }
+                }, { merge: true });
+                 console.log(`✅ Updated subscription status to "${newStatus}" for user: ${userDoc.id}`);
+            } catch(error) {
+                console.error(`Error updating subscription status for user ${userDoc.id}:`, error);
+            }
+        }
+        break;
+    }
+    default:
+      console.log(`Unhandled event type ${event.type}`);
   }
 
   res.json({ received: true });

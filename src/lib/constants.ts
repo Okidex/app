@@ -11,3 +11,11 @@ export const founderObjectives: { id: FounderObjective, label: string }[] = [
     { id: 'lookingForMentorship', label: 'Looking for Mentorship' },
     { id: 'lookingToHire', label: 'Looking to Hire' },
 ];
+
+export const investorSeekingOptions: { id: string; label: string }[] = [
+    { id: 'mentoring', label: 'Open to Mentoring' },
+    { id: 'networking', label: 'Open to Networking' },
+    { id: 'fundDeployment', label: 'Fund deployment' },
+    { id: 'fundraising', label: 'Fundraising' },
+    { id: 'hiring', label: 'Hiring' },
+];

@@ -6,53 +6,71 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     
-    // Check existing data for participation
+    // FETCH THE SEARCHER'S DATA
+    function getSearcher() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // ROLE-BASED VISIBILITY (Refactored to avoid 'let' and nested function issues)
+    function canSearchUser(targetData) {
+      return (getSearcher().role == 'talent' && (
+        targetData.role == 'founder' ||
+        (targetData.role == 'investor' && targetData.isHiring == true) ||
+        (targetData.role == 'talent' && getSearcher().isLookingForCoFounder == true && targetData.isLookingForCoFounder == true)
+      )) ||
+      (getSearcher().role == 'founder' && (
+        targetData.role == 'talent' ||
+        (targetData.role == 'founder' && getSearcher().isLookingForCoFounder == true && targetData.isLookingForCoFounder == true)
+      )) ||
+      (getSearcher().role == 'investor' && (
+        targetData.role == 'investor' ||
+        targetData.role == 'talent' ||
+        (targetData.role == 'founder' && targetData.okiPlusActive == true)
+      ));
+    }
+    
     function isParticipant() {
       return isSignedIn() && request.auth.uid in resource.data.participantIds;
     }
-    // Check incoming data for participation (crucial for creation/updates)
     function willBeParticipant() {
       return isSignedIn() && request.auth.uid in request.resource.data.participantIds;
     }
 
     // --- USERS & SEARCHABLE PROFILES ---
     match /users/{userId} {
-      allow read: if isSignedIn();
       allow create, update: if isOwner(userId);
-      allow delete: if false; // Safer to disable deletion or handle via Admin SDK
+      allow delete: if false;
+
+      allow read: if isSignedIn() && (
+        isOwner(userId) || canSearchUser(resource.data)
+      );
     }
     
     match /user_profiles/{profileId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // --- NOTIFICATIONS ---
     match /notifications/{notificationId} {
-      // resource.data check ensures users can only query their own notifications
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
     
     // --- MESSAGING & CONVERSATIONS ---
     match /conversations/{conversationId} {
-      // willBeParticipant allows a user to add themselves to a conversation or create one
       allow read: if isParticipant();
       allow create: if willBeParticipant();
       allow update: if isParticipant() || willBeParticipant();
 
       match /messages/{messageId} {
-        // Efficiency note: get() calls inside rules incur a read cost.
         allow read, write: if isSignedIn() &&
           request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }
     }
 
-    // --- MATCHES ---
+    // --- MATCHES (FIXED: Added support for array-contains queries) ---
     match /matches/{matchId} {
-      allow read: if isParticipant();
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if willBeParticipant();
       allow update: if isParticipant() || willBeParticipant();
       
@@ -65,7 +83,6 @@ service cloud.firestore {
     // --- DISCOVERY COLLECTIONS ---
     match /startups/{startupId} {
       allow read: if isSignedIn();
-      // Split write into create/update to handle resource vs request.resource
       allow create: if isSignedIn() && request.auth.uid in request.resource.data.founderIds;
       allow update: if isSignedIn() && (
         request.auth.uid in resource.data.founderIds ||
@@ -91,7 +108,7 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // --- GLOBAL FALLBACK & SHARED COLLECTIONS ---
+    // --- GLOBAL FALLBACK ---
     match /{collection}/{docId} {
       allow read: if collection in [
         'job_postings',

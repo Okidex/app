@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -14,48 +15,87 @@ import { FounderProfile } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { logout, deleteCurrentUserAccount } from "@/lib/auth-actions";
-
+import { deleteUser, createSession } from "@/lib/auth-actions";
 
 export default function SettingsClient() {
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
+  const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
-  const handleSaveChanges = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveChanges = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast({
-      title: "Settings Saved",
-      description: "Your login and security settings have been updated.",
-    });
+    setIsSaving(true);
+    console.log('[DEBUGGER-CLIENT] Starting profile save...');
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const payload = { email };
+    console.log('[DEBUGGER-CLIENT] Submitting payload:', payload);
+
+    try {
+        const response = await fetch('/api/profile/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+        console.log('[DEBUGGER-CLIENT] Received result from /api/profile/update:', result);
+        
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || "An unexpected error occurred.");
+        }
+        
+        toast({
+            title: "Settings Saved",
+            description: "Your profile has been updated.",
+        });
+    } catch (error: any) {
+        console.error('[DEBUGGER-CLIENT] Save failed:', error);
+        toast({
+            title: "Save Failed",
+            description: error.message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSaving(false);
+    }
   };
   
   const handleDeleteAccount = async () => {
-    setIsDeleting(true);
     if (!user) {
-        toast({ title: "Error", description: "Could not delete account. User not found.", variant: "destructive" });
-        setIsDeleting(false);
+        toast({ title: "Error", description: "User not found.", variant: "destructive" });
         return;
     }
 
-    const result = await deleteCurrentUserAccount(user.id, user.role, (user.profile as FounderProfile)?.companyId);
-    
-    setIsDeleting(false);
+    setIsDeleting(true);
 
-    if (result.success) {
-        toast({
-            title: "Account Deleted",
-            description: "Your account and all associated data have been permanently deleted.",
-        });
-        await logout();
-        router.push('/register');
-    } else {
+    try {
+        const companyId = user.role === 'founder' ? (user.profile as FounderProfile)?.companyId : undefined;
+        
+        const result = await deleteUser(user.id, user.role, window.location.origin, companyId);
+        
+        if (result.success) {
+            toast({
+                title: "Account Deleted",
+                description: "Your data has been permanently removed.",
+            });
+            // This needs to be a full page redirect to clear the session
+            window.location.assign('/register');
+        } else {
+            throw new Error(result.error || "An unexpected error occurred.");
+        }
+    } catch (error: any) {
         toast({
             title: "Error Deleting Account",
-            description: result.error || "An unexpected error occurred.",
+            description: error.message,
             variant: "destructive",
         });
+    } finally {
+        setIsDeleting(false);
     }
   };
 
@@ -69,7 +109,7 @@ export default function SettingsClient() {
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-64 w-full" />
         </div>
-    )
+    );
   }
   
   const isFounder = user.role === 'founder';
@@ -89,7 +129,7 @@ export default function SettingsClient() {
               <CardDescription>
                 {isPremiumFounder 
                     ? "You are an Oki+ member. Manage your subscription and payment details."
-                    : "Upgrade to Oki+ to unlock premium features and accelerate your startup's growth."
+                    : "Upgrade to Oki+ to unlock premium features."
                 }
               </CardDescription>
             </CardHeader>
@@ -104,31 +144,23 @@ export default function SettingsClient() {
         </Card>
       )}
 
-
        <Card>
         <form onSubmit={handleSaveChanges}>
           <CardHeader>
             <CardTitle>Login & Security</CardTitle>
-            <CardDescription>
-              Update your email and password.
-            </CardDescription>
+            <CardDescription>Update your contact email.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" defaultValue={user.email} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input id="current-password" type="password" />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
-              <Input id="new-password" type="password" />
+              <Input id="email" name="email" type="email" defaultValue={user.email} />
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
           </CardFooter>
         </form>
       </Card>
@@ -136,17 +168,10 @@ export default function SettingsClient() {
       <Card>
         <CardHeader>
           <CardTitle>Legal Agreements</CardTitle>
-          <CardDescription>
-            Below are the terms and policies that govern your use of Okidex.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <Link href="/legal/user-agreement" target="_blank" className={cn(buttonVariants({ variant: "outline" }), "w-full justify-between")}>
                 Okidex User Agreement
-                <ExternalLink className="w-4 h-4" />
-            </Link>
-            <Link href="/legal/privacy-policy" target="_blank" className={cn(buttonVariants({ variant: "outline" }), "w-full justify-between")}>
-                Okidex Privacy Policy
                 <ExternalLink className="w-4 h-4" />
             </Link>
         </CardContent>
@@ -155,9 +180,6 @@ export default function SettingsClient() {
        <Card className="border-destructive">
           <CardHeader>
             <CardTitle>Danger Zone</CardTitle>
-            <CardDescription>
-              These actions are permanent and cannot be undone.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <AlertDialog>
@@ -167,13 +189,11 @@ export default function SettingsClient() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete your account and remove your data from our servers.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>This will permanently delete your data.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting}>
+                        <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
                             {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isDeleting ? "Deleting..." : "Continue"}
                         </AlertDialogAction>

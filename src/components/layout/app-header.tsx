@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from "react";
@@ -15,26 +16,31 @@ import { Button } from "@/components/ui/button";
 import UserAvatar from "../shared/user-avatar";
 import Notifications from "./notifications";
 import { useUser, useAuth } from "@/firebase";
-import { logout as serverLogout } from "@/lib/auth-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { signOut } from "firebase/auth";
 import { getStartupById } from "@/lib/actions";
+import { deleteSession } from "@/lib/auth-actions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 // Use 'import type' for types to avoid bundling issues
-import type { FounderProfile } from "@/lib/types";
+import type { FounderProfile, InvestorProfile } from "@/lib/types";
 
 export default function AppHeader() {
   const { user, isUserLoading: loading } = useUser();
   const auth = useAuth();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
   
   const [startupName, setStartupName] = useState<string | null>(null);
+  const [investorCompanyName, setInvestorCompanyName] = useState<string | null>(null);
 
   // Memoized fetcher to prevent unnecessary re-renders
-  const fetchStartup = useCallback(async () => {
-    if (user?.role === 'founder' && user.profile) {
+  const fetchUserData = useCallback(async () => {
+    if (!user?.profile) return;
+    if (user.role === 'founder') {
         const companyId = (user.profile as FounderProfile).companyId;
         if (companyId) {
             const startupData = await getStartupById(companyId);
@@ -42,26 +48,40 @@ export default function AppHeader() {
                 setStartupName(startupData.companyName);
             }
         }
+    } else if (user.role === 'investor') {
+        const companyName = (user.profile as InvestorProfile).companyName;
+        if (companyName) {
+            setInvestorCompanyName(companyName);
+        }
     }
   }, [user]);
 
   useEffect(() => {
     if (!loading && user) {
-        fetchStartup();
+        fetchUserData();
     }
-  }, [user, loading, fetchStartup]);
+  }, [user, loading, fetchUserData]);
 
   const handleLogout = async () => {
     if (!auth) return;
     
     startTransition(async () => {
       try {
-        await signOut(auth); // Clear Firebase Client SDK
-        await serverLogout(); // Clear Next.js Session Cookie
-        router.refresh();    // Refresh server components
-        router.push("/");    // Redirect
-      } catch (error) {
+        await deleteSession(window.location.origin); // Clear server session first.
+        await signOut(auth); // Then clear client state.
+        
+        // Force a full page reload to the homepage to ensure all state is cleared.
+        if (typeof window !== "undefined") {
+            window.location.assign("/");
+        }
+
+      } catch (error: any) {
         console.error("Logout failed:", error);
+        toast({
+            title: "Logout Failed",
+            description: error.message || "An unexpected error occurred.",
+            variant: "destructive"
+        });
       }
     });
   };
@@ -70,23 +90,25 @@ export default function AppHeader() {
     <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 sticky top-0 z-50">
       <SidebarTrigger />
       
-      <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        {/* User Identity Display */}
-        <div className="hidden md:flex items-center gap-2 text-sm ml-auto">
-          {loading ? (
-            <Skeleton className="h-4 w-32" />
-          ) : user ? (
-            <>
-              <span className="font-semibold">{user.name}</span>
-              {startupName && (
-                <span className="text-muted-foreground italic">({startupName})</span>
-              )}
-            </>
-          ) : null}
-        </div>
+      {/* User Identity Display */}
+      <div className="flex items-center gap-2 text-sm">
+        {loading ? (
+          <Skeleton className="h-4 w-32" />
+        ) : user ? (
+          <>
+            <span className="font-semibold">{user.name}</span>
+            {user.role === 'founder' && startupName && (
+              <span className="text-muted-foreground italic">({startupName})</span>
+            )}
+            {user.role === 'investor' && investorCompanyName && (
+              <span className="text-muted-foreground italic">({investorCompanyName})</span>
+            )}
+          </>
+        ) : null}
+      </div>
 
-        {/* Action Area */}
-        <div className="flex items-center gap-2">
+      {/* Action Area */}
+      <div className="flex items-center gap-2 ml-auto">
           {loading || isPending ? (
               <Skeleton className="h-8 w-8 rounded-full" />
           ) : user ? (
@@ -143,7 +165,6 @@ export default function AppHeader() {
               <Link href="/login">Log In</Link>
             </Button>
           )}
-        </div>
       </div>
     </header>
   );
