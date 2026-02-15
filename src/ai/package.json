@@ -1,28 +1,19 @@
 {
   "name": "okidex-ai",
   "version": "1.0.0",
-  "description": "Okidex Investment Match AI Logic",
   "main": "index.js",
   "type": "module",
   "engines": {
     "node": "22"
   },
   "scripts": {
+    "build": "echo 'No build step needed'",
     "dev": "firebase emulators:start",
-    "deploy": "firebase deploy --only functions",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "deploy": "firebase deploy --only functions:ai-logic"
   },
-  "keywords": [
-    "firebase",
-    "genkit",
-    "ai",
-    "nextjs"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "firebase-admin": "^13.0.1",
-    "firebase-functions": "^7.0.1",
+    "firebase-functions": "^6.3.1",
     "genkit": "1.28.0",
     "@genkit-ai/google-genai": "1.28.0"
   }
