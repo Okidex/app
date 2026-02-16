@@ -9,27 +9,25 @@ permissions:
 
 jobs:
   build_and_preview:
-    if: '${{ github.event.pull_request.head.repo.full_name == github.repository }}'
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: [actions/checkout@v4](https://github.com)
+        uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: [actions/setup-node@v4](https://github.com)
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
-        # Added --prefer-offline to speed up the runner
         run: npm install --legacy-peer-deps --prefer-offline
 
       - name: Build Application
-        # We build manually first to catch TypeScript/Lint errors early
+        # Verified: Catches TypeScript and Lint errors before deployment starts
         run: npm run build
         env:
-          # Use the original secret directly if possible, or the base64 string
           FIREBASE_SERVICE_ACCOUNT_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -41,14 +39,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Deploy Preview to Firebase
-        uses: [FirebaseExtended/action-hosting-deploy@v0](https://github.com)
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: studio-8509111427-a45a7
           channelId: pr-${{ github.event.number }}
         env:
-          # Crucial: Firebase CLI needs these to build the SSR production bundle
+          # Required for Next.js SSR build inside the Firebase CLI
           FIREBASE_CLI_EXPERIMENTS: webframeworks
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
