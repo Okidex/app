@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef } from "react";
@@ -11,6 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useStorage, useUser, useAuth } from "@/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getProfilePictureTags } from "@/lib/actions";
+
+// 1. Define the expected response type for the AI action
+interface TagResponse {
+  tags: string[];
+}
 
 interface ProfilePictureUploaderProps {
   initialAvatarUrl: string;
@@ -126,13 +130,16 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
     }
   };
 
+  // UPDATED: Added Type Casting for result
   const handleAutoTag = async () => {
     if (!previewUrl) return;
     setIsLoadingTags(true);
     try {
-        const result = await getProfilePictureTags({ photoDataUri: previewUrl });
-        setTags(result.tags);
+        // Cast the unknown result to TagResponse
+        const result = await getProfilePictureTags({ photoDataUri: previewUrl }) as TagResponse;
+        setTags(result.tags || []);
     } catch (error) {
+        console.error("Tagging error:", error);
         toast({ title: "Auto-tagging failed", variant: "destructive" });
     } finally {
         setIsLoadingTags(false);
@@ -152,7 +159,14 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
         onClick={() => fileInputRef.current?.click()}
       >
         {previewUrl ? (
-          <Image src={previewUrl} alt={initialName} width={128} height={128} className="rounded-full object-cover w-full h-full" />
+          <Image 
+            src={previewUrl} 
+            alt={initialName} 
+            width={128} 
+            height={128} 
+            className="rounded-full object-cover w-full h-full"
+            unoptimized={previewUrl.startsWith('data:')} // Optimization for data URIs
+          />
         ) : (
           <div className="text-center p-4">
             <UploadCloud className="mx-auto h-8 w-8 mb-1" />

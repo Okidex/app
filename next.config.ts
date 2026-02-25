@@ -2,51 +2,21 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // Turbopack is enabled via the CLI flag --turbo, but config can be extended here
-  turbopack: {},
-
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        // Added to support Google Profile pictures if using Google Auth
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+  turbopack: {
+    resolveAlias: {
+      // Conditional aliasing for browser environments
+      'fs': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'net': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'tls': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'dns': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'http2': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'child_process': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'readline': { browser: 'next/dist/compiled/browser-fs-noop' },
+      'zlib': { browser: 'next/dist/compiled/browser-fs-noop' },
+    },
   },
-  
-  webpack: (config, { isServer }) => {
-    // Fixes npm packages that depend on Node.js modules by telling webpack
-    // to stub them out for the client-side bundle.
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        child_process: false,
-        net: false,
-        tls: false,
-        dns: false,
-        readline: false,
-        perf_hooks: false,
-      };
-    }
-
-    return config;
-  },
+  // Ensure server-only packages aren't bundled for the client
+  serverExternalPackages: ['@grpc/grpc-js', '@grpc/proto-loader'],
 };
 
 export default nextConfig;

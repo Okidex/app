@@ -1,21 +1,51 @@
-
 'use server';
 
 import { db } from './firebase-server-init';
 import { toSerializable } from './serialize';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+// FIX: Ensure this points to your client-side firebase config (usually in src/firebase/index.ts)
+import { app as clientApp } from '../firebase';
 import type {
   FullUserProfile,
   Startup,
   FounderProfile
 } from './types';
 
+// =======================================================
+// FIREBASE FUNCTIONS (AI FLOWS)
+// =======================================================
+
+/**
+ * We call the AI Logic codebase via HTTPS Callable functions.
+ * This prevents Next.js from trying to bundle Node.js/Genkit libraries into the frontend.
+ */
+const getAiCallable = (name: string) => {
+    const functions = getFunctions(clientApp, 'us-central1');
+    return httpsCallable(functions, name);
+};
+
+export async function getFinancialBreakdown(input: any) {
+    const fn = getAiCallable('financialBreakdown');
+    const result = await fn(input);
+    return result.data;
+}
+
+export async function getProfilePictureTags(input: any) {
+    const fn = getAiCallable('profilePictureAutoTagging');
+    const result = await fn(input);
+    return result.data;
+}
+
+export async function getProfileFromLinkedIn(input: any) {
+    const fn = getAiCallable('populateProfileFromLinkedIn');
+    const result = await fn(input);
+    return result.data;
+}
 
 // =======================================================
-// EXPORTED ACTIONS
+// DATABASE ACTIONS
 // =======================================================
-
-// getSessionUser, createSession, deleteSession, deleteUser have been moved to auth-actions.ts
 
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
     try {
@@ -66,7 +96,6 @@ export async function getStartupById(id: string): Promise<Startup | null> {
 }
 
 export async function updateStartupData(id: string, data: Partial<Startup>) {
-    // This action needs auth, so it needs to import getSessionUser from auth-actions
     const { getSessionUser } = await import('./auth-actions');
     
     try {
@@ -92,7 +121,6 @@ export async function updateStartupData(id: string, data: Partial<Startup>) {
 }
 
 export async function sendMessage(conversationId: string, text: string) {
-    // This action needs auth, so it needs to import getSessionUser from auth-actions
     const { getSessionUser } = await import('./auth-actions');
     
     try {
@@ -144,20 +172,4 @@ export async function incrementProfileView(viewedUserId: string) {
     } catch (error) {
         return { success: false };
     }
-}
-
-// AI FLOWS
-export async function getFinancialBreakdown(input: any) {
-    const { financialBreakdown } = await import('@/ai/flows/financial-breakdown');
-    return await financialBreakdown(input);
-}
-
-export async function getProfilePictureTags(input: any) {
-    const { profilePictureAutoTagging } = await import('@/ai/flows/profile-picture-auto-tagging');
-    return await profilePictureAutoTagging(input);
-}
-
-export async function getProfileFromLinkedIn(input: any) {
-    const { populateProfileFromLinkedIn } = await import('@/ai/flows/linkedin-profile-populator');
-    return await populateProfileFromLinkedIn(input);
 }

@@ -1,6 +1,6 @@
-
 'use client';
 
+// Import only from web-safe paths
 import { initializeFirebase, getSdks } from './client-init';
 import {
   FirebaseProvider,
@@ -16,6 +16,15 @@ import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
 import { FirestorePermissionError } from './errors';
 import { errorEmitter } from './error-emitter';
+
+// Initialize and export direct SDK constants for use in components/actions
+// This ensures they are available to 'src/lib/actions.ts'
+const sdks = getSdks();
+
+export const app = sdks.app;
+export const auth = sdks.auth;
+export const db = sdks.db;
+export const storage = sdks.storage;
 
 export {
   // client-init
