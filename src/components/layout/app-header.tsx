@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from "react";
@@ -24,7 +23,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-// Use 'import type' for types to avoid bundling issues
 import type { FounderProfile, InvestorProfile } from "@/lib/types";
 
 export default function AppHeader() {
@@ -37,7 +35,6 @@ export default function AppHeader() {
   const [startupName, setStartupName] = useState<string | null>(null);
   const [investorCompanyName, setInvestorCompanyName] = useState<string | null>(null);
 
-  // Memoized fetcher to prevent unnecessary re-renders
   const fetchUserData = useCallback(async () => {
     if (!user?.profile) return;
     if (user.role === 'founder') {
@@ -67,14 +64,10 @@ export default function AppHeader() {
     
     startTransition(async () => {
       try {
-        await deleteSession(window.location.origin); // Clear server session first.
-        await signOut(auth); // Then clear client state.
+        await deleteSession(); // Direct cookie clearing action
+        await signOut(auth);
         
-        // Force a full page reload to the homepage to ensure all state is cleared.
-        if (typeof window !== "undefined") {
-            window.location.assign("/");
-        }
-
+        window.location.assign("/");
       } catch (error: any) {
         console.error("Logout failed:", error);
         toast({
@@ -90,7 +83,6 @@ export default function AppHeader() {
     <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 sticky top-0 z-50">
       <SidebarTrigger />
       
-      {/* User Identity Display */}
       <div className="flex items-center gap-2 text-sm">
         {loading ? (
           <Skeleton className="h-4 w-32" />
@@ -107,7 +99,6 @@ export default function AppHeader() {
         ) : null}
       </div>
 
-      {/* Action Area */}
       <div className="flex items-center gap-2 ml-auto">
           {loading || isPending ? (
               <Skeleton className="h-8 w-8 rounded-full" />
@@ -117,9 +108,9 @@ export default function AppHeader() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 overflow-hidden border">
-                    <UserAvatar 
-                      name={user.name || "User"} 
-                      avatarUrl={user.avatarUrl || ""} 
+                    <UserAvatar
+                      name={user.name || "User"}
+                      avatarUrl={user.avatarUrl || ""}
                       className="h-full w-full"
                     />
                   </Button>
@@ -151,7 +142,7 @@ export default function AppHeader() {
                     <Link href="/feedback" className="cursor-pointer">Support</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={handleLogout}
                     className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
                   >

@@ -3,14 +3,14 @@
 
 import { useState, useEffect } from "react";
 import { FullUserProfile, Startup, FounderProfile, InvestorProfile, TalentProfile, PortfolioCompany, Exit, TalentSubRole } from "@/lib/types";
-import { getStartupById } from "@/lib/actions";
-import { useUser } from "@/firebase";
+import { getStartupById, sendConnectionRequest, getOrCreateConversation } from "@/lib/actions";
+import { useUser, useAuth } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Building, DollarSign, GitBranch, GraduationCap, Link as LinkIcon, Linkedin, Lightbulb, MapPin, Target, TrendingUp, Users, Globe } from "lucide-react";
+import { Briefcase, Building, DollarSign, GitBranch, GraduationCap, Link as LinkIcon, Linkedin, Lightbulb, MapPin, Target, TrendingUp, Users, Globe, Loader2 } from "lucide-react";
 import Image from "next/image";
 import FundraisingProgressCard from "@/components/profile/fundraising-progress-card";
 import LockedFinancialsCard from "@/components/profile/locked-financials-card";
@@ -18,6 +18,8 @@ import CapTableCard from "@/components/profile/cap-table-card";
 import { founderObjectives } from "@/lib/constants";
 import AddFinancialsPrompt from "@/components/profile/add-financials-prompt";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 
 // --- Helper Components ---
@@ -41,7 +43,7 @@ const PortfolioCard = ({ company }: { company: PortfolioCompany }) => (
         <div>
             <p className="font-semibold">{company.companyName}</p>
             <a href={company.companyUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:underline flex items-center gap-1.5">
-                <LinkIcon className="h-3 w-3" />
+                <LinkIcon className="h-3.5 w-3.5" />
                 {company.companyUrl}
             </a>
         </div>
@@ -56,7 +58,7 @@ const ExitCard = ({ exit }: { exit: Exit }) => (
         <div>
             <p className="font-semibold">{exit.companyName}</p>
             <a href={exit.companyUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:underline flex items-center gap-1.5">
-                <LinkIcon className="h-3 w-3" />
+                <LinkIcon className="h-3.5 w-3.5" />
                 {exit.companyUrl}
             </a>
         </div>
@@ -118,7 +120,7 @@ const InvestorProfileDetails = ({ user }: { user: FullUserProfile }) => {
         <div className="space-y-8">
             {profile.about && <ProfileSection title="About" icon={Users}><p>{profile.about}</p></ProfileSection>}
             {profile.thesis && <ProfileSection title="Investment Thesis" icon={Lightbulb}><p>{profile.thesis}</p></ProfileSection>}
-            {profile.portfolio?.length > 0 && (
+            {profile.portfolio && profile.portfolio.length > 0 && (
                  <Card>
                     <CardHeader><CardTitle className="text-xl">Portfolio</CardTitle></CardHeader>
                     <CardContent className="grid md:grid-cols-2 gap-4">
@@ -126,7 +128,7 @@ const InvestorProfileDetails = ({ user }: { user: FullUserProfile }) => {
                     </CardContent>
                 </Card>
             )}
-            {profile.exits?.length > 0 && (
+            {profile.exits && profile.exits.length > 0 && (
                 <Card>
                     <CardHeader><CardTitle className="text-xl">Exits</CardTitle></CardHeader>
                     <CardContent className="grid md:grid-cols-2 gap-4">
@@ -222,7 +224,7 @@ const InvestorSidebarDetails = ({ profile }: { profile: InvestorProfile }) => (
         <Card>
             <CardHeader><CardTitle className="text-lg">Investment Focus</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-                 {profile.investmentInterests?.length > 0 && (
+                 {profile.investmentInterests && profile.investmentInterests.length > 0 && (
                     <div>
                         <h4 className="font-semibold text-sm mb-2">Industries</h4>
                         <div className="flex flex-wrap gap-2">
@@ -312,6 +314,12 @@ const TalentSidebarDetails = ({ profile }: { profile: TalentProfile }) => (
 // THE MAIN EXPORT
 export default function UserProfileClient({ initialUser }: { initialUser: FullUserProfile }) {
     const { user: currentUser } = useUser();
+    const auth = useAuth();
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [isMessaging, setIsMessaging] = useState(false);
+    const router = useRouter();
+    const { toast } = useToast();
+
     const isOwner = currentUser?.id === initialUser.id;
     
     const getHeadline = () => {
@@ -334,6 +342,57 @@ export default function UserProfileClient({ initialUser }: { initialUser: FullUs
         }
     }
 
+    const handleConnect = async () => {
+        console.log('[DEBUG-UI] handleConnect clicked for target:', initialUser.id);
+        setIsConnecting(true);
+        try {
+            const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            const res = await sendConnectionRequest(initialUser.id, idToken);
+            console.log('[DEBUG-UI] handleConnect: action result:', res);
+            if (res.success) {
+                toast({
+                    title: "Connection Request Sent",
+                    description: `You've expressed interest in connecting with ${initialUser.name}.`,
+                });
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (error: any) {
+            console.error('[DEBUG-UI] handleConnect: error occurred:', error.message);
+            toast({
+                title: "Error",
+                description: error.message || "Failed to send connection request.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsConnecting(false);
+        }
+    };
+
+    const handleMessage = async () => {
+        console.log('[DEBUG-UI] handleMessage clicked for target:', initialUser.id);
+        setIsMessaging(true);
+        try {
+            const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            const res = await getOrCreateConversation(initialUser.id, idToken);
+            console.log('[DEBUG-UI] handleMessage: action result:', res);
+            if (res.success) {
+                router.push(`/messages?id=${res.conversationId}`);
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (error: any) {
+            console.error('[DEBUG-UI] handleMessage: error occurred:', error.message);
+            toast({
+                title: "Error",
+                description: error.message || "Failed to start conversation.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsMessaging(false);
+        }
+    };
+
     return (
         <div className="container max-w-6xl py-10 space-y-8">
              <div className="flex flex-col md:flex-row items-start gap-8">
@@ -344,13 +403,19 @@ export default function UserProfileClient({ initialUser }: { initialUser: FullUs
                     <div className="mt-6 flex gap-2">
                         {currentUser?.id !== initialUser.id && (
                            <>
-                            <Button>Connect</Button>
-                            <Button variant="outline">Message</Button>
+                            <Button onClick={handleConnect} disabled={isConnecting}>
+                                {isConnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Connect
+                            </Button>
+                            <Button variant="outline" onClick={handleMessage} disabled={isMessaging}>
+                                {isMessaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Message
+                            </Button>
                            </>
                         )}
                          {currentUser?.id === initialUser.id && (
                             <Button asChild>
-                                <a href="/profile/edit">Edit Profile</a>
+                                <Link href="/profile/edit">Edit Profile</Link>
                             </Button>
                         )}
                     </div>

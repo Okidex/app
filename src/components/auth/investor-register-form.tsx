@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -113,16 +112,14 @@ export default function InvestorRegisterFormClient() {
         });
 
         const idToken = await user.getIdToken();
-        const sessionResult = await createSession(idToken, window.location.origin);
+        const sessionResult = await createSession(idToken);
 
         if (!sessionResult.success) {
-          throw new Error(sessionResult.error || "Failed to create server session after registration.");
+          throw new Error(sessionResult.error || "Failed to create server session.");
         }
 
         sessionStorage.removeItem('registrationDetails');
-        if (typeof window !== "undefined") {
-          window.location.assign("/dashboard");
-        }
+        window.location.assign("/dashboard");
 
     } catch(error: any) {
         toast({

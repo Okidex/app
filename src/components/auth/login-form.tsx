@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect } from "react"; // ✅ Added useEffect
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -35,13 +34,12 @@ const resetSchema = z.object({
 export default function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [mounted, setMounted] = useState(false); // ✅ Added for hydration fix
+  const [mounted, setMounted] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const auth = useAuth();
 
-  // ✅ Fix hydration by only rendering once mounted on client
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -61,7 +59,6 @@ export default function LoginForm() {
     },
   });
 
-  // Prevents the "Tree Hydrated" mismatch error by returning null during SSR
   if (!mounted) return null;
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
@@ -79,8 +76,8 @@ export default function LoginForm() {
       // 2. Get ID token
       const idToken = await userCredential.user.getIdToken();
 
-      // 3. POST to server to create session cookie via Server Action
-      const sessionResult = await createSession(idToken, window.location.origin);
+      // 3. Set session cookie via Server Action
+      const sessionResult = await createSession(idToken);
 
       if (!sessionResult.success) {
         throw new Error(sessionResult.error || "Failed to create server session.");
@@ -88,10 +85,8 @@ export default function LoginForm() {
       
       toast({ title: "Login Successful", description: "Redirecting..." });
 
-      // 4. Redirect on success using a full page load to ensure cookie is sent
-      if (typeof window !== "undefined") {
-        window.location.assign("/dashboard");
-      }
+      // 4. Redirect on success using a full page load to ensure cookie is active
+      window.location.assign("/dashboard");
       
     } catch(error: any) {
        setIsLoggingIn(false);

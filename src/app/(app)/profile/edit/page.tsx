@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,7 +18,7 @@ import { Startup } from "@/lib/types";
 // A simple skeleton loader for the page
 function SkeletonLoader() {
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-6">
             <Skeleton className="h-48 w-full rounded-lg" />
             <Skeleton className="h-48 w-full rounded-lg" />
             <Skeleton className="h-10 w-32 rounded-lg" />
@@ -43,9 +42,14 @@ export default function GeneralProfileEditPage() {
     async function fetchStartupData() {
         if (isFounder && (user?.profile as any)?.companyId) {
             setLoadingStartup(true);
-            const startupData = await getStartupById((user.profile as any).companyId);
-            setStartup(startupData);
-            setLoadingStartup(false);
+            try {
+                const startupData = await getStartupById((user.profile as any).companyId);
+                setStartup(startupData);
+            } catch (err) {
+                console.error("Failed to fetch startup:", err);
+            } finally {
+                setLoadingStartup(false);
+            }
         } else {
             setLoadingStartup(false);
         }
@@ -93,7 +97,7 @@ export default function GeneralProfileEditPage() {
         companyName: formData.get("companyName"),
         investorType: formData.get("investorType"),
         about: formData.get("about"),
-        investmentInterests: (formData.get("interests") as string).split(",").map(s => s.trim()),
+        investmentInterests: (formData.get("interests") as string || "").split(",").map(s => s.trim()),
         isHiring: formData.get("isHiring") === "on",
       };
     }
@@ -102,7 +106,7 @@ export default function GeneralProfileEditPage() {
       payload.profile = {
         ...payload.profile,
         headline: formData.get("headline"),
-        skills: (formData.get("skills") as string).split(",").map(s => s.trim()),
+        skills: (formData.get("skills") as string || "").split(",").map(s => s.trim()),
         experience: formData.get("experience"),
       };
     }
@@ -127,7 +131,9 @@ export default function GeneralProfileEditPage() {
       }
       
       toast({ title: "Profile Updated" });
-      refreshUser();
+      
+      // FIXED: Added optional chaining to resolve the Type Error
+      refreshUser?.();
 
     } catch (error: any) {
       toast({ title: "Save Failed", description: error.message, variant: "destructive" });
@@ -139,76 +145,77 @@ export default function GeneralProfileEditPage() {
   if (isUserLoading || !user || (isFounder && loadingStartup)) return <SkeletonLoader />;
 
   return (
-    <form onSubmit={handleGeneralInfoSubmit} className="space-y-8">
-      <Card>
-        <CardHeader><CardTitle>Core Profile</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-           <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <Label>Full Name</Label>
-                <Input name="name" defaultValue={user.name} />
-             </div>
-             {isFounder && (
-               <div className="space-y-2">
-                  <Label>Your Title</Label>
-                  <Input name="title" defaultValue={(user.profile as any)?.title || ''} />
-               </div>
-             )}
-           </div>
-           <div className="space-y-2">
-              <Label>Bio / About</Label>
-              <Textarea name="about" defaultValue={(user.profile as any)?.about || ''} />
-           </div>
-        </CardContent>
-      </Card>
-
-      {isFounder && (
+    <div className="container max-w-4xl py-10">
+        <form onSubmit={handleGeneralInfoSubmit} className="space-y-8">
         <Card>
-          <CardHeader>
-            <CardTitle>Startup Details</CardTitle>
-            <CardDescription>This information is about your company.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-             <div className="grid grid-cols-2 gap-4">
+            <CardHeader><CardTitle>Core Profile</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Company Name</Label>
-                    <Input name="companyName" defaultValue={startup?.companyName || ''} />
+                    <Label>Full Name</Label>
+                    <Input name="name" defaultValue={user.name} />
                 </div>
+                {isFounder && (
                 <div className="space-y-2">
-                    <Label>Industry</Label>
-                    <Input name="industry" defaultValue={startup?.industry || ''} />
+                    <Label>Your Title</Label>
+                    <Input name="title" defaultValue={(user.profile as any)?.title || ''} />
                 </div>
-             </div>
-             <div className="space-y-2">
-                <Label>Website</Label>
-                <Input name="website" type="url" defaultValue={startup?.website || ''} />
-             </div>
-             <div className="space-y-2">
-                <Label>Company Description</Label>
-                <Textarea name="description" defaultValue={startup?.description || ''} />
-             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {isFounder && (
-          <Card>
-            <CardHeader><CardTitle>Your Objectives</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-            {founderObjectives.map(obj => (
-                <div key={obj.id} className="flex items-center space-x-2">
-                <Checkbox id={`obj-${obj.id}`} name={`obj-${obj.id}`} defaultChecked={(user.profile as any)?.objectives?.includes(obj.id)} />
-                <Label htmlFor={`obj-${obj.id}`} className="font-normal">{obj.label}</Label>
-                </div>
-            ))}
+                )}
+            </div>
+            <div className="space-y-2">
+                <Label>Bio / About</Label>
+                <Textarea name="about" defaultValue={(user.profile as any)?.about || ''} />
+            </div>
             </CardContent>
         </Card>
-      )}
 
+        {isFounder && (
+            <Card>
+            <CardHeader>
+                <CardTitle>Startup Details</CardTitle>
+                <CardDescription>This information is about your company.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Company Name</Label>
+                        <Input name="companyName" defaultValue={startup?.companyName || ''} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Industry</Label>
+                        <Input name="industry" defaultValue={startup?.industry || ''} />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label>Website</Label>
+                    <Input name="website" type="url" defaultValue={startup?.website || ''} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Company Description</Label>
+                    <Textarea name="description" defaultValue={startup?.description || ''} />
+                </div>
+            </CardContent>
+            </Card>
+        )}
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? <Loader2 className="animate-spin" /> : "Save Changes"}
-      </Button>
-    </form>
+        {isFounder && (
+            <Card>
+                <CardHeader><CardTitle>Your Objectives</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-2 gap-2">
+                {founderObjectives.map(obj => (
+                    <div key={obj.id} className="flex items-center space-x-2">
+                    <Checkbox id={`obj-${obj.id}`} name={`obj-${obj.id}`} defaultChecked={(user.profile as any)?.objectives?.includes(obj.id)} />
+                    <Label htmlFor={`obj-${obj.id}`} className="font-normal">{obj.label}</Label>
+                    </div>
+                ))}
+                </CardContent>
+            </Card>
+        )}
+
+        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+        </Button>
+        </form>
+    </div>
   );
 }

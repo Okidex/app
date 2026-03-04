@@ -2,7 +2,7 @@
 
 import React, { useMemo, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
-import { initializeFirebase } from '@/firebase/client-init';
+import { initializeFirebase } from '@/firebase'; // Ensure this is the correct index path
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -10,16 +10,17 @@ interface FirebaseClientProviderProps {
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
+    // This returns { app, auth, db, storage }
     return initializeFirebase();
   }, []); 
 
   return (
     <FirebaseProvider
-      // Updated keys to match the 'initializeFirebase' return type
+      // Map 'app' to 'firebaseApp'
       firebaseApp={firebaseServices.app} 
       auth={firebaseServices.auth}
-      firestore={firebaseServices.db} 
+      // Map 'db' to 'firestore'
+      firestore={firebaseServices.db}
       storage={firebaseServices.storage}
     >
       {children}

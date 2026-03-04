@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -13,9 +12,13 @@ import { collection, query, where, getDocs, onSnapshot, orderBy } from "firebase
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 export default function MessagesClientContent() {
     const { user: currentUser, isUserLoading: authLoading } = useUser();
+    const searchParams = useSearchParams();
+    const idFromUrl = searchParams?.get('id');
+
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeMessages, setActiveMessages] = useState<Message[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -56,17 +59,24 @@ export default function MessagesClientContent() {
                 });
                 
                 setConversations(populatedConvos);
-                if (populatedConvos.length > 0 && !activeConversationId) {
+                
+                // Set active conversation: prefer URL param, then first convo
+                if (idFromUrl && populatedConvos.some(c => c.id === idFromUrl)) {
+                    setActiveConversationId(idFromUrl);
+                } else if (populatedConvos.length > 0 && !activeConversationId) {
                     setActiveConversationId(populatedConvos[0].id);
                 }
             } else {
                 setConversations([]);
             }
             setLoading(false);
+        }, (error) => {
+            console.error("Error loading conversations:", error);
+            setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [conversationsQuery, currentUser, db, authLoading, activeConversationId]);
+    }, [conversationsQuery, currentUser, db, authLoading, activeConversationId, idFromUrl]);
 
     // 2. Listen for Messages in Sub-collection (Real-time updates)
     useEffect(() => {
@@ -83,7 +93,6 @@ export default function MessagesClientContent() {
                 return {
                     id: doc.id,
                     ...data,
-                    // Handle Firestore Timestamp to ISO string for the UI
                     timestamp: data.timestamp?.toDate?.()?.toISOString() || new Date().toISOString()
                 } as Message;
             });
@@ -101,7 +110,6 @@ export default function MessagesClientContent() {
         setNewMessage("");
         setIsSending(true);
 
-        // Server Action: Uses 'text' string directly
         const result = await sendMessage(activeConversationId, textToSend);
 
         if (!result.success) {
@@ -119,7 +127,12 @@ export default function MessagesClientContent() {
     if (!currentUser) return <div className="flex items-center justify-center h-full">Log in to view messages.</div>;
     
     const activeConversation = conversations.find(c => c.id === activeConversationId);
-    if (conversations.length === 0) return <div className="flex items-center justify-center h-full">No conversations yet.</div>;
+    if (conversations.length === 0) return <div className="flex items-center justify-center h-full flex-col gap-4">
+        <p className="text-muted-foreground">No conversations yet.</p>
+        <Button asChild variant="outline">
+            <Link href="/search">Find people to connect with</Link>
+        </Button>
+    </div>;
     
     const otherParticipant = activeConversation?.participants?.find(p => p.id !== currentUser.id);
 
@@ -156,8 +169,14 @@ export default function MessagesClientContent() {
             <div className="flex-1 flex flex-col pl-4">
                 {activeConversation && otherParticipant ? (
                     <>
-                        <div className="border-b pb-2 mb-4">
-                            <h2 className="font-bold text-lg">{otherParticipant.name}</h2>
+                        <div className="border-b pb-2 mb-4 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <UserAvatar name={otherParticipant.name} avatarUrl={otherParticipant.avatarUrl} className="h-8 w-8" />
+                                <h2 className="font-bold text-lg">{otherParticipant.name}</h2>
+                            </div>
+                            <Button asChild variant="ghost" size="sm">
+                                <Link href={`/users/${otherParticipant.id}`}>View Profile</Link>
+                            </Button>
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-4 p-4">
                             {activeMessages.map((msg) => (
@@ -210,3 +229,5 @@ function MessagesSkeleton() {
         </div>
     );
 }
+
+import Link from "next/link";

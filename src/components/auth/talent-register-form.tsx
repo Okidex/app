@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -22,12 +21,10 @@ export default function TalentRegisterFormClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   
-  // 2025 Build-Safety: Initialize hooks but guard their usage
   const auth = useAuth();
   const firestore = useFirestore();
 
   useEffect(() => {
-    // Only run session check in the browser
     if (typeof window !== "undefined") {
       if (!sessionStorage.getItem('registrationDetails')) {
         router.push('/register');
@@ -35,32 +32,9 @@ export default function TalentRegisterFormClient() {
     }
   }, [router]);
 
-  /**
-   * DEBUGGER SCRIPT: Detailed Error Reporting
-   */
-  const executeDebuggableWrite = async (docRef: any, data: any, currentUser: any) => {
-    // Guard: Prevent execution during Next.js prerendering
-    if (typeof window === "undefined" || !firestore) return;
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800)); 
-      await setDoc(docRef, data, { merge: true });
-    } catch (error: any) {
-      console.error("[DEBUGGER] Firestore Permission Denial Details:", error);
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'create',
-        requestResourceData: data,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      throw error; 
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // CRITICAL: Prevent the build server from attempting Auth/Firestore calls
     if (!auth || !firestore) {
         toast({ 
             title: "System initializing", 
@@ -117,26 +91,30 @@ export default function TalentRegisterFormClient() {
         };
         
         const userDocRef = doc(firestore, 'users', user.uid);
-        await executeDebuggableWrite(userDocRef, fullUser, user);
+        await setDoc(userDocRef, fullUser, { merge: true }).catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: fullUser,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
 
         const idToken = await user.getIdToken();
-        const sessionResult = await createSession(idToken, window.location.origin);
+        const sessionResult = await createSession(idToken);
 
         if (!sessionResult.success) {
-          throw new Error(sessionResult.error || "Failed to create server session after registration.");
+          throw new Error(sessionResult.error || "Failed to create server session.");
         }
 
         sessionStorage.removeItem('registrationDetails');
-        if (typeof window !== "undefined") {
-          window.location.assign("/dashboard");
-        }
+        window.location.assign("/dashboard");
 
     } catch(error: any) {
         toast({
             title: "Registration Failed",
-            description: error.code === 'permission-denied' 
-                ? "Permission Denied: Check Firestore rules for the users collection." 
-                : error.message,
+            description: error.message,
             variant: "destructive",
         });
     } finally {

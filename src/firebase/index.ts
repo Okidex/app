@@ -17,13 +17,16 @@ import { useDoc } from './firestore/use-doc';
 import { FirestorePermissionError } from './errors';
 import { errorEmitter } from './error-emitter';
 
-// Initialize and export direct SDK constants for use in components/actions
-// This ensures they are available to 'src/lib/actions.ts'
+// Initialize SDKs
 const sdks = getSdks();
 
-export const app = sdks.app;
+/**
+ * FIXED: Rename these exports to match what your Provider/Components expect
+ * This resolves the "Property 'firebaseApp' does not exist" error.
+ */
+export const firebaseApp = sdks.app; // Changed from 'app' to 'firebaseApp'
 export const auth = sdks.auth;
-export const db = sdks.db;
+export const firestore = sdks.db;    // Changed from 'db' to 'firestore'
 export const storage = sdks.storage;
 
 export {

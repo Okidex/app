@@ -2,9 +2,11 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Restoration: Use standard extensions to ensure page.tsx files are found.
+  // This resolves the 404 error caused by restricted extensions.
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   turbopack: {
     resolveAlias: {
-      // Conditional aliasing for browser environments
       'fs': { browser: 'next/dist/compiled/browser-fs-noop' },
       'net': { browser: 'next/dist/compiled/browser-fs-noop' },
       'tls': { browser: 'next/dist/compiled/browser-fs-noop' },
@@ -15,7 +17,6 @@ const nextConfig: NextConfig = {
       'zlib': { browser: 'next/dist/compiled/browser-fs-noop' },
     },
   },
-  // Ensure server-only packages aren't bundled for the client
   serverExternalPackages: ['@grpc/grpc-js', '@grpc/proto-loader'],
 };
 

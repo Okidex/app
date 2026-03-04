@@ -1,3 +1,4 @@
+
 'use server';
 
 import { cookies } from 'next/headers';
@@ -9,62 +10,84 @@ import type { UserRole, FounderProfile } from './types';
 // AUTH & SESSION HELPERS
 // =======================================================
 
+/**
+ * Retrieves the current user UID from the session cookie.
+ * Includes detailed logging of all available cookies for debugging.
+ */
 export async function getSessionUser() {
-    const session = (await cookies()).get('__session')?.value;
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    
+    // Log all cookie names to verify if __session is present
+    const cookieNames = allCookies.map(c => c.name).join(', ');
+    console.log(`[DEBUG-AUTH-ACTION] getSessionUser: available cookies: [${cookieNames}]`);
+    
+    const session = cookieStore.get('__session')?.value;
+    
     if (!session) {
+        console.error('[DEBUG-AUTH-ACTION] getSessionUser: ERROR - "__session" cookie is missing from request');
         throw new Error("Unauthorized: Session cookie not found.");
     }
-    const decodedToken = await auth.verifySessionCookie(session, false);
-    return decodedToken.uid;
+    
+    try {
+        console.log('[DEBUG-AUTH-ACTION] getSessionUser: Verifying session cookie...');
+        const decodedToken = await auth.verifySessionCookie(session, false);
+        console.log('[DEBUG-AUTH-ACTION] getSessionUser: SUCCESS - User UID:', decodedToken.uid);
+        return decodedToken.uid;
+    } catch (error: any) {
+        console.error('[DEBUG-AUTH-ACTION] getSessionUser: ERROR - Session verification failed:', error.message);
+        throw new Error("Unauthorized: Invalid session.");
+    }
 }
 
-export async function createSession(idToken: string, origin: string) {
+/**
+ * Creates a Firebase session cookie and sets it in the browser.
+ * Uses SameSite=None and Secure=true to ensure reliability inside iframes (Firebase Studio).
+ */
+export async function createSession(idToken: string) {
+    console.log('[DEBUG-AUTH-ACTION] createSession: starting...');
     try {
-        if (!origin) {
-            throw new Error("Could not determine request origin for session creation.");
-        }
+        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+        const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
         
-        const response = await fetch(`${origin}/api/session`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
+        const cookieStore = await cookies();
+        cookieStore.set('__session', sessionCookie, {
+            maxAge: expiresIn,
+            httpOnly: true,
+            secure: true,
+            path: '/',
+            sameSite: 'none',
         });
 
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to create session via API route.');
-        }
-
+        console.log('[DEBUG-AUTH-ACTION] createSession: SUCCESS - Cookie "__session" has been set with SameSite=None');
         return { success: true };
     } catch (error: any) {
+        console.error('[DEBUG-AUTH-ACTION] createSession: FAILED', error.message);
         return { success: false, error: error.message };
     }
 }
 
-export async function deleteSession(origin: string) {
+/**
+ * Clears the session cookie from the browser.
+ */
+export async function deleteSession() {
+    console.log('[DEBUG-AUTH-ACTION] deleteSession: clearing __session cookie');
     try {
-         if (!origin) {
-            throw new Error("Could not determine request origin for session deletion.");
-        }
-
-        const response = await fetch(`${origin}/api/session`, {
-            method: 'DELETE',
-        });
-        
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to delete session via API route.');
-        }
-
+        const cookieStore = await cookies();
+        cookieStore.set('__session', '', { maxAge: 0, sameSite: 'none', secure: true });
+        console.log('[DEBUG-AUTH-ACTION] deleteSession: SUCCESS');
         return { success: true };
     } catch (error: any) {
+        console.error('[DEBUG-AUTH-ACTION] deleteSession: FAILED', error.message);
         return { success: false, error: error.message };
     }
 }
 
+/**
+ * Deletes a user account and their associated data.
+ */
 export async function deleteUser(userId: string, role: UserRole, origin: string, companyId?: string) {
+    console.log('[DEBUG-AUTH-ACTION] deleteUser: starting for UID:', userId);
     try {
         const uid = await getSessionUser();
         if (!uid || uid !== userId) throw new Error("Unauthorized");
@@ -79,11 +102,13 @@ export async function deleteUser(userId: string, role: UserRole, origin: string,
         await batch.commit();
         await auth.deleteUser(userId);
 
-        // This must be called to clear the client-side session cookie.
-        await deleteSession(origin);
+        // Clear the session cookie
+        await deleteSession();
 
+        console.log('[DEBUG-AUTH-ACTION] deleteUser: SUCCESS');
         return { success: true };
     } catch (error: any) {
+        console.error('[DEBUG-AUTH-ACTION] deleteUser: FAILED', error.message);
         return { success: false, error: error.message };
     }
 }

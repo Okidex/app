@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -76,7 +75,7 @@ export default function FounderRegisterFormClient() {
             tagline: formData.get('tagline') as string,
             description: formData.get('description') as string,
             website: formData.get('website') as string,
-            financials: { // Default empty financials
+            financials: {
                 companyName,
                 revenue: 0,
                 expenses: 0,
@@ -105,7 +104,7 @@ export default function FounderRegisterFormClient() {
         const profile: FounderProfile = {
           companyId: startupId,
           isLead: true,
-          isPremium: false, // Default to non-premium
+          isPremium: false,
           title: 'Founder',
           objectives: objectives,
           isLookingForCoFounder: isLookingForCoFounder,
@@ -132,19 +131,17 @@ export default function FounderRegisterFormClient() {
             throw permissionError;
         });
 
-        // 3. Create server session
+        // 3. Set session cookie
         const idToken = await user.getIdToken();
-        const sessionResult = await createSession(idToken, window.location.origin);
+        const sessionResult = await createSession(idToken);
 
         if (!sessionResult.success) {
-          throw new Error(sessionResult.error || "Failed to create server session after registration.");
+          throw new Error(sessionResult.error || "Failed to create server session.");
         }
 
         // 4. Clean up and redirect
         sessionStorage.removeItem('registrationDetails');
-        if (typeof window !== "undefined") {
-          window.location.assign("/dashboard");
-        }
+        window.location.assign("/dashboard");
 
     } catch(error: any) {
         toast({
