@@ -1,15 +1,27 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { stripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe/config';
-import { db } from '@/lib/firebase-server-init';
+import { db } from '@/lib/firebase-server-init'; // Updated import path
+
+/**
+ * Force this route to be dynamic to prevent Next.js from trying to
+ * evaluate the Admin SDK during 'npm run build'.
+ */
+export const dynamic = 'force-dynamic';
 
 /**
  * App Router Route Handler for Stripe Webhooks.
- * Migrated from the legacy Pages API route to resolve path conflicts and standardize the project structure.
  */
-
 export async function POST(req: Request) {
-  console.log('[DEBUG-API] POST /api/webhooks/stripe - Received webhook');
+  const timestamp = new Date().toISOString();
+  console.log(`[DEBUG-API] [${timestamp}] POST /api/webhooks/stripe - Received webhook`);
+  
+  // Safety check for build time: if Firebase Admin failed to init, exit gracefully
+  if (!db) {
+    console.warn('[DEBUG-API] Firebase Admin not initialized. Skipping webhook processing during build.');
+    return new Response('Service Unavailable', { status: 503 });
+  }
+
   try {
     const body = await req.text();
     const sig = req.headers.get('stripe-signature');
@@ -32,6 +44,7 @@ export async function POST(req: Request) {
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
         if (userId && customerId && subscriptionId) {
+          // Use optional chaining for extra safety
           await db.collection('users').doc(userId).set({
             profile: {
               isPremium: true,
@@ -58,19 +71,21 @@ export async function POST(req: Request) {
 
           if (!snapshot.empty) {
               const userDoc = snapshot.docs[0];
-              const newStatus = subscription.status;
-              const isPremium = newStatus === 'active' || newStatus === 'trialing';
+              if (userDoc) {
+                const newStatus = subscription.status;
+                const isPremium = newStatus === 'active' || newStatus === 'trialing';
 
-              await userDoc.ref.set({
-                  profile: {
-                      isPremium: isPremium,
-                      stripe: {
-                          subscriptionId: subscription.id,
-                          status: newStatus,
-                      }
-                  }
-              }, { merge: true });
-              console.log(`[DEBUG-API] Updated subscription status to "${newStatus}" for user: ${userDoc.id}`);
+                await userDoc.ref.set({
+                    profile: {
+                        isPremium: isPremium,
+                        stripe: {
+                            subscriptionId: subscription.id,
+                            status: newStatus,
+                        }
+                    }
+                }, { merge: true });
+                console.log(`[DEBUG-API] Updated subscription status to "${newStatus}" for user: ${userDoc.id}`);
+              }
           }
           break;
       }

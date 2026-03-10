@@ -4,12 +4,14 @@ import { db, auth as adminAuth } from './firebase-server-init';
 import { toSerializable } from './serialize';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-// FIXED: Changed 'app' to 'firebaseApp' to match your index.ts exports
 import { firebaseApp as clientApp } from '../firebase';
+import { smartSearch } from '@/ai/flows/smart-search';
 import type {
   FullUserProfile,
   Startup,
-  FounderProfile
+  FounderProfile,
+  InvestorProfile,
+  TalentProfile
 } from './types';
 
 /**
@@ -25,7 +27,11 @@ async function getVerifiedUid(idToken?: string) {
         }
     }
     const { getSessionUser } = await import('./auth-actions');
-    return await getSessionUser();
+    try {
+        return await getSessionUser();
+    } catch (e) {
+        return null;
+    }
 }
 
 const getAiCallable = (name: string) => {
@@ -54,20 +60,78 @@ export async function getProfileFromLinkedIn(input: any) {
     return result.data;
 }
 
+/**
+ * Perform a smart search using GenAI, rationalized by user objectives.
+ * prioritization based on 'fit' score determined by the LLM.
+ */
 export async function getSearchResults(query: string): Promise<{ startups: Startup[], users: FullUserProfile[] }> {
+    console.log(`[DEBUGGER-SEARCH] Starting prioritized search for: "${query}"`);
     try {
+        // 1. Fetch all searchable data (Users and Startups)
         const usersSnap = await db.collection('users').get();
+        const startupsSnap = await db.collection('startups').get();
+
         const allUsers = usersSnap.docs.map(doc => ({
             id: doc.id,
-            ...doc.data()
-        })) as FullUserProfile[];
+            role: doc.data().role,
+            name: doc.data().name,
+            profile: doc.data().profile
+        }));
 
+        const allStartups = startupsSnap.docs.map(doc => ({
+            id: doc.id,
+            companyName: doc.data().companyName,
+            industry: doc.data().industry,
+            tagline: doc.data().tagline,
+            description: doc.data().description,
+            stage: doc.data().stage
+        }));
+
+        // 2. Prepare concise searchable context for the LLM
+        const searchableData = JSON.stringify({
+            users: allUsers.map(u => ({
+                id: u.id,
+                name: u.name,
+                role: u.role,
+                objectives: (u.profile as FounderProfile)?.objectives || [],
+                seeking: (u.profile as InvestorProfile)?.seeking || [],
+                subRole: (u.profile as TalentProfile)?.subRole || '',
+                skills: (u.profile as TalentProfile)?.skills || (u.profile as InvestorProfile)?.investmentInterests || []
+            })),
+            startups: allStartups
+        });
+
+        // 3. Invoke GenAI for prioritized matching based on Objectives
+        console.log('[DEBUGGER-SEARCH] Invoking Smart Match LLM...');
+        const { userIds, startupIds } = await smartSearch({ query, searchableData });
+
+        // 4. Fetch full documents for the returned prioritized IDs
+        const prioritizedUsers: FullUserProfile[] = [];
+        const prioritizedStartups: Startup[] = [];
+
+        if (userIds.length > 0) {
+            const userDocs = await getUsersByIds(userIds);
+            // Re-sort back to LLM's prioritized order
+            userIds.forEach(id => {
+                const user = userDocs.find(u => u.id === id);
+                if (user) prioritizedUsers.push(user);
+            });
+        }
+
+        if (startupIds.length > 0) {
+            for (const id of startupIds) {
+                const startup = await getStartupById(id);
+                if (startup) prioritizedStartups.push(startup);
+            }
+        }
+
+        console.log(`[DEBUGGER-SEARCH] SUCCESS - Found ${prioritizedUsers.length} users and ${prioritizedStartups.length} startups.`);
         return {
-            startups: [],
-            users: toSerializable(allUsers) as FullUserProfile[]
+            startups: toSerializable(prioritizedStartups),
+            users: toSerializable(prioritizedUsers)
         };
-    } catch (error) {
-        console.error("Error in getSearchResults:", error);
+    } catch (error: any) {
+        console.error("[DEBUGGER-SEARCH] FATAL ERROR:", error.message);
         return { startups: [], users: [] };
     }
 }

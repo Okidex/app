@@ -1,47 +1,49 @@
+
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase-server-init';
 import { cookies } from 'next/headers';
 
-/**
- * Route Handler for managing Firebase Auth sessions via HTTP-only cookies.
- */
+export const dynamic = 'force-dynamic';
 
+/**
+ * [DEBUGGER] Session Management Route
+ */
 export async function POST(req: Request) {
-  console.log('[DEBUG-API] POST /api/session - Starting session creation');
+  console.log('[DEBUGGER-API] POST /api/session - Request received');
+  
+  if (!auth) {
+    console.error('[DEBUGGER-API] Auth not initialized. Cannot create session.');
+    return NextResponse.json({ success: false, error: 'Service Unavailable' }, { status: 503 });
+  }
+
   try {
     const { idToken } = await req.json();
-    console.log('[DEBUG-API] Received ID Token (length):', idToken?.length);
+    console.log('[DEBUGGER-API] Creating session cookie...');
     
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+    // session length: 5 days
+    const expiresIn = 60 * 60 * 24 * 5 * 1000;
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-    console.log('[DEBUG-API] Session cookie generated successfully');
     
     const cookieStore = await cookies();
     cookieStore.set('__session', sessionCookie, {
-      maxAge: expiresIn,
+      maxAge: expiresIn / 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       path: '/',
-      sameSite: 'lax',
+      sameSite: 'none',
     });
 
-    console.log('[DEBUG-API] Cookie "__session" has been set in CookieStore');
+    console.log('[DEBUGGER-API] Session successfully established.');
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[DEBUG-API] Session creation error:', error);
+    console.error('[DEBUGGER-API] Session creation failed:', error.message);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function DELETE() {
-  console.log('[DEBUG-API] DELETE /api/session - Clearing session');
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set('__session', '', { maxAge: 0 });
-    console.log('[DEBUG-API] Cookie "__session" has been cleared');
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('[DEBUG-API] Session deletion error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+  console.log('[DEBUGGER-API] DELETE /api/session - Clearing session');
+  const cookieStore = await cookies();
+  cookieStore.set('__session', '', { maxAge: 0, sameSite: 'none', secure: true });
+  return NextResponse.json({ success: true });
 }

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { ai } from '../genkit';
@@ -11,14 +12,15 @@ const SmartSearchInputSchema = z.object({
 export type SmartSearchInput = z.infer<typeof SmartSearchInputSchema>;
 
 const SmartSearchOutputSchema = z.object({
-  startupIds: z.array(z.string()).describe('An array of startup IDs relevant to the search query.'),
-  userIds: z.array(z.string()).describe('An array of user IDs relevant to the search query.'),
+  startupIds: z.array(z.string()).describe('An array of startup IDs relevant to the search query, prioritized by fit.'),
+  userIds: z.array(z.string()).describe('An array of user IDs relevant to the search query, prioritized by fit.'),
 });
 
 export type SmartSearchOutput = z.infer<typeof SmartSearchOutputSchema>;
 
 /**
  * Wrapper function to expose the Genkit flow as a Next.js Server Action.
+ * Prioritizes results based on complementary Objectives.
  */
 export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchOutput> {
   return smartSearchFlow(input);
@@ -27,17 +29,23 @@ export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchO
 const prompt = ai.definePrompt({
   name: 'smartSearchPrompt',
   input: { schema: SmartSearchInputSchema },
-  // Notice we use config to set model parameters if needed
   prompt: `
     <system>
-    You are a high-precision search engine for Okidex, a professional network. 
-    Your goal is to match a search query against a list of users and startups.
+    You are a high-precision matchmaking and search engine for Okidex.
+    Your goal is to match a search query against a list of users and startups, prioritizing complementary OBJECTIVES.
     
-    CRITICAL RULES:
-    1. If the user searches for a role (e.g., "investors", "founders", "talent"), you MUST return all IDs belonging to that role in the data, even if their specific 'details' field is brief.
-    2. Use semantic matching. If a user asks for "VCs" or "funding", match people with the role "investor".
-    3. If a user asks for "jobs" or "hiring", match people with the role "talent" or startups with relevant descriptions.
-    4. If no results are found, return empty arrays: {"startupIds": [], "userIds": []}.
+    MATCHMAKING RATIONALIZATION RULES:
+    1. Founder 'fundraising' explicitly matches Investor 'fundDeployment' or anyone with role 'investor'.
+    2. Founder 'lookingToHire' explicitly matches Talent seeking 'employee' or 'fractional-leader' roles.
+    3. Founder 'seekingCoFounders' matches Talent or Founders with 'co-founder' subRole or objective.
+    4. Founder 'lookingForMentorship' matches Investors open to 'mentoring'.
+    5. User 'networking' matches any user with 'networking' or relevant domain expertise.
+
+    PRIORITIZATION LOGIC:
+    - RANK HIGHER results whose 'objectives' (for founders), 'seeking' (for investors), or 'subRole' (for talent) directly solve the query's need.
+    - If the user query implies hiring (e.g., "developer", "CTO"), prioritize Talent results with matching skills.
+    - If the user query implies capital (e.g., "VC", "seed", "funding"), prioritize Investor results.
+    - Order IDs from BEST fit to LEAST fit.
     </system>
 
     Search Query: "{{query}}"
@@ -45,7 +53,7 @@ const prompt = ai.definePrompt({
     Searchable Data (JSON):
     {{{searchableData}}}
 
-    Task: Return a JSON object with "startupIds" and "userIds" that are relevant. 
+    Task: Analyze the context and return a JSON object with "startupIds" and "userIds" ordered by relevance and complementary fit.
     Output ONLY raw JSON. No markdown, no backticks, no preamble.
   `,
 });
@@ -61,23 +69,21 @@ const smartSearchFlow = ai.defineFlow(
     const jsonString = response.text;
 
     if (!jsonString) {
-      console.error("LLM returned an empty response for query:", input.query);
+      console.error("[DEBUGGER-AI] LLM returned empty response");
       return { startupIds: [], userIds: [] };
     }
     
     try {
-      // Robust cleaning to handle cases where LLM ignores "no backticks" rule
       const cleanedJsonString = jsonString
         .replace(/```json/g, '')
         .replace(/```/g, '')
         .trim();
         
       const parsedOutput = JSON.parse(cleanedJsonString);
-      
+      console.log(`[DEBUGGER-AI] AI prioritized ${parsedOutput.userIds?.length || 0} users and ${parsedOutput.startupIds?.length || 0} startups based on complementary objectives.`);
       return SmartSearchOutputSchema.parse(parsedOutput);
     } catch (e) {
-      console.error("Failed to parse LLM search results. Raw text:", jsonString);
-      // Return empty results instead of crashing the build/app
+      console.error("[DEBUGGER-AI] Parse error. Raw text:", jsonString);
       return { startupIds: [], userIds: [] };
     }
   }
