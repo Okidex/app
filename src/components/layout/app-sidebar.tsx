@@ -24,9 +24,9 @@ import {
   FileText,
   Settings,
   Smartphone,
-  Plus,
   Search,
   Users as UsersIcon,
+  Star,
 } from 'lucide-react';
 import {
   FullUserProfile,
@@ -37,8 +37,6 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
-import { Skeleton } from '../ui/skeleton';
-import UserAvatar from '../shared/user-avatar';
 import { cn } from '@/lib/utils';
 
 const allMenuItems = [
@@ -60,10 +58,8 @@ export function AppSidebar() {
   const { state: sidebarState } = useSidebar();
 
   React.useEffect(() => {
-    // CRITICAL FIX: Guard against undefined/null user ID to prevent Security Rule rejection
     if (!user?.id || !db) return;
 
-    // Use query that matches deployed firestore.rules exactly
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', user.id),
@@ -85,7 +81,7 @@ export function AppSidebar() {
     });
 
     return () => unsubscribe();
-  }, [user?.id, db]); // Watch the specific string ID rather than the whole user object
+  }, [user?.id, db]);
 
   const isPremiumFounder = user?.role === 'founder' && (user.profile as FounderProfile)?.isPremium;
   const isFounder = user?.role === 'founder';
@@ -116,7 +112,7 @@ export function AppSidebar() {
     return (
       <Sidebar>
         <SidebarHeader className="h-16 p-2 justify-center">
-            <Skeleton className="h-8 w-32" />
+            <div className="h-8 w-32 bg-muted animate-pulse rounded" />
         </SidebarHeader>
         <SidebarContent>
           <div className="flex flex-col gap-2 p-2">
@@ -145,12 +141,10 @@ export function AppSidebar() {
       
       <SidebarContent>
         <SidebarMenu className="p-2">
-            {filteredMenuItems.map(({ href, label, icon: Icon, premium, notificationType }) => {
+            {filteredMenuItems.map(({ href, label, icon: Icon, notificationType }) => {
             const notificationCount = notifications.filter(
                 (n) => n.type === notificationType && !n.isRead
             ).length;
-            
-            const showPlusBadge = user.role === 'founder' && premium && !isPremiumFounder && !notificationCount;
 
             return (
                 <SidebarMenuItem key={href}>
@@ -167,38 +161,35 @@ export function AppSidebar() {
                         {notificationCount > 0 && (
                         <SidebarMenuBadge>{notificationCount}</SidebarMenuBadge>
                         )}
-                        {showPlusBadge && (
-                        <SidebarMenuBadge className="flex items-center justify-center w-5 h-5 p-0 text-xs">
-                            <Plus className="w-3 h-3" />
-                        </SidebarMenuBadge>
-                        )}
                     </Link>
                 </SidebarMenuButton>
                 </SidebarMenuItem>
             );
             })}
-             {isFounder && (
-              <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Oki+">
-                      <Link href="/settings/billing">
-                          <Plus className="shrink-0" />
-                          <span className="group-data-[state=collapsed]:hidden">Oki+</span>
-                      </Link>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
         <SidebarSeparator />
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Settings">
-            <Link href="/settings">
-              <Settings className="shrink-0" />
-              <span className="group-data-[state=collapsed]:hidden">Settings</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        <SidebarMenu>
+          {isFounder && (
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Oki+" isActive={pathname?.includes('/billing')}>
+                    <Link href="/settings/billing">
+                        <Star className={cn("shrink-0", isPremiumFounder ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground")} />
+                        <span className="group-data-[state=collapsed]:hidden">Oki+</span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Settings" isActive={pathname === '/settings'}>
+              <Link href="/settings">
+                <Settings className="shrink-0" />
+                <span className="group-data-[state=collapsed]:hidden">Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
