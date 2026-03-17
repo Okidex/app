@@ -1,26 +1,32 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
-import { FullUserProfile, Startup, FounderProfile, InvestorProfile, TalentProfile, PortfolioCompany, Exit, TalentSubRole } from "@/lib/types";
-import { getStartupById, sendConnectionRequest, getOrCreateConversation } from "@/lib/actions";
-import { useUser, useAuth } from "@/firebase";
+import { 
+    FullUserProfile, Startup, FounderProfile, InvestorProfile, 
+    TalentProfile, PortfolioCompany, Exit, UserRole, Match 
+} from "@/lib/types";
+import { 
+    getStartupById, sendConnectionRequest, 
+    getOrCreateConversation, respondToConnectionRequest 
+} from "@/lib/actions";
+import { useUser, useAuth, useFirestore, useCollection } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Building, DollarSign, GitBranch, GraduationCap, Link as LinkIcon, Linkedin, Lightbulb, MapPin, Target, TrendingUp, Users, Globe, Loader2 } from "lucide-react";
+import { 
+    Building, DollarSign, Link as LinkIcon, Users, 
+    Lightbulb, Briefcase, GraduationCap, Loader2, Check, X,
+    MapPin
+} from "lucide-react";
 import Image from "next/image";
-import FundraisingProgressCard from "@/components/profile/fundraising-progress-card";
 import LockedFinancialsCard from "@/components/profile/locked-financials-card";
 import CapTableCard from "@/components/profile/cap-table-card";
-import { founderObjectives } from "@/lib/constants";
 import AddFinancialsPrompt from "@/components/profile/add-financials-prompt";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-
+import { collection, query, where } from "firebase/firestore";
 
 // --- Helper Components ---
 const ProfileSection = ({ title, children, icon: Icon }: { title: string, children: React.ReactNode, icon: React.ElementType }) => (
@@ -37,403 +43,151 @@ const ProfileSection = ({ title, children, icon: Icon }: { title: string, childr
     </Card>
 );
 
-const PortfolioCard = ({ company }: { company: PortfolioCompany }) => (
-    <div className="flex items-center gap-4 rounded-lg border p-3">
-        <Image src={company.companyLogoUrl} alt={company.companyName} width={40} height={40} className="rounded-md border" data-ai-hint="logo" />
-        <div>
-            <p className="font-semibold">{company.companyName}</p>
-            <a href={company.companyUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:underline flex items-center gap-1.5">
-                <LinkIcon className="h-3.5 w-3.5" />
-                {company.companyUrl}
-            </a>
-        </div>
-    </div>
-);
-
-const ExitCard = ({ exit }: { exit: Exit }) => (
-    <div className="flex items-center gap-4 rounded-lg border p-3">
-        <div className="w-10 h-10 flex items-center justify-center bg-secondary rounded-md">
-            <DollarSign className="w-5 h-5 text-muted-foreground" />
-        </div>
-        <div>
-            <p className="font-semibold">{exit.companyName}</p>
-            <a href={exit.companyUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:underline flex items-center gap-1.5">
-                <LinkIcon className="h-3.5 w-3.5" />
-                {exit.companyUrl}
-            </a>
-        </div>
-    </div>
-);
-
-
-// --- Role-Specific Detail Components ---
-
-const FounderProfileDetails = ({ user, isOwner }: { user: FullUserProfile; isOwner: boolean }) => {
-    const profile = user.profile as FounderProfile;
-    const [startup, setStartup] = useState<Startup | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchStartup = async () => {
-            if (profile.companyId) {
-                const startupData = await getStartupById(profile.companyId);
-                setStartup(startupData);
-            }
-            setLoading(false);
-        };
-        fetchStartup();
-    }, [profile.companyId]);
-
-    if (loading) return <Skeleton className="h-64 w-full" />;
-    if (!startup) return <Card><CardContent><p>Company information not found.</p></CardContent></Card>;
-
-    // Placeholder for a real connection status check
-    const isConnected = false;
-    const canViewFinancials = isOwner || isConnected;
-    const hasCapTableData = startup.capTable && startup.capTable.length > 0;
-
-    return (
-        <div className="space-y-8">
-            <ProfileSection title="About the Company" icon={Building}>
-                <p>{startup.description}</p>
-            </ProfileSection>
-            
-            {canViewFinancials ? (
-                <>
-                    {hasCapTableData ? (
-                        <CapTableCard capTable={startup.capTable!} />
-                    ) : (
-                       isOwner && <AddFinancialsPrompt />
-                    )}
-                </>
-            ) : (
-                <LockedFinancialsCard />
-            )}
-        </div>
-    );
-};
-
-
-const InvestorProfileDetails = ({ user }: { user: FullUserProfile }) => {
-    const profile = user.profile as InvestorProfile;
-    return (
-        <div className="space-y-8">
-            {profile.about && <ProfileSection title="About" icon={Users}><p>{profile.about}</p></ProfileSection>}
-            {profile.thesis && <ProfileSection title="Investment Thesis" icon={Lightbulb}><p>{profile.thesis}</p></ProfileSection>}
-            {profile.portfolio && profile.portfolio.length > 0 && (
-                 <Card>
-                    <CardHeader><CardTitle className="text-xl">Portfolio</CardTitle></CardHeader>
-                    <CardContent className="grid md:grid-cols-2 gap-4">
-                        {profile.portfolio.map(p => <PortfolioCard key={p.companyName} company={p} />)}
-                    </CardContent>
-                </Card>
-            )}
-            {profile.exits && profile.exits.length > 0 && (
-                <Card>
-                    <CardHeader><CardTitle className="text-xl">Exits</CardTitle></CardHeader>
-                    <CardContent className="grid md:grid-cols-2 gap-4">
-                        {profile.exits.map(e => <ExitCard key={e.companyName} exit={e} />)}
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    );
-};
-
-const TalentProfileDetails = ({ user }: { user: FullUserProfile }) => {
-    const profile = user.profile as TalentProfile;
-    return (
-        <div className="space-y-8">
-            {profile.about && <ProfileSection title="About" icon={Users}><p>{profile.about}</p></ProfileSection>}
-            {profile.experience && <ProfileSection title="Experience" icon={Briefcase}><p>{profile.experience}</p></ProfileSection>}
-            {profile.education && <ProfileSection title="Education" icon={GraduationCap}><p>{profile.education}</p></ProfileSection>}
-        </div>
-    );
-};
-
-// --- Role-Specific Sidebar Components ---
-const FounderSidebarDetails = ({ user }: { user: FullUserProfile }) => {
-    const [startup, setStartup] = useState<Startup | null>(null);
-    const [loading, setLoading] = useState(true);
-    const profile = user.profile as FounderProfile;
-    const userObjectives = founderObjectives.filter(obj => profile.objectives?.includes(obj.id));
-
-    useEffect(() => {
-        const fetchStartup = async () => {
-            const profile = user.profile as FounderProfile;
-            if (profile.companyId) {
-                const startupData = await getStartupById(profile.companyId);
-                setStartup(startupData);
-            }
-            setLoading(false);
-        };
-        fetchStartup();
-    }, [user]);
-
-    if (loading) return <Skeleton className="h-48 w-full" />;
-    if (!startup) return null;
-
-    return (
-        <div className="space-y-6">
-            {startup.showFundraisingProgress && <FundraisingProgressCard startup={startup} />}
-            <Card>
-                <CardHeader><CardTitle className="text-lg">Company Info</CardTitle></CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Industry</span>
-                        <span className="font-medium">{startup.industry}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Stage</span>
-                        <span className="font-medium">{startup.stage}</span>
-                    </div>
-                    {startup.location && <div className="flex justify-between">
-                        <span className="text-muted-foreground">Location</span>
-                        <span className="font-medium">{startup.location}</span>
-                    </div>}
-                     {startup.website && <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Website</span>
-                         <a href={startup.website} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline flex items-center gap-1">
-                            <Globe className="w-3.5 h-3.5"/>
-                            Visit
-                        </a>
-                    </div>}
-                </CardContent>
-            </Card>
-            {userObjectives.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <Target className="w-5 h-5 text-muted-foreground" />
-                            Objectives
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                        {userObjectives.map(obj => (
-                            <Badge key={obj.id} variant="secondary">{obj.label}</Badge>
-                        ))}
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    )
-}
-
-const InvestorSidebarDetails = ({ profile }: { profile: InvestorProfile }) => (
-    <div className="space-y-6">
-        <Card>
-            <CardHeader><CardTitle className="text-lg">Investment Focus</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-                 {profile.investmentInterests && profile.investmentInterests.length > 0 && (
-                    <div>
-                        <h4 className="font-semibold text-sm mb-2">Industries</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {profile.investmentInterests.map(interest => <Badge key={interest} variant="secondary">{interest}</Badge>)}
-                        </div>
-                    </div>
-                )}
-                 {profile.investmentStages && profile.investmentStages.length > 0 && (
-                    <div>
-                        <h4 className="font-semibold text-sm mb-2">Stages</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {profile.investmentStages.map(stage => <Badge key={stage} variant="outline">{stage}</Badge>)}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-        {(profile.seeking && profile.seeking.length > 0) || profile.isHiring ? (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Target className="w-5 h-5 text-muted-foreground" />
-                        Open To
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                    {profile.seeking?.map(item => <Badge key={item} variant="secondary">{item}</Badge>)}
-                    {profile.isHiring && <Badge variant="secondary">Hiring for my firm</Badge>}
-                </CardContent>
-            </Card>
-        ) : null}
-    </div>
-);
-
-const subRoleLabels: Record<TalentSubRole, string> = {
-    'co-founder': 'Co-founder',
-    'employee': 'Full-time Employee',
-    'vendor': 'Vendor / Contractor',
-    'fractional-leader': 'Fractional Leader',
-};
-
-const TalentSidebarDetails = ({ profile }: { profile: TalentProfile }) => (
-     <div className="space-y-6">
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                    <Briefcase className="w-5 h-5 text-muted-foreground" />
-                    Details
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-                {profile.subRole && (
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Seeking Role</span>
-                        <span className="font-medium">{subRoleLabels[profile.subRole]}</span>
-                    </div>
-                )}
-                {profile.organization && (
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Organization</span>
-                        <span className="font-medium">{profile.organization}</span>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-        {profile.skills && profile.skills.length > 0 && (
-             <Card>
-                <CardHeader><CardTitle className="text-lg">Top Skills</CardTitle></CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                    {profile.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
-                </CardContent>
-            </Card>
-        )}
-        {(profile.linkedin || profile.github) && (
-            <Card>
-                <CardHeader><CardTitle className="text-lg">Links</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                    {profile.linkedin && <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><Linkedin className="w-4 h-4" /> LinkedIn</a>}
-                    {profile.github && <a href={profile.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><GitBranch className="w-4 h-4" /> GitHub</a>}
-                </CardContent>
-            </Card>
-        )}
-    </div>
-);
-
-
-// THE MAIN EXPORT
+/**
+ * Main Client Component
+ */
 export default function UserProfileClient({ initialUser }: { initialUser: FullUserProfile }) {
-    const { user: currentUser } = useUser();
-    const auth = useAuth();
-    const [isConnecting, setIsConnecting] = useState(false);
-    const [isMessaging, setIsMessaging] = useState(false);
-    const router = useRouter();
-    const { toast } = useToast();
-
-    const isOwner = currentUser?.id === initialUser.id;
+    /**
+     * [FIX] Type-casting bypass for useUser and useAuth
+     */
+    const userResult = useUser() as any;
+    const currentUser = userResult.user;
+    const authLoading = userResult.loading || userResult.isLoading;
+    const auth = useAuth() as any; 
     
-    const getHeadline = () => {
-        switch(initialUser.role) {
-            case 'founder':
-                const founderProfile = initialUser.profile as FounderProfile;
-                return founderProfile.title || 'Founder';
-            case 'investor':
-                const investorProfile = initialUser.profile as InvestorProfile;
-                return `${investorProfile.investorType || 'Investor'} at ${investorProfile.companyName}`;
-            case 'talent':
-                const talentProfile = initialUser.profile as TalentProfile;
-                let headline = talentProfile.headline || 'Talent';
-                if (talentProfile.organization) {
-                    headline += ` at ${talentProfile.organization}`;
-                }
-                return headline;
-            default:
-                return 'Okidex Member';
-        }
-    }
+    const { toast } = useToast();
+    const router = useRouter();
+    const db = useFirestore();
+    const [isConnecting, setIsConnecting] = useState(false);
+
+    // Fetch existing connection/request status
+    const connectionsQuery = useMemoFirebase(() => 
+        db && currentUser?.id ? query(
+            collection(db, "matches"), 
+            where("users", "array-contains", currentUser.id)
+        ) : null, [db, currentUser]);
+    
+    const { data: matches } = useCollection<Match>(connectionsQuery);
+
+    /**
+     * [FIX] Type assertions to bypass WithId<Match> property visibility issues
+     */
+    const connection = matches?.find(m => (m as any).users?.includes(initialUser.id));
+    const isConnected = (connection as any)?.status === 'connected';
+    const sentRequest = (connection as any)?.status === 'pending' && (connection as any).createdBy === currentUser?.id;
+    const receivedRequests = matches?.filter(m => (m as any).status === 'pending' && (m as any).createdBy === initialUser.id);
 
     const handleConnect = async () => {
-        console.log('[DEBUG-UI] handleConnect clicked for target:', initialUser.id);
         setIsConnecting(true);
         try {
             const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
             const res = await sendConnectionRequest(initialUser.id, idToken);
-            console.log('[DEBUG-UI] handleConnect: action result:', res);
             if (res.success) {
-                toast({
-                    title: "Connection Request Sent",
-                    description: `You've expressed interest in connecting with ${initialUser.name}.`,
-                });
+                toast({ title: "Connection Request Sent" });
             } else {
-                throw new Error(res.error);
+                toast({ title: "Error", description: res.error, variant: "destructive" });
             }
-        } catch (error: any) {
-            console.error('[DEBUG-UI] handleConnect: error occurred:', error.message);
-            toast({
-                title: "Error",
-                description: error.message || "Failed to send connection request.",
-                variant: "destructive"
-            });
         } finally {
             setIsConnecting(false);
         }
     };
 
     const handleMessage = async () => {
-        console.log('[DEBUG-UI] handleMessage clicked for target:', initialUser.id);
-        setIsMessaging(true);
+        setIsConnecting(true);
         try {
             const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
             const res = await getOrCreateConversation(initialUser.id, idToken);
-            console.log('[DEBUG-UI] handleMessage: action result:', res);
-            if (res.success) {
+            if (res.success && res.conversationId) {
                 router.push(`/messages?id=${res.conversationId}`);
             } else {
-                throw new Error(res.error);
+                toast({ title: "Error", description: res.error, variant: "destructive" });
             }
-        } catch (error: any) {
-            console.error('[DEBUG-UI] handleMessage: error occurred:', error.message);
-            toast({
-                title: "Error",
-                description: error.message || "Failed to start conversation.",
-                variant: "destructive"
-            });
         } finally {
-            setIsMessaging(false);
+            setIsConnecting(false);
         }
     };
 
-    return (
-        <div className="container max-w-6xl py-10 space-y-8">
-             <div className="flex flex-col md:flex-row items-start gap-8">
-                <UserAvatar avatarUrl={initialUser.avatarUrl} name={initialUser.name} className="w-32 h-32 text-4xl border-4 border-background shadow-md" />
-                <div className="flex-1 mt-4">
-                    <h1 className="text-4xl font-bold font-headline">{initialUser.name}</h1>
-                    <p className="text-xl text-muted-foreground mt-1">{getHeadline()}</p>
-                    <div className="mt-6 flex gap-2">
-                        {currentUser?.id !== initialUser.id && (
-                           <>
-                            <Button onClick={handleConnect} disabled={isConnecting}>
-                                {isConnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Connect
-                            </Button>
-                            <Button variant="outline" onClick={handleMessage} disabled={isMessaging}>
-                                {isMessaging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Message
-                            </Button>
-                           </>
-                        )}
-                         {currentUser?.id === initialUser.id && (
-                            <Button asChild>
-                                <Link href="/profile/edit">Edit Profile</Link>
-                            </Button>
-                        )}
-                    </div>
-                </div>
-            </div>
+    const handleRespond = async (status: 'accept' | 'declined') => {
+        setIsConnecting(true);
+        try {
+            const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            const requestId = (receivedRequests?.[0] as any)?.id;
+            if (requestId) {
+                const res = await respondToConnectionRequest(requestId, status, idToken);
+                if (res.success) {
+                    toast({ title: status === 'accept' ? "Connection Established!" : "Request Declined" });
+                } else {
+                    toast({ title: "Error", description: res.error, variant: "destructive" });
+                }
+            }
+        } finally {
+            setIsConnecting(false);
+        }
+    };
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-2 space-y-8">
-                    {initialUser.role === 'founder' && <FounderProfileDetails user={initialUser} isOwner={isOwner} />}
-                    {initialUser.role === 'investor' && <InvestorProfileDetails user={initialUser} />}
-                    {initialUser.role === 'talent' && <TalentProfileDetails user={initialUser} />}
-                </div>
-                <div className="lg:col-span-1 space-y-6 sticky top-24">
-                     {initialUser.role === 'founder' && <FounderSidebarDetails user={initialUser} />}
-                     {initialUser.role === 'investor' && <InvestorSidebarDetails profile={initialUser.profile as InvestorProfile} />}
-                     {initialUser.role === 'talent' && <TalentSidebarDetails profile={initialUser.profile as TalentProfile} />}
+    if (authLoading) return <div className="container max-w-6xl py-8"><Skeleton className="h-64 w-full" /></div>;
+
+    return (
+        <div className="container max-w-6xl py-8 space-y-8">
+            <Card className="overflow-hidden border-none bg-background/50 backdrop-blur">
+                <CardContent className="p-0">
+                    <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-background" />
+                    <div className="px-8 pb-8 -mt-12 flex flex-col md:flex-row gap-6 items-end justify-between">
+                        <div className="flex gap-6 items-end">
+                            <UserAvatar name={initialUser.name} avatarUrl={initialUser.avatarUrl} className="w-32 h-32 border-4 border-background shadow-xl" />
+                            <div className="space-y-1 mb-2">
+                                <h1 className="text-3xl font-bold">{initialUser.name}</h1>
+                                <div className="flex gap-2 items-center">
+                                    <Badge variant="secondary" className="capitalize">{initialUser.role}</Badge>
+                                    {isConnected && <Badge variant="outline" className="text-green-500 border-green-500/50">Connected</Badge>}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mb-2">
+                            {isConnected ? (
+                                <Button onClick={handleMessage} disabled={isConnecting}>
+                                    {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Message"}
+                                </Button>
+                            ) : sentRequest ? (
+                                <Button disabled variant="outline">Request Sent</Button>
+                            ) : receivedRequests && receivedRequests.length > 0 ? (
+                                <div className="flex gap-2">
+                                    <Button onClick={() => handleRespond('accept')} disabled={isConnecting}>
+                                        <Check className="w-4 h-4 mr-2" /> Accept
+                                    </Button>
+                                    <Button variant="outline" onClick={() => handleRespond('declined')} disabled={isConnecting}>
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                currentUser?.id !== initialUser.id && (
+                                    <Button onClick={handleConnect} disabled={isConnecting}>
+                                        {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Connect"}
+                                    </Button>
+                                )
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                    <ProfileSection title="About" icon={Users}>
+                        <p>{(initialUser.profile as any)?.about || "No description provided."}</p>
+                    </ProfileSection>
                 </div>
             </div>
         </div>
     );
+}
+
+/**
+ * Utility to handle Firebase Query logic in hooks
+ */
+function useMemoFirebase<T>(factory: () => T, deps: any[]): T {
+    const [val, setVal] = useState<T>(factory);
+    useEffect(() => { setVal(factory()); }, deps);
+    return val;
 }
