@@ -1,0 +1,204 @@
+"use client";
+
+import { useState, useEffect, useTransition } from 'react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Bell, MessageSquare, UserCheck, Users } from "lucide-react";
+import { Notification, NotificationType, FullUserProfile } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import Link from 'next/link';
+import UserAvatar from '../shared/user-avatar';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
+import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  writeBatch,
+  limit,
+  orderBy
+} from 'firebase/firestore';
+import { getUsersByIds } from '@/lib/actions';
+
+const getIcon = (type: NotificationType) => {
+  switch (type) {
+    case 'message': return <MessageSquare className="h-5 w-5" />;
+    case 'connection': return <UserCheck className="h-5 w-5" />;
+    case 'match': return <Users className="h-5 w-5" />;
+    default: return <Bell className="h-5 w-5" />;
+  }
+};
+
+export default function Notifications() {
+  const { user: authUser } = useUser();
+  const db = useFirestore();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [senders, setSenders] = useState<Map<string, FullUserProfile>>(new Map());
+  const [isPending, startTransition] = useTransition();
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  useEffect(() => {
+    // CRITICAL FIX: Guard against undefined ID which triggers permission errors
+    if (!authUser?.id || !db) return;
+
+    // Use a specific query that matches your Firestore Security Rules exactly
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', authUser.id),
+      orderBy('timestamp', 'desc'),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const notifs = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Notification)
+      );
+      
+      setNotifications(notifs);
+
+      const senderIds = [...new Set(notifs.map((n) => n.senderId).filter(Boolean))] as string[];
+      
+      if (senderIds.length > 0) {
+        const idsToFetch = senderIds.filter((id) => !senders.has(id));
+        if (idsToFetch.length > 0) {
+          getUsersByIds(idsToFetch).then(users => {
+            if (users && users.length > 0) {
+              setSenders(current => {
+                const next = new Map(current);
+                users.forEach(u => next.set(u.id, u));
+                return next;
+              });
+            }
+          });
+        }
+      }
+    }, (err) => {
+      // Log the actual error for debugging before emitting
+      console.error("Firestore Notification Sync Error:", err);
+      
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'notifications',
+        operation: 'list'
+      }));
+    });
+
+    return () => unsubscribe();
+  }, [authUser?.id, db]); // Only re-run when the specific ID string changes
+
+  const markAllAsRead = () => {
+    if (!authUser?.id || unreadCount === 0 || !db) return;
+    
+    startTransition(async () => {
+      const batch = writeBatch(db);
+      notifications.forEach((n) => {
+        if (!n.isRead) {
+          batch.update(doc(db, 'notifications', n.id), { isRead: true });
+        }
+      });
+
+      try {
+        await batch.commit();
+      } catch (err) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'notifications',
+          operation: 'write'
+        }));
+      }
+    });
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" className="relative">
+          <Bell className={cn("h-5 w-5", isPending && "animate-pulse")} />
+          {unreadCount > 0 && (
+            <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold">
+              {unreadCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 md:w-96 p-0 shadow-xl border-muted" align="end">
+        <Card className="border-0 shadow-none">
+          <CardHeader className="flex-row items-center justify-between py-3 px-4">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Notifications
+            </CardTitle>
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs h-8" onClick={markAllAsRead}>
+                Mark all as read
+              </Button>
+            )}
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0 max-h-[400px] overflow-y-auto overflow-x-hidden">
+            {notifications.length > 0 ? (
+              notifications.map((notification, index) => {
+                const sender = notification.senderId ? senders.get(notification.senderId) : null;
+                let timestamp = new Date();
+                if (notification.timestamp) {
+                  const ts = notification.timestamp as any;
+                  if (typeof ts.toDate === 'function') timestamp = ts.toDate();
+                  else if (ts.seconds) timestamp = new Date(ts.seconds * 1000);
+                  else timestamp = new Date(ts);
+                  if (isNaN(timestamp.getTime())) timestamp = new Date();
+                }
+                
+                return (
+                  <div key={notification.id}>
+                    <Link
+                      href={notification.link || '#'}
+                      className={cn(
+                        'flex items-start gap-3 p-4 transition-colors hover:bg-muted/50',
+                        !notification.isRead && 'bg-primary/5'
+                      )}
+                    >
+                      {sender ? (
+                        <UserAvatar name={sender.name} avatarUrl={sender.avatarUrl} className="h-9 w-9" />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center bg-secondary rounded-full">
+                          {getIcon(notification.type)}
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-1 overflow-hidden">
+                        <p className="text-sm leading-snug break-words">
+                          {sender ? (
+                            <><strong>{sender.name}</strong> {notification.text.replace(sender.name, '').trim()}</>
+                          ) : (
+                            notification.text
+                          )}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatDistanceToNow(timestamp, { addSuffix: true })}
+                        </p>
+                      </div>
+                      {!notification.isRead && (
+                        <div className="shrink-0 w-2 h-2 rounded-full bg-primary mt-2" />
+                      )}
+                    </Link>
+                    {index < notifications.length - 1 && <Separator />}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-center space-y-2">
+                <Bell className="h-8 w-8 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No new notifications</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </PopoverContent>
+    </Popover>
+  );
+}
