@@ -1,1 +1,0 @@
-// This file has been deprecated and its logic moved to /app/(app)/dashboard/page.tsx.

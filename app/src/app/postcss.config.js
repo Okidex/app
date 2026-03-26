@@ -1,6 +1,0 @@
-// postcss.config.mjs
-export default {
-  plugins: {
-    '@tailwindcss/postcss': {}, // Required for Tailwind v4 in 2026
-  },
-};
