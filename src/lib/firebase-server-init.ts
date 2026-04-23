@@ -19,38 +19,54 @@ function getAdminApp(): admin.app.App | null {
 
   try {
     const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || process.env.FIREBASE_SERVICE_ACCOUNT;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-    // --- OPTION A: PRODUCTION FALLBACK ---
-    if (!serviceAccountString) {
-      console.log('[DEBUGGER-ADMIN] No ENV key found. Initializing with Default Application Credentials...');
+    // --- OPTION 1: PRIVATE KEY & CLIENT EMAIL (from .env.local) ---
+    if (privateKey && clientEmail && projectId) {
+      console.log('[DEBUGGER-ADMIN] Found individual credentials (FIREBASE_PRIVATE_KEY). Initializing...');
       return admin.initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey: privateKey.replace(/\\n/g, '\n'),
+        }),
+        projectId,
       }, ADMIN_APP_NAME);
     }
 
-    // --- LOCAL / CI: JSON PARSING ---
-    let serviceAccount;
-    try {
-      const isBase64 = !serviceAccountString.trim().startsWith('{');
-      const serviceAccountJson = isBase64
-        ? Buffer.from(serviceAccountString, 'base64').toString('utf8')
-        : serviceAccountString;
+    // --- OPTION 2: JSON SERVICE ACCOUNT STRING ---
+    if (serviceAccountString) {
+      let serviceAccount;
+      try {
+        const isBase64 = !serviceAccountString.trim().startsWith('{');
+        const serviceAccountJson = isBase64
+          ? Buffer.from(serviceAccountString, 'base64').toString('utf8')
+          : serviceAccountString;
 
-      serviceAccount = JSON.parse(serviceAccountJson);
-      
-      if (serviceAccount.private_key) {
-        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        serviceAccount = JSON.parse(serviceAccountJson);
+        
+        if (serviceAccount.private_key) {
+          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        }
+        
+        console.log(`[DEBUGGER-ADMIN] SUCCESS: Using Service Account for ${serviceAccount.project_id}`);
+      } catch (parseError: any) {
+        console.error('[DEBUGGER-ADMIN] ERROR: Malformed JSON. Falling back to Default Credentials.');
+        return admin.initializeApp({}, ADMIN_APP_NAME);
       }
-      
-      console.log(`[DEBUGGER-ADMIN] SUCCESS: Using Service Account for ${serviceAccount.project_id}`);
-    } catch (parseError: any) {
-      console.error('[DEBUGGER-ADMIN] ERROR: Malformed JSON. Falling back to Default Credentials.');
-      return admin.initializeApp({}, ADMIN_APP_NAME);
+
+      return admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id,
+      }, ADMIN_APP_NAME);
     }
 
+    // --- OPTION 3: PRODUCTION FALLBACK (Default Credentials) ---
+    console.log('[DEBUGGER-ADMIN] No ENV key found. Initializing with Default Application Credentials...');
     return admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
     }, ADMIN_APP_NAME);
 
   } catch (error: any) {
