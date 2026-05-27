@@ -17,7 +17,7 @@ import UserAvatar from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { 
     Users, Loader2, Check, X,
-    Building2, Briefcase, GraduationCap, Target, MapPin, Search, Edit, Globe, Activity, Code, List
+    Building2, Briefcase, GraduationCap, Target, MapPin, Search, Edit, Globe, Activity, Code, List, Scale
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,19 @@ const formatCurrency = (value: number) => {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(value);
+};
+
+const formatDate = (dateStr?: string) => {
+    if (!dateStr) return 'N/A';
+    try {
+        return new Date(dateStr).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
 };
 
 export default function UserProfileClient({ initialUser }: { initialUser: FullUserProfile }) {
@@ -178,6 +191,46 @@ export default function UserProfileClient({ initialUser }: { initialUser: FullUs
                                         <p>{startup.description}</p>
                                     </div>
                                 </div>
+                            </ProfileSection>
+                        )}
+
+                        {startup && (
+                            <ProfileSection title="Legal & Incorporation" icon={Scale}>
+                                {startup.incorporationDetails?.isIncorporated ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal Status</span>
+                                            <Badge variant="outline" className="text-green-600 border-green-600/30 bg-green-500/5 font-semibold mt-1">Incorporated</Badge>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entity Type</span>
+                                            <span className="text-foreground font-medium mt-1 block">{startup.incorporationDetails.incorporationType || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jurisdiction</span>
+                                            <span className="text-foreground font-medium mt-1 block">{startup.incorporationDetails.country || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date of Incorporation</span>
+                                            <span className="text-foreground font-medium mt-1 block">{formatDate(startup.incorporationDetails.incorporationDate)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entity Number (UEN)</span>
+                                            <span className="text-foreground font-mono text-sm mt-1 block">{startup.incorporationDetails.entityNumber || 'N/A'}</span>
+                                        </div>
+                                        {startup.incorporationDetails.taxId && (
+                                            <div>
+                                                <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Business Tax ID / EIN</span>
+                                                <span className="text-foreground font-mono text-sm mt-1 block">{startup.incorporationDetails.taxId}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-muted-foreground">This startup is currently unincorporated or legal registration is not specified.</span>
+                                        <Badge variant="secondary" className="font-semibold text-xs whitespace-nowrap">Not Incorporated</Badge>
+                                    </div>
+                                )}
                             </ProfileSection>
                         )}
 
