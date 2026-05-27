@@ -298,6 +298,17 @@ export default function FounderRegisterFormClient() {
         // Calculate total funds raised from capTable
         const totalFundsRaised = finalCapTable.reduce((acc, entry) => acc + entry.investment, 0);
 
+        const incDetails: any = {
+            isIncorporated
+        };
+        if (isIncorporated) {
+            if (incCountry) incDetails.country = incCountry;
+            if (incType) incDetails.incorporationType = incType;
+            if (incDate) incDetails.incorporationDate = new Date(incDate).toISOString();
+            if (entityNumber) incDetails.entityNumber = entityNumber;
+            if (taxId) incDetails.taxId = taxId;
+        }
+
         const newStartup: Startup = {
             id: startupId,
             companyName: companyName,
@@ -323,14 +334,7 @@ export default function FounderRegisterFormClient() {
             },
             monthlyFinancials: [],
             capTable: finalCapTable,
-            incorporationDetails: {
-                isIncorporated,
-                country: isIncorporated ? incCountry : undefined,
-                incorporationType: isIncorporated ? (incType || undefined) : undefined,
-                incorporationDate: isIncorporated && incDate ? new Date(incDate).toISOString() : undefined,
-                entityNumber: isIncorporated ? entityNumber : undefined,
-                taxId: isIncorporated && taxId ? taxId : undefined
-            },
+            incorporationDetails: incDetails,
             fundsRaised: totalFundsRaised
         };
         
