@@ -15,10 +15,11 @@ import { PlusCircle, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import ProfilePhotoUploader from "./profile-photo-uploader";
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useAuth, useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { createSession } from "@/lib/auth-actions";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function InvestorRegisterFormClient() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function InvestorRegisterFormClient() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const auth = useAuth();
   const firestore = useFirestore();
+  const storage = useStorage();
 
   useEffect(() => {
     if (typeof window !== "undefined" && !sessionStorage.getItem('registrationDetails')) {
@@ -67,7 +69,17 @@ export default function InvestorRegisterFormClient() {
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
-        const avatarUrl = 'https://picsum.photos/seed/new-investor-avatar/400/400';
+        let avatarUrl = 'https://picsum.photos/seed/new-investor-avatar/400/400';
+        if (avatarFile && storage) {
+            try {
+                const avatarStorageRef = ref(storage, `avatars/${user.uid}/${Date.now()}.webp`);
+                const snapshot = await uploadBytes(avatarStorageRef, avatarFile);
+                avatarUrl = await getDownloadURL(snapshot.ref);
+            } catch (uploadError) {
+                console.error("Avatar upload failed, falling back to stock:", uploadError);
+            }
+        }
+        
         const investmentStagesChecked = investmentStages.filter(stage => formData.get(`stage-${stage}`));
         
         const seeking: string[] = investorSeekingOptions

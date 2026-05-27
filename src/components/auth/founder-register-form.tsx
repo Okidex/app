@@ -13,12 +13,13 @@ import { FounderProfile, FullUserProfile, Startup, FounderObjective, CapTableEnt
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ArrowRight, Plus, Trash, HelpCircle, Check, Sparkles } from "lucide-react";
 import LogoUploader from "./logo-uploader";
-import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@/firebase";
+import { useAuth, useFirestore, useStorage, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, collection } from "firebase/firestore";
 import { Checkbox } from "@/components/ui/checkbox";
 import { createSession } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function FounderRegisterFormClient() {
   const router = useRouter();
@@ -61,6 +62,7 @@ export default function FounderRegisterFormClient() {
 
   const auth = useAuth();
   const firestore = useFirestore();
+  const storage = useStorage();
 
   // Debug & Diagnostics States
   const [debugLogs, setDebugLogs] = useState<{ time: string; msg: string; type: "info" | "success" | "warn" | "error" }[]>([]);
@@ -289,6 +291,20 @@ export default function FounderRegisterFormClient() {
         const startupRef = doc(collection(firestore, 'startups'));
         const startupId = startupRef.id;
 
+        // Upload logo if one was selected
+        let uploadedLogoUrl = `https://picsum.photos/seed/${companyName.toLowerCase().replace(/\s/g, '-')}/200/200`; // Fallback stock
+        if (logoFile && storage) {
+            logDebug("Uploading company logo to Firebase Storage...", "info");
+            try {
+                const logoStorageRef = ref(storage, `logos/${user.uid}/${Date.now()}.webp`);
+                const snapshot = await uploadBytes(logoStorageRef, logoFile);
+                uploadedLogoUrl = await getDownloadURL(snapshot.ref);
+                logDebug(`Company logo uploaded successfully: ${uploadedLogoUrl}`, "success");
+            } catch (uploadError: any) {
+                logDebug(`Company logo upload failed: ${uploadError.message}. Using stock fallback.`, "warn");
+            }
+        }
+
         // Build capTable entries with unique ids
         const finalCapTable: CapTableEntry[] = shareholders.map((sh, idx) => ({
             id: `sh-${Date.now()}-${idx}`,
@@ -312,7 +328,7 @@ export default function FounderRegisterFormClient() {
         const newStartup: Startup = {
             id: startupId,
             companyName: companyName,
-            companyLogoUrl: `https://picsum.photos/seed/${companyName.toLowerCase().replace(/\s/g, '-')}/200/200`,
+            companyLogoUrl: uploadedLogoUrl,
             founderIds: [user.uid],
             industry: industry,
             stage: stage as Startup['stage'],

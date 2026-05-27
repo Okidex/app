@@ -9,11 +9,12 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import ProfilePhotoUploader from "./profile-photo-uploader";
-import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@/firebase";
+import { useAuth, useFirestore, useStorage, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { TalentProfile, FullUserProfile } from "@/lib/types";
 import { doc, setDoc } from "firebase/firestore";
 import { createSession } from "@/lib/auth-actions";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function TalentRegisterFormClient() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function TalentRegisterFormClient() {
   
   const auth = useAuth();
   const firestore = useFirestore();
+  const storage = useStorage();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -65,7 +67,17 @@ export default function TalentRegisterFormClient() {
         const userCredential = await createUserWithEmailAndPassword(auth, registrationDetails.email, registrationDetails.password);
         const { user } = userCredential;
         
-        const avatarUrl = 'https://picsum.photos/seed/new-talent-avatar/400/400';
+        let avatarUrl = 'https://picsum.photos/seed/new-talent-avatar/400/400';
+        if (avatarFile && storage) {
+            try {
+                const avatarStorageRef = ref(storage, `avatars/${user.uid}/${Date.now()}.webp`);
+                const snapshot = await uploadBytes(avatarStorageRef, avatarFile);
+                avatarUrl = await getDownloadURL(snapshot.ref);
+            } catch (uploadError) {
+                console.error("Avatar upload failed, falling back to stock:", uploadError);
+            }
+        }
+        
         const isLooking = registrationDetails.subRole === 'co-founder';
 
         const profile: TalentProfile = {
