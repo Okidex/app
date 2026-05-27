@@ -30,9 +30,10 @@ export function FirebaseErrorListener() {
     };
   }, []);
 
-  // On re-render, if an error exists in state, throw it.
+  // On re-render, if an error exists in state, log it instead of throwing.
+  // Throwing here can cause infinite crash loops in the Hosting SSR environment.
   if (error) {
-    throw error;
+    console.warn("[FIREBASE-ERROR-LISTENER] Suppressed global throw:", error.message);
   }
 
   // This component renders nothing.

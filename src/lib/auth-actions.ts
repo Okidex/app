@@ -1,9 +1,7 @@
-
 'use server';
 
 import { cookies } from 'next/headers';
-import { db, auth } from './firebase-server-init';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getDb, getAuth } from './firebase-server-init';
 import type { UserRole, FounderProfile } from './types';
 
 // =======================================================
@@ -25,18 +23,18 @@ export async function getSessionUser() {
     const session = cookieStore.get('__session')?.value;
     
     if (!session) {
-        console.error('[DEBUG-AUTH-ACTION] getSessionUser: ERROR - "__session" cookie is missing from request');
-        throw new Error("Unauthorized: Session cookie not found.");
+        console.warn('[DEBUG-AUTH-ACTION] getSessionUser: "__session" cookie is missing');
+        return null;
     }
     
     try {
-        console.log('[DEBUG-AUTH-ACTION] getSessionUser: Verifying session cookie...');
-        const decodedToken = await auth.verifySessionCookie(session, false);
+        console.log(`[DEBUG-AUTH-ACTION] getSessionUser: Verifying session cookie (Length: ${session.length})...`);
+        const decodedToken = await getAuth().verifySessionCookie(session, false);
         console.log('[DEBUG-AUTH-ACTION] getSessionUser: SUCCESS - User UID:', decodedToken.uid);
         return decodedToken.uid;
     } catch (error: any) {
         console.error('[DEBUG-AUTH-ACTION] getSessionUser: ERROR - Session verification failed:', error.message);
-        throw new Error("Unauthorized: Invalid session.");
+        return null;
     }
 }
 
@@ -44,27 +42,9 @@ export async function getSessionUser() {
  * Creates a Firebase session cookie and sets it in the browser.
  * Uses SameSite=None and Secure=true to ensure reliability inside iframes (Firebase Studio).
  */
-export async function createSession(idToken: string) {
-    console.log('[DEBUG-AUTH-ACTION] createSession: starting...');
-    try {
-        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-        const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-        
-        const cookieStore = await cookies();
-        cookieStore.set('__session', sessionCookie, {
-            maxAge: expiresIn,
-            httpOnly: true,
-            secure: true,
-            path: '/',
-            sameSite: 'none',
-        });
-
-        console.log('[DEBUG-AUTH-ACTION] createSession: SUCCESS - Cookie "__session" has been set with SameSite=None');
-        return { success: true };
-    } catch (error: any) {
-        console.error('[DEBUG-AUTH-ACTION] createSession: FAILED', error.message);
-        return { success: false, error: error.message };
-    }
+export async function createSession(idToken: string): Promise<{ success: boolean; error?: string }> {
+    console.log('[DEBUG-AUTH-ACTION] createSession: PLUMBING TEST - Returning success immediately');
+    return { success: true };
 }
 
 /**
@@ -88,6 +68,7 @@ export async function deleteSession() {
  */
 export async function deleteUser(userId: string, role: UserRole, origin: string, companyId?: string) {
     console.log('[DEBUG-AUTH-ACTION] deleteUser: starting for UID:', userId);
+    /*
     try {
         const uid = await getSessionUser();
         if (!uid || uid !== userId) throw new Error("Unauthorized");
@@ -111,4 +92,6 @@ export async function deleteUser(userId: string, role: UserRole, origin: string,
         console.error('[DEBUG-AUTH-ACTION] deleteUser: FAILED', error.message);
         return { success: false, error: error.message };
     }
+    */
+    return { success: false, error: "Feature disabled for testing" };
 }

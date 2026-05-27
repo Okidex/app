@@ -52,7 +52,7 @@ export interface MonthlyFinancials {
 export interface IncorporationDetails {
     isIncorporated: boolean;
     country?: string;
-    incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'Private Limited' | 'Public Limited Company' | 'Charity' | 'Other';
+    incorporationType?: 'C-Corp' | 'S-Corp' | 'LLC' | 'Private Limited' | 'Public Limited Company' | 'Charity' | 'CIO' | 'Other';
     incorporationDate?: string;
     entityNumber?: string;
     taxId?: string;
@@ -133,6 +133,7 @@ export interface Exit {
 export interface InvestorProfile {
   companyName?: string;
   companyUrl?: string;
+  companyLogoUrl?: string;
   investorType?: 'Angel' | 'Venture Capitalist' | 'Crowdfunder' | 'Private Equity' | 'LP' | 'GP' | 'Family Office Administrator';
   investmentInterests: string[];
   investmentStages?: InvestmentStage[];

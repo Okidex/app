@@ -1,87 +1,97 @@
-import 'server-only';
-import admin from 'firebase-admin';
+import * as admin from 'firebase-admin';
+import * as fs from 'fs';
+import * as path from 'path';
 
-const ADMIN_APP_NAME = 'okidex-admin-app';
-
-/**
- * [DEBUGGER] Firebase Admin Initialization (v2026)
- * Resolves "Missing Service Account" warnings by falling back to
- * Default Application Credentials in production environments.
- */
-function getAdminApp(): admin.app.App | null {
-  const existingApp = admin.apps.find((a) => a?.name === ADMIN_APP_NAME);
-  if (existingApp) {
-    return existingApp;
-  }
-
-  const timestamp = new Date().toISOString();
-  console.log(`[DEBUGGER-ADMIN] [${timestamp}] Booting Admin SDK...`);
-
-  try {
-    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || process.env.FIREBASE_SERVICE_ACCOUNT;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-    // --- OPTION 1: PRIVATE KEY & CLIENT EMAIL (from .env.local) ---
-    if (privateKey && clientEmail && projectId) {
-      console.log('[DEBUGGER-ADMIN] Found individual credentials (FIREBASE_PRIVATE_KEY). Initializing...');
-      return admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey: privateKey.replace(/\\n/g, '\n'),
-        }),
-        projectId,
-      }, ADMIN_APP_NAME);
-    }
-
-    // --- OPTION 2: JSON SERVICE ACCOUNT STRING ---
-    if (serviceAccountString) {
-      let serviceAccount;
-      try {
-        const isBase64 = !serviceAccountString.trim().startsWith('{');
-        const serviceAccountJson = isBase64
-          ? Buffer.from(serviceAccountString, 'base64').toString('utf8')
-          : serviceAccountString;
-
-        serviceAccount = JSON.parse(serviceAccountJson);
-        
-        if (serviceAccount.private_key) {
-          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+// Force load env variables from .env.local if explicit credentials or API keys are missing
+if (!process.env.ADMIN_PRIVATE_KEY || !process.env.ADMIN_CLIENT_EMAIL || !process.env.GEMINI_API_KEY) {
+    try {
+        const envPath = path.resolve(process.cwd(), '.env.local');
+        if (fs.existsSync(envPath)) {
+            const envContent = fs.readFileSync(envPath, 'utf8');
+            envContent.split('\n').forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) return;
+                const match = trimmed.match(/^([^=]+)=(.*)$/);
+                if (match) {
+                    const key = match[1].trim();
+                    let val = match[2].trim();
+                    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                        val = val.substring(1, val.length - 1);
+                    }
+                    process.env[key] = val;
+                }
+            });
+            console.log("[FIREBASE-DEBUG-SERVER] Manually loaded environment variables from .env.local");
         }
-        
-        console.log(`[DEBUGGER-ADMIN] SUCCESS: Using Service Account for ${serviceAccount.project_id}`);
-      } catch (parseError: any) {
-        console.error('[DEBUGGER-ADMIN] ERROR: Malformed JSON. Falling back to Default Credentials.');
-        return admin.initializeApp({}, ADMIN_APP_NAME);
-      }
-
-      return admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || serviceAccount.project_id,
-      }, ADMIN_APP_NAME);
+    } catch (e) {
+        console.error("[FIREBASE-DEBUG-SERVER] Failed to manually load .env.local:", e);
     }
-
-    // --- OPTION 3: PRODUCTION FALLBACK (Default Credentials) ---
-    console.log('[DEBUGGER-ADMIN] No ENV key found. Initializing with Default Application Credentials...');
-    return admin.initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    }, ADMIN_APP_NAME);
-
-  } catch (error: any) {
-    console.error("[DEBUGGER-ADMIN] FATAL Error:", error.message);
-    // Last ditch effort to prevent a total app crash
-    try { return admin.initializeApp({}, ADMIN_APP_NAME); } catch { return null; }
-  }
 }
 
-const app = getAdminApp();
+let db: admin.firestore.Firestore | null = null;
+let auth: admin.auth.Auth | null = null;
 
-// Export services with safety fallbacks to prevent "undefined" crashes in components
-export const db = app ? app.firestore() : null as unknown as admin.firestore.Firestore;
-export const auth = app ? app.auth() : null as unknown as admin.auth.Auth;
-export const storage = app ? app.storage() : null as unknown as admin.storage.Storage;
+function initialize() {
+    console.log("[FIREBASE-DEBUG-SERVER] Initializing firebase-admin...");
+    try {
+        const apps = admin.apps;
+        console.log(`[FIREBASE-DEBUG-SERVER] Current admin apps count: ${apps.length}`);
+        const defaultApp = apps.find(a => a?.name === '[DEFAULT]');
 
-export const getDb = () => db;
+        if (!defaultApp) {
+            console.log("[FIREBASE-DEBUG-SERVER] Default app not found. Initializing...");
+            const projectId = process.env.ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+            const clientEmail = process.env.ADMIN_CLIENT_EMAIL;
+            const privateKey = process.env.ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+            if (projectId && clientEmail && privateKey) {
+                console.log("[FIREBASE-DEBUG-SERVER] Initializing with explicit service account credentials.");
+                admin.initializeApp({
+                    credential: admin.credential.cert({
+                        projectId,
+                        clientEmail,
+                        privateKey
+                    }),
+                    projectId
+                });
+            } else {
+                console.log("[FIREBASE-DEBUG-SERVER] Initializing with default application credentials.");
+                admin.initializeApp();
+            }
+            console.log("[FIREBASE-DEBUG-SERVER] admin.initializeApp() completed successfully.");
+        } else {
+            console.log("[FIREBASE-DEBUG-SERVER] Default app '[DEFAULT]' already initialized.");
+        }
+        const app = admin.app();
+        console.log(`[FIREBASE-DEBUG-SERVER] Resolved admin app name: "${app.name}"`);
+        db = admin.firestore(app);
+        auth = admin.auth(app);
+        console.log("[FIREBASE-DEBUG-SERVER] admin.firestore and admin.auth instances resolved successfully.");
+    } catch (e: any) {
+        console.error("[FIREBASE-DEBUG-SERVER] ERROR during firebase-admin initialization:", e.message, e.stack);
+        throw e;
+    }
+}
+
+export function getDb(): admin.firestore.Firestore {
+    if (!db) {
+        console.log("[FIREBASE-DEBUG-SERVER] getDb() called but db is null. Initializing...");
+        initialize();
+    }
+    return db!;
+}
+
+export function getAuth(): admin.auth.Auth {
+    if (!auth) {
+        console.log("[FIREBASE-DEBUG-SERVER] getAuth() called but auth is null. Initializing...");
+        initialize();
+    }
+    return auth!;
+}
+
+export const getStorage = () => admin.storage();
+
+// Dummy exports for compatibility
+export const storage = null as any;
+
 export { admin as firebaseAdmin };

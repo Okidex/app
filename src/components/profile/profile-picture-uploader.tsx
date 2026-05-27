@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Upload, UploadCloud } from "lucide-react";
@@ -74,6 +74,10 @@ export default function ProfilePictureUploader({ initialAvatarUrl, initialName }
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialAvatarUrl);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setPreviewUrl(initialAvatarUrl);
+  }, [initialAvatarUrl]);
 
   const handleFileChange = (file: File | null) => {
     if (file && file.type.startsWith("image/")) {

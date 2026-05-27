@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { updateStartupData } from '@/lib/actions';
+import { useFirestore } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface MonthlyFinancialsFormProps {
     startupId: string;
@@ -35,7 +36,8 @@ export default function MonthlyFinancialsForm({ startupId, initialData }: Monthl
     const [editedData, setEditedData] = useState<MonthlyFinancials | null>(null);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const { toast } = useToast();
-    
+    const db = useFirestore();
+
     const newMonthDefaultState: Omit<MonthlyFinancials, 'netIncome'> = {
         month: format(new Date(), 'yyyy-MM'),
         revenue: 0,
@@ -65,21 +67,23 @@ export default function MonthlyFinancialsForm({ startupId, initialData }: Monthl
         setEditingRow(null);
         setEditedData(null);
     };
-
+    
     const handleSave = async () => {
-        if (!editedData) return;
+        if (!editedData || !db) return;
         const newData = data.map(d => d.month === editedData.month ? editedData : d);
         
-        const result = await updateStartupData(startupId, { monthlyFinancials: newData });
-
-        if (result.success) {
+        try {
+            await updateDoc(doc(db, "startups", startupId), { 
+                monthlyFinancials: newData 
+            });
             setData(newData);
             toast({
                 title: "Financials Updated",
                 description: `Successfully updated financial data.`,
             });
-        } else {
-             toast({ title: "Error", description: result.error, variant: 'destructive' });
+        } catch (error: any) {
+            console.error("[DEBUG-FINANCIALS] Update failed:", error);
+            toast({ title: "Error", description: error.message, variant: 'destructive' });
         }
         
         setEditingRow(null);
@@ -88,21 +92,26 @@ export default function MonthlyFinancialsForm({ startupId, initialData }: Monthl
     
     const handleAddMonth = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!db) return;
+
         const newEntry: MonthlyFinancials = {
             ...newMonthData,
             netIncome: newMonthData.revenue - newMonthData.expenses
         };
         
         const newData = [...data, newEntry].sort((a, b) => b.month.localeCompare(a.month));
-        const result = await updateStartupData(startupId, { monthlyFinancials: newData });
-
-        if (result.success) {
+        
+        try {
+            await updateDoc(doc(db, "startups", startupId), { 
+                monthlyFinancials: newData 
+            });
             setData(newData);
             toast({ title: "Month Added" });
             setNewMonthData(newMonthDefaultState);
             setIsAddDialogOpen(false);
-        } else {
-             toast({ title: "Error", description: result.error, variant: 'destructive' });
+        } catch (error: any) {
+            console.error("[DEBUG-FINANCIALS] Add failed:", error);
+            toast({ title: "Error", description: error.message, variant: 'destructive' });
         }
     };
 

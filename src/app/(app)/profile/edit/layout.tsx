@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase';
 import { FounderProfile } from '@/lib/types';
@@ -8,6 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getStartupById } from '@/lib/actions';
 
 export default function EditProfileLayout({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
@@ -29,7 +31,25 @@ export default function EditProfileLayout({ children }: { children: React.ReactN
 
     const isFounder = user.role === 'founder';
     const isInvestor = user.role === 'investor';
-    const isIncorporated = isFounder && (user.profile as FounderProfile).companyId && true; // Placeholder for actual check
+    
+    const [isIncorporated, setIsIncorporated] = useState(false);
+    
+    useEffect(() => {
+        if (!isUserLoading && user && user.role === 'founder') {
+            const companyId = (user.profile as FounderProfile).companyId;
+            if (companyId) {
+                getStartupById(companyId).then(startupData => {
+                    if (startupData?.incorporationDetails?.isIncorporated) {
+                        setIsIncorporated(true);
+                    } else {
+                        setIsIncorporated(false);
+                    }
+                }).catch(() => {
+                    setIsIncorporated(false);
+                });
+            }
+        }
+    }, [user, isUserLoading]);
 
     const getActiveTab = () => {
         /**
@@ -37,8 +57,7 @@ export default function EditProfileLayout({ children }: { children: React.ReactN
          * usePathname() returns string | null. 
          * Optional chaining (?.) ensures the build doesn't fail when pathname is null.
          */
-        if (pathname?.includes('/general')) return 'general';
-        if (pathname?.includes('/team')) return 'team';
+        if (pathname === '/profile/edit') return 'general';
         if (pathname?.includes('/fundraising')) return 'fundraising';
         if (pathname?.includes('/financials')) return 'financials';
         if (pathname?.includes('/captable')) return 'captable';
@@ -56,10 +75,9 @@ export default function EditProfileLayout({ children }: { children: React.ReactN
             {!isInvestor && (
                 <Tabs value={getActiveTab()} className="w-full">
                     <TabsList>
-                        <TabsTrigger value="general" asChild><Link href="/profile/edit/general">General</Link></TabsTrigger>
+                        <TabsTrigger value="general" asChild><Link href="/profile/edit">General</Link></TabsTrigger>
                         {isFounder && (
                             <>
-                                <TabsTrigger value="team" asChild><Link href="/profile/edit/team">Founding Team</Link></TabsTrigger>
                                 <TabsTrigger value="fundraising" asChild><Link href="/profile/edit/fundraising">Fundraising</Link></TabsTrigger>
                                 <TabsTrigger value="legal" asChild><Link href="/profile/edit/legal">Legal</Link></TabsTrigger>
                                 {isIncorporated && (

@@ -8,17 +8,20 @@ import { collection, query, where, limit, getCountFromServer, getDocs, doc } fro
 import StatsCard from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Briefcase, CheckCheck, DollarSign, FileText, Mail, Star, UserCheck, Users as UsersIcon, X, AlertTriangle } from "lucide-react";
+import { Activity, Briefcase, CheckCheck, DollarSign, FileText, Mail, Star, UserCheck, Users as UsersIcon, X, AlertTriangle, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import UserAvatar from "@/components/shared/user-avatar";
 import SearchBar from "@/components/shared/search-bar";
 import Image from "next/image";
 import { Skeleton } from '@/components/ui/skeleton';
+import { useOkiAgent } from '@/context/oki-agent-context';
 
 export default function DashboardPage() {
     const { user: currentUser, isUserLoading } = useUser();
     const db = useFirestore();
     const [isUpgradeCardVisible, setIsUpgradeCardVisible] = useState(true);
+    const [agentInput, setAgentInput] = useState("");
+    const { openAgentWithQuery } = useOkiAgent();
 
     const companyId = currentUser?.role === 'founder' ? (currentUser.profile as FounderProfile).companyId : undefined;
     
@@ -81,7 +84,7 @@ export default function DashboardPage() {
     const { data: myJobs, isLoading: jobsLoading } = useCollection<Job>(investorJobsQuery);
     
     // Investor: Applicants for their theses and jobs
-    const thesisIds = myTheses?.map(t => t.id) || [];
+    const thesisIds = useMemo(() => myTheses?.map(t => t.id) || [], [myTheses]);
     const thesisInterestsQuery = useMemoFirebase(() => 
         db && thesisIds.length > 0
         ? query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", thesisIds))
@@ -89,7 +92,7 @@ export default function DashboardPage() {
     , [db, thesisIds]);
     const { data: thesisInterests, isLoading: thesisInterestsLoading } = useCollection<Interest>(thesisInterestsQuery);
 
-    const jobIds = myJobs?.map(j => j.id) || [];
+    const jobIds = useMemo(() => myJobs?.map(j => j.id) || [], [myJobs]);
     const jobInterestsQuery = useMemoFirebase(() =>
       db && jobIds.length > 0
         ? query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", jobIds))
@@ -217,7 +220,7 @@ export default function DashboardPage() {
                                     <p className="text-sm text-muted-foreground capitalize">{match.role}</p>
                                 </div>
                                 <Button asChild variant="outline" size="sm">
-                                    <Link href={`/users/${match.id}`}>View</Link>
+                                    <Link href={`/user?id=${match.id}`}>View</Link>
                                 </Button>
                             </div>
                         ))}
@@ -289,14 +292,154 @@ export default function DashboardPage() {
         );
     }
     
+    const getConsolePlaceholder = (role?: string) => {
+        switch (role) {
+            case 'founder':
+                return "Ask: 'Find active Seed SaaS investors' or 'Draft a reply to Charles'...";
+            case 'investor':
+                return "Ask: 'Show me AI startups in Seed stage' or 'Find fractional leaders'...";
+            case 'talent':
+                return "Ask: 'Search open HealthTech jobs' or 'Find co-founder matches'...";
+            default:
+                return "Ask OkiAgent: 'Find connections', 'Match investment thesis', or navigate app...";
+        }
+    };
+
+    const getConsoleSuggestions = (role?: string) => {
+        switch (role) {
+            case 'founder':
+                return [
+                    { label: "🔍 Find Seed investors", query: "Can you recommend Seed investors focused on B2B SaaS?" },
+                    { label: "👥 Recruit fractional COO", query: "I want to hire a fractional COO with startup scaling experience." },
+                    { label: "💬 Draft response to investor", query: "Draft a professional reply to an investor named Charles who asked about our cap table." },
+                    { label: "🧭 Navigating Okidex", query: "How do I use this platform to raise capital?" }
+                ];
+            case 'investor':
+                return [
+                    { label: "🚀 Search AI startups", query: "Show me B2B SaaS or AI startups currently in Seed stage." },
+                    { label: "💼 Recruit portfolio talent", query: "Find me fractional product leaders or CTOs for my portfolio companies." },
+                    { label: "🔍 Match investment thesis", query: "Find startups that match an investment thesis of fintech/logistics." },
+                    { label: "🧭 Guide to platform", query: "What are the key pages and features of the Okidex platform?" }
+                ];
+            case 'talent':
+                return [
+                    { label: "💼 Browse HealthTech jobs", query: "Show me job listings in HealthTech or biotech." },
+                    { label: "🤝 Find co-founder opportunities", query: "Search for founders who are seeking a technical co-founder." },
+                    { label: "🧭 Navigation help", query: "Explain how to apply for jobs and connect with startups." },
+                    { label: "📈 Google: Tech compensation trends", query: "What are the latest compensation and remote work trends for senior React developers in 2026?" }
+                ];
+            default:
+                return [
+                    { label: "🧭 Navigation guide", query: "Can you guide me on how to navigate this app?" },
+                    { label: "🔍 Search startups", query: "Search for startups in London." }
+                ];
+        }
+    };
+
+    const handleAgentSearch = () => {
+        if (!agentInput.trim()) {
+            return;
+        }
+        openAgentWithQuery(agentInput);
+        setAgentInput("");
+    };
+
+    const handleSuggestionClick = (query: string) => {
+        openAgentWithQuery(query);
+    };
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold font-headline">Welcome back, {currentUser.name.split(' ')[0]}!</h1>
-                <div className="w-full max-w-sm">
-                    <SearchBar userRole={currentUser.role} />
-                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight font-headline">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
             </div>
+
+            {/* OkiAgent Hero Console */}
+            <style>{`
+                @keyframes border-rotate {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                .ai-gradient-border {
+                    position: relative;
+                    border-radius: 0.85rem;
+                    padding: 2.5px;
+                    background: linear-gradient(90deg, #8b5cf6, #ec4899, #3b82f6, #8b5cf6);
+                    background-size: 300% 300%;
+                    animation: border-rotate 6s ease infinite;
+                    box-shadow: 0 0 15px rgba(139, 92, 246, 0.15);
+                }
+                .ai-gradient-inner {
+                    background: hsl(var(--background));
+                    border-radius: calc(0.85rem - 2.5px);
+                    display: flex;
+                    align-items: center;
+                }
+            `}</style>
+
+            <Card className="relative overflow-hidden border border-violet-500/15 bg-gradient-to-tr from-violet-600/5 via-transparent to-transparent shadow-sm p-2 rounded-2xl">
+                <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none">
+                    <Sparkles className="h-32 w-32 text-violet-600" />
+                </div>
+                <CardHeader className="pb-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <span className="bg-violet-600/15 text-violet-600 text-[10px] font-extrabold tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                            <Sparkles className="h-3 w-3 text-violet-600 fill-current" />
+                            OKIAGENT AI
+                        </span>
+                        <span className="bg-amber-600/10 text-amber-600 dark:text-amber-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border border-amber-500/20">
+                            Alpha
+                        </span>
+                    </div>
+                    <CardTitle className="text-2xl font-extrabold tracking-tight text-foreground">
+                        How can I help you grow today?
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Ask Input Bar with animated glowing gradient border */}
+                    <div className="flex gap-2.5">
+                        <div className="ai-gradient-border flex-1">
+                            <div className="relative w-full ai-gradient-inner">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-violet-600 dark:text-violet-400" />
+                                <input
+                                    type="text"
+                                    placeholder={getConsolePlaceholder(currentUser.role)}
+                                    value={agentInput}
+                                    onChange={(e) => setAgentInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleAgentSearch();
+                                        }
+                                    }}
+                                    className="pl-11 pr-4 w-full h-11 text-sm bg-transparent border-0 rounded-xl focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground/60"
+                                />
+                            </div>
+                        </div>
+                        <Button 
+                            onClick={handleAgentSearch}
+                            className="bg-violet-600 hover:bg-violet-700 text-white h-[49px] px-6 rounded-xl font-semibold flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
+                        >
+                            Search
+                            <Sparkles className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+
+                    {/* Suggestions (Mini chips, very clean & unobtrusive) */}
+                    <div className="flex flex-wrap gap-1.5">
+                        {getConsoleSuggestions(currentUser.role).map((s, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => handleSuggestionClick(s.query)}
+                                className="bg-background hover:bg-violet-600/5 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-800 text-[11px] px-3.5 py-1.5 rounded-full border border-border/60 text-muted-foreground transition-all duration-150 cursor-pointer font-semibold shadow-xs"
+                            >
+                                {s.label}
+                            </button>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
 
             {currentUser.email && !(currentUser.email.endsWith('@example.com') || (currentUser as any).emailVerified) && (
                 <Card className="bg-amber-50 border-amber-200">

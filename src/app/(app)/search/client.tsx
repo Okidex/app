@@ -12,7 +12,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getSearchResults } from "@/lib/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchBar from "@/components/shared/search-bar";
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, useFirestore, useAuth } from "@/firebase";
 import { getDoc, doc } from "firebase/firestore";
 
 const StartupResultCard = ({ startup }: { startup: Startup }) => {
@@ -82,17 +82,33 @@ const UserResultCard = ({ user }: { user: FullUserProfile }) => {
         getProfileDetails();
     }, [user, db]);
 
+  const isPremiumFounder = user.role === 'founder' && (user.profile as FounderProfile)?.isPremium === true;
+
   return (
-    <Card>
+    <Card className={isPremiumFounder ? "border-amber-500/30 bg-amber-500/[0.02] shadow-sm hover:shadow-md transition-all duration-300 animate-fade-in" : "hover:shadow-md transition-all duration-300"}>
       <CardHeader className="flex flex-row items-start gap-4">
         <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="w-14 h-14" />
         <div className="flex-1">
-          <CardTitle>{user.name}</CardTitle>
-          <CardDescription className="capitalize">{user.role}</CardDescription>
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle>{user.name}</CardTitle>
+            {isPremiumFounder && (
+              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white border-none text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
+                Oki+
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <CardDescription className="capitalize font-medium">{user.role}</CardDescription>
+            {isPremiumFounder && (
+              <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 text-[10px] px-2 py-0 font-semibold">
+                Actively Fundraising
+              </Badge>
+            )}
+          </div>
           <div className="text-sm text-muted-foreground mt-1">{details || <Skeleton className="h-4 w-48" />}</div>
         </div>
         <Button asChild variant="outline" size="sm">
-            <Link href={`/users/${user.id}`}>View Profile</Link>
+            <Link href={`/user?id=${user.id}`}>View Profile</Link>
         </Button>
       </CardHeader>
     </Card>
@@ -105,12 +121,27 @@ export default function SearchResults() {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<{ startups: Startup[], users: FullUserProfile[] }>({ startups: [], users: [] });
   const { user: currentUser, isUserLoading: authLoading } = useUser();
+  const auth = useAuth();
 
   useEffect(() => {
     const fetchResults = async () => {
       setLoading(true);
-      const searchResults = await getSearchResults(query);
-      setResults(searchResults);
+      try {
+          const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
+          const headers: HeadersInit = { 'Content-Type': 'application/json' };
+          if (idToken) {
+              headers['Authorization'] = `Bearer ${idToken}`;
+          }
+          const response = await fetch('/api/search', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ query })
+          });
+          const searchResults = await response.json();
+          setResults(searchResults);
+      } catch (e) {
+          console.error("[DEBUG-SEARCH] API failed:", e);
+      }
       setLoading(false);
     };
 
@@ -120,13 +151,35 @@ export default function SearchResults() {
         setLoading(false);
         setResults({ startups: [], users: [] });
     }
-  }, [query]);
+  }, [query, auth]);
 
   // --- CLIENT-SIDE FAIL-SAFE ---
-  // We use useMemo to filter out the current user even if the server action missed them.
+  // Filter out self and restrict searching for investors to paying Oki+ subscribers
   const filteredUsers = useMemo(() => {
-    if (!currentUser) return results.users;
-    return results.users.filter(u => u.id !== currentUser.id);
+    if (!currentUser) return results.users.filter(u => u.role !== 'investor');
+    
+    let users = results.users.filter(u => u.id !== currentUser.id);
+
+    // Founders (premium or not) cannot see investors in search.
+    // They must appeal to investors via live investment theses.
+    const isFounder = currentUser.role === 'founder';
+    const isInvestorUser = currentUser.role === 'investor';
+
+    if (isFounder) {
+        users = users.filter(u => u.role !== 'investor');
+    }
+
+    // When investors perform a search, they may only uncover paying Oki+ founders
+    if (isInvestorUser) {
+        users = users.filter(u => {
+            if (u.role === 'founder') {
+                return (u.profile as FounderProfile)?.isPremium === true;
+            }
+            return true;
+        });
+    }
+
+    return users;
   }, [results.users, currentUser]);
 
   if (authLoading) {
@@ -151,12 +204,12 @@ export default function SearchResults() {
       case 'founder':
         return {
           headline: "Discover talent, power your business.",
-          subtext: "Use natural language to discover top-tier talent, including fractional leaders to build your team, or find investors who are excited about your industry and stage."
+          subtext: "Use natural language to discover top-tier talent, including fractional leaders to build your team. To attract investors, browse and respond to our live Investment Theses."
         };
       case 'investor':
         return {
           headline: "Discover Your Next Opportunity",
-          subtext: "Use natural language to find promising founders, hire top-tier talent like fractional leaders for your firm, or connect with other investors for your fund."
+          subtext: "Use natural language to find promising Oki+ founders, hire top-tier talent like fractional leaders for your firm, or connect with other investors for your fund."
         };
       case 'talent':
         return {
@@ -184,6 +237,22 @@ export default function SearchResults() {
                 <SearchBar userRole={currentUser?.role} />
             </div>
         </div>
+
+        {/* CTA banner for founders: direct them to Investment Theses */}
+        {currentUser?.role === 'founder' && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-primary/20 bg-primary/5 px-5 py-4 max-w-2xl mx-auto w-full">
+                <div className="space-y-0.5">
+                    <p className="text-sm font-semibold text-foreground">Looking to raise capital?</p>
+                    <p className="text-xs text-muted-foreground">Attract investors by responding to their live investment theses — not by searching for them.</p>
+                </div>
+                <Link
+                    href="/theses"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+                >
+                    Browse Theses →
+                </Link>
+            </div>
+        )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">

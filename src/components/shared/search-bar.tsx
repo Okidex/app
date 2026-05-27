@@ -1,12 +1,12 @@
-
 "use client";
 
 import { FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@/lib/types";
+import { useOkiAgent } from "@/context/oki-agent-context";
 
 interface SearchBarProps {
     userRole?: UserRole;
@@ -15,6 +15,7 @@ interface SearchBarProps {
 export default function SearchBar({ userRole }: SearchBarProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { openAgentWithQuery } = useOkiAgent();
 
     const getSearchPlaceholder = () => {
         switch(userRole) {
@@ -44,19 +45,41 @@ export default function SearchBar({ userRole }: SearchBarProps) {
         router.push(`/search?${params.toString()}`);
     };
 
+    const handleAiSearch = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const form = (e.currentTarget as HTMLButtonElement).form;
+        if (form) {
+            const formData = new FormData(form);
+            const query = formData.get('search') as string;
+            if (query.trim()) {
+                openAgentWithQuery(query.trim());
+            } else {
+                openAgentWithQuery("What can you do?");
+            }
+        }
+    };
+
     return (
-        <form onSubmit={handleSearch} className="relative">
-            <div className="relative">
+        <form onSubmit={handleSearch} className="flex gap-2 w-full">
+            <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                     type="search"
                     name="search"
                     placeholder={getSearchPlaceholder()}
-                    className="pl-10 w-full h-12 text-base"
+                    className="pl-10 pr-24 w-full h-12 text-base rounded-xl"
                     defaultValue={searchParams?.get('q') || ''}
                 />
-                 <Button type="submit" className="absolute right-1 top-1/2 -translate-y-1/2 h-10">Search</Button>
+                 <Button type="submit" variant="ghost" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 text-xs font-semibold">Search</Button>
             </div>
+            <Button
+                type="button"
+                onClick={handleAiSearch}
+                className="bg-violet-600 hover:bg-violet-700 text-white h-12 px-4 rounded-xl font-semibold flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] shrink-0"
+            >
+                <Sparkles className="h-4 w-4" />
+                Ask OkiAgent
+            </Button>
         </form>
     );
 }

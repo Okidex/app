@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { createSession } from "@/lib/auth-actions";
+// import { createSession } from "@/lib/auth-actions";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -76,8 +76,14 @@ export default function LoginForm() {
       // 2. Get ID token
       const idToken = await userCredential.user.getIdToken();
 
-      // 3. Set session cookie via Server Action
-      const sessionResult = await createSession(idToken);
+      // 3. Set session cookie via direct rewritten auth function
+      const sessionResponse = await fetch('/api/auth/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      
+      const sessionResult = await sessionResponse.json();
 
       if (!sessionResult.success) {
         throw new Error(sessionResult.error || "Failed to create server session.");
@@ -85,14 +91,19 @@ export default function LoginForm() {
       
       toast({ title: "Login Successful", description: "Redirecting..." });
 
-      // 4. Redirect on success using a full page load to ensure cookie is active
+      // 4. Final success: Force reload to pick up new session cookie and redirect to dashboard
       window.location.assign("/dashboard");
       
     } catch(error: any) {
+       console.error('[DEBUG-LOGIN-FORM] Login process failed:', error);
        setIsLoggingIn(false);
+       
+       // Enhanced error message for the toast
+       const errorMessage = error.message || "An unknown error occurred during login.";
+       
        toast({
         title: "Login Failed",
-        description: error.message,
+        description: `Error: ${errorMessage}`,
         variant: "destructive",
       });
     }
@@ -134,7 +145,7 @@ export default function LoginForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="ada@example.com" {...field} />
+                  <Input placeholder="ada@example.com" autoComplete="email" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -157,7 +168,7 @@ export default function LoginForm() {
                   </Button>
                 </div>
                 <FormControl>
-                  <Input type="password" {...field} />
+                  <Input type="password" autoComplete="current-password" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -187,7 +198,7 @@ export default function LoginForm() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="ada@example.com" {...field} />
+                      <Input placeholder="ada@example.com" autoComplete="email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

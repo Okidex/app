@@ -76,6 +76,7 @@ export default function IncorporationDetailsForm({ startupId, initialData }: Inc
                                         <SelectItem value="Private Limited">Private Limited</SelectItem>
                                         <SelectItem value="Public Limited Company">Public Limited Company</SelectItem>
                                         <SelectItem value="Charity">Charity</SelectItem>
+                                        <SelectItem value="CIO">CIO (Charitable Incorporated Organisation)</SelectItem>
                                         <SelectItem value="Other">Other</SelectItem>
                                     </SelectContent>
                                 </Select>

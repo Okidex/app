@@ -1,7 +1,7 @@
 
 'use client'; 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FullUserProfile, Job, FounderProfile, TalentProfile, InvestmentThesis, Interest } from "@/lib/types";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
@@ -43,7 +43,7 @@ export default function DashboardClientContent() {
     , [currentUser, db]);
     const { data: myJobs, isLoading: jobsLoading } = useCollection<Job>(investorJobsQuery);
     
-    const thesisIds = myTheses?.map(t => t.id) || [];
+    const thesisIds = useMemo(() => myTheses?.map(t => t.id) || [], [myTheses]);
     const thesisInterestsQuery = useMemoFirebase(() => 
         db && thesisIds.length > 0
         ? query(collection(db, "interests"), where("targetType", "==", "thesis"), where("targetId", "in", thesisIds))
@@ -51,7 +51,7 @@ export default function DashboardClientContent() {
     , [db, thesisIds]);
     const { data: thesisInterests, isLoading: thesisInterestsLoading } = useCollection<Interest>(thesisInterestsQuery);
 
-    const jobIds = myJobs?.map(j => j.id) || [];
+    const jobIds = useMemo(() => myJobs?.map(j => j.id) || [], [myJobs]);
     const jobInterestsQuery = useMemoFirebase(() =>
       db && jobIds.length > 0
         ? query(collection(db, "interests"), where("targetType", "==", "job"), where("targetId", "in", jobIds))
@@ -148,7 +148,7 @@ export default function DashboardClientContent() {
                                     <p className="text-sm text-muted-foreground capitalize">{match.role}</p>
                                 </div>
                                 <Button asChild variant="outline" size="sm">
-                                    <Link href={`/users/${match.id}`}>View</Link>
+                                    <Link href={`/user?id=${match.id}`} prefetch={false}>View</Link>
                                 </Button>
                             </div>
                         ))}
@@ -222,7 +222,7 @@ export default function DashboardClientContent() {
     return (
         <div className="flex flex-col gap-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold font-headline">Welcome back, {currentUser.name.split(' ')[0]}!</h1>
+                <h1 className="text-2xl font-bold font-headline">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
                 <div className="w-full max-w-sm">
                     <SearchBar userRole={currentUser.role} />
                 </div>

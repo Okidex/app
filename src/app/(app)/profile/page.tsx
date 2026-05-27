@@ -13,7 +13,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!loading) {
       if (currentUser) {
-        router.replace(`/users/${currentUser.id}`);
+        router.replace(`/user?id=${currentUser.id}`);
       } else {
         router.replace('/login');
       }

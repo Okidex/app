@@ -68,7 +68,7 @@ export default function DashboardClient({ currentUser, dashboardData }: { curren
                                     <p className="text-sm text-muted-foreground capitalize">{match.role}</p>
                                 </div>
                                 <Button asChild variant="outline" size="sm">
-                                    <Link href={`/users/${match.id}`}>View</Link>
+                                    <Link href={`/users/${match.id}`} prefetch={false}>View</Link>
                                 </Button>
                             </div>
                         ))}

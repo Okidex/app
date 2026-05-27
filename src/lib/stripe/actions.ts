@@ -5,11 +5,11 @@ import { STRIPE_PRICE_IDS } from './config';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 // Use the 'db' export directly as it is already initialized in your firebase-server-init.ts
-import { db } from '../firebase-server-init';
+import { getDb } from '../firebase-server-init';
 import { FounderProfile } from '../types';
 
 export async function createCheckoutSession(userId: string, userEmail: string, plan: 'monthly' | 'yearly') {
-    const userRef = db.collection('users').doc(userId);
+    const userRef = getDb().collection('users').doc(userId);
     const userDoc = await userRef.get();
     
     const userProfile = userDoc.data()?.profile as FounderProfile | undefined;

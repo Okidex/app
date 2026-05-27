@@ -19,7 +19,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get, list: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profileViewCount']) &&
+        request.resource.data.profileViewCount == resource.data.get('profileViewCount', 0) + 1
+      );
       allow delete: if false;
     }
 
@@ -46,7 +51,7 @@ service cloud.firestore {
     }
 
     match /interests/{interestId} {
-      allow list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }

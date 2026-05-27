@@ -12,11 +12,9 @@ interface UserAvatarProps {
 
 const getInitials = (name: string) => {
   if (!name) return '';
-  const names = name.split(' ');
-  if (names.length > 1) {
-    return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
+  const names = (name || "User").split(' ');
+  const initials = names.map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+  return initials;
 };
 
 const UserAvatar = ({ name, avatarUrl, className }: UserAvatarProps) => {

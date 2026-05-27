@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import FounderApplyPrompt from "@/components/jobs/founder-apply-prompt";
-import { collection, addDoc, serverTimestamp, query, getDocs, orderBy } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, getDocs, getDoc, orderBy, deleteDoc, doc } from "firebase/firestore";
 import { useFirestore, useUser, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -79,12 +79,23 @@ export default function JobsPage() {
         let companyLogoUrl = `https://picsum.photos/seed/logo-default/200/200`;
 
         if (isFounder) {
-            companyName = 'InnovateAI';
-            companyLogoUrl = 'https://picsum.photos/seed/logo1/200/200';
+            const companyId = (currentUser.profile as FounderProfile).companyId;
+            if (companyId) {
+                try {
+                    const startupDoc = await getDoc(doc(db, "startups", companyId));
+                    if (startupDoc.exists()) {
+                        const startup = startupDoc.data();
+                        companyName = startup.companyName || 'InnovateAI';
+                        companyLogoUrl = startup.companyLogoUrl || 'https://picsum.photos/seed/logo1/200/200';
+                    }
+                } catch (err) {
+                    console.error("Error fetching startup details:", err);
+                }
+            }
         } else if (isInvestor) {
             const profile = currentUser.profile as InvestorProfile;
             companyName = profile.companyName || 'Investor Firm';
-             companyLogoUrl = `https://picsum.photos/seed/${companyName.toLowerCase().replace(' ', '')}/200/200`
+            companyLogoUrl = (profile as any).companyLogoUrl || `https://picsum.photos/seed/${companyName.toLowerCase().replace(' ', '')}/200/200`;
         }
 
         const newJobData: Omit<Job, 'id'> = {
@@ -126,6 +137,24 @@ export default function JobsPage() {
             description: `Your application for ${jobTitle} at ${companyName} has been submitted.`
         });
     }
+
+    const handleClosePosition = async (jobId: string, jobTitle: string) => {
+        if (!db) return;
+        try {
+            await deleteDoc(doc(db, "jobs", jobId));
+            toast({
+                title: "Position Closed",
+                description: `Successfully closed the position for "${jobTitle}".`
+            });
+        } catch (error) {
+            console.error("Error closing position:", error);
+            toast({
+                title: "Error",
+                description: "Failed to close the position.",
+                variant: "destructive"
+            });
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -190,7 +219,15 @@ export default function JobsPage() {
                                     <div className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{job.type}</div>
                                 </div>
                             </div>
-                            <Button onClick={() => handleApply(job.title, job.companyName)} variant={isFounder ? 'secondary' : 'default'}>Apply Now</Button>
+                            {job.founderId === currentUser.id ? (
+                                <Button onClick={() => handleClosePosition(job.id, job.title)} variant="destructive">
+                                    Close Position
+                                </Button>
+                            ) : (
+                                <Button onClick={() => handleApply(job.title, job.companyName)} variant={isFounder ? 'secondary' : 'default'}>
+                                    Apply Now
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-muted-foreground line-clamp-2">{job.description}</p>

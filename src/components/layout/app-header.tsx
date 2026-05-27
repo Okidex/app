@@ -14,35 +14,43 @@ import {
 import { Button } from "@/components/ui/button";
 import UserAvatar from "../shared/user-avatar";
 import Notifications from "./notifications";
-import { useUser, useAuth } from "@/firebase";
+import { useUser, useAuth, useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { signOut } from "firebase/auth";
-import { getStartupById } from "@/lib/actions";
+import { doc, getDoc } from "firebase/firestore";
 import { deleteSession } from "@/lib/auth-actions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useOkiAgent } from "@/context/oki-agent-context";
+import { Sparkles } from "lucide-react";
 
 import type { FounderProfile, InvestorProfile } from "@/lib/types";
 
 export default function AppHeader() {
   const { user, isUserLoading: loading } = useUser();
   const auth = useAuth();
+  const db = useFirestore();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { setIsAgentOpen } = useOkiAgent();
   
   const [startupName, setStartupName] = useState<string | null>(null);
   const [investorCompanyName, setInvestorCompanyName] = useState<string | null>(null);
 
   const fetchUserData = useCallback(async () => {
-    if (!user?.profile) return;
+    if (!user?.profile || !db) return;
     if (user.role === 'founder') {
         const companyId = (user.profile as FounderProfile).companyId;
         if (companyId) {
-            const startupData = await getStartupById(companyId);
-            if (startupData) {
-                setStartupName(startupData.companyName);
+            try {
+                const startupDoc = await getDoc(doc(db, "startups", companyId));
+                if (startupDoc.exists()) {
+                    setStartupName(startupDoc.data().companyName);
+                }
+            } catch (e) {
+                console.error("[DEBUG-HEADER] Failed to fetch startup:", e);
             }
         }
     } else if (user.role === 'investor') {
@@ -51,7 +59,7 @@ export default function AppHeader() {
             setInvestorCompanyName(companyName);
         }
     }
-  }, [user]);
+  }, [user, db]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -64,7 +72,7 @@ export default function AppHeader() {
     
     startTransition(async () => {
       try {
-        await deleteSession(); // Direct cookie clearing action
+        await fetch('/api/auth/delete', { method: 'POST' });
         await signOut(auth);
         
         window.location.assign("/");
@@ -104,6 +112,15 @@ export default function AppHeader() {
               <Skeleton className="h-8 w-8 rounded-full" />
           ) : user ? (
             <>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsAgentOpen(true)}
+                className="relative h-8 w-8 rounded-full text-violet-600 dark:text-violet-400 hover:bg-violet-600/10 hover:text-violet-700 transition-colors mr-1"
+                title="Ask OkiAgent AI"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
               <Notifications />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -124,7 +141,7 @@ export default function AppHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={`/users/${user.id}`} className="cursor-pointer">Profile</Link>
+                    <Link href={`/user?id=${user.id}`} prefetch={false} className="cursor-pointer">Profile</Link>
                   </DropdownMenuItem>
                   
                   {user.role === 'founder' && (

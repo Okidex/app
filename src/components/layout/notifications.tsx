@@ -24,9 +24,10 @@ import {
   doc,
   writeBatch,
   limit,
-  orderBy
+  orderBy,
+  getDocs,
+  documentId
 } from 'firebase/firestore';
-import { getUsersByIds } from '@/lib/actions';
 
 const getIcon = (type: NotificationType) => {
   switch (type) {
@@ -70,15 +71,18 @@ export default function Notifications() {
       if (senderIds.length > 0) {
         const idsToFetch = senderIds.filter((id) => !senders.has(id));
         if (idsToFetch.length > 0) {
-          getUsersByIds(idsToFetch).then(users => {
-            if (users && users.length > 0) {
+          // Direct Client-Side Fetch instead of Server Action
+          const usersQuery = query(collection(db, "users"), where(documentId(), "in", idsToFetch.slice(0, 10)));
+          getDocs(usersQuery).then(usersSnap => {
+            const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as FullUserProfile));
+            if (users.length > 0) {
               setSenders(current => {
                 const next = new Map(current);
                 users.forEach(u => next.set(u.id, u));
                 return next;
               });
             }
-          });
+          }).catch(e => console.error("[DEBUG-NOTIFS] User fetch failed:", e));
         }
       }
     }, (err) => {
@@ -145,7 +149,11 @@ export default function Notifications() {
             {notifications.length > 0 ? (
               notifications.map((notification, index) => {
                 const sender = notification.senderId ? senders.get(notification.senderId) : null;
-                const timestamp = notification.timestamp ? new Date(notification.timestamp) : new Date();
+                const timestamp = notification.timestamp 
+                  ? (typeof notification.timestamp === 'object' && 'toDate' in notification.timestamp 
+                      ? (notification.timestamp as any).toDate() 
+                      : new Date(notification.timestamp)) 
+                  : new Date();
                 
                 return (
                   <div key={notification.id}>

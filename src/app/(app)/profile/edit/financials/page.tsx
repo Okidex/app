@@ -5,7 +5,8 @@ import { FounderProfile, Startup } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getStartupById } from "@/lib/actions";
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { getDoc, doc } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,12 +15,13 @@ import Link from "next/link";
 
 export default function FinancialsPage() {
   const { user, isUserLoading } = useUser();
+  const db = useFirestore();
   const [startup, setStartup] = useState<Startup | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || !db) return;
     if (!user || user.role !== 'founder') {
       router.replace('/dashboard');
       return;
@@ -29,14 +31,20 @@ export default function FinancialsPage() {
       setLoading(true);
       const founderProfile = user.profile as FounderProfile;
       if (founderProfile.companyId) {
-        const startupData = await getStartupById(founderProfile.companyId);
-        setStartup(startupData);
+        try {
+            const startupDoc = await getDoc(doc(db, "startups", founderProfile.companyId));
+            if (startupDoc.exists()) {
+                setStartup({ id: startupDoc.id, ...startupDoc.data() } as Startup);
+            }
+        } catch (e) {
+            console.error("[DEBUG-FINANCIALS] Fetch failed:", e);
+        }
       }
       setLoading(false);
     };
 
     fetchData();
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, db]);
 
 
   if (isUserLoading || loading) {

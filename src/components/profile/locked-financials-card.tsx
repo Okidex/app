@@ -3,7 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 
-export default function LockedFinancialsCard() {
+interface LockedFinancialsCardProps {
+    onConnect?: () => void;
+    isPending?: boolean;
+}
+
+export default function LockedFinancialsCard({ onConnect, isPending }: LockedFinancialsCardProps) {
     return (
         <Card className="border-dashed border-2 text-center">
             <CardHeader>
@@ -12,12 +17,12 @@ export default function LockedFinancialsCard() {
                 </div>
                 <CardTitle>Financials & Cap Table Restricted</CardTitle>
                 <CardDescription>
-                    Detailed financial performance and capitalization tables are sensitive. To protect founder privacy, this information is only available after a connection is made.
+                    Detailed financial performance and capitalization tables are sensitive. To protect founder privacy, this information is only available after a connection is established.
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <Button>
-                    Connect
+                <Button onClick={onConnect} disabled={isPending} className="bg-violet-600 hover:bg-violet-700 text-white">
+                    {isPending ? "Request Pending..." : "Connect to Request Access"}
                 </Button>
             </CardContent>
         </Card>

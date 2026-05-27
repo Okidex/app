@@ -1,12 +1,13 @@
-
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Loader2, Upload, UploadCloud } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useStorage, useUser, useAuth } from "@/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface BusinessLogoUploaderProps {
   initialLogoUrl: string;
@@ -63,12 +64,20 @@ async function resizeImage(file: File): Promise<File> {
 }
 
 export default function BusinessLogoUploader({ initialLogoUrl, initialName }: BusinessLogoUploaderProps) {
+  const { user, refreshUser } = useUser();
+  const storage = useStorage();
+  const auth = useAuth();
+  const { toast } = useToast();
+
   const [isLoading, setIsLoading] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+
+  useEffect(() => {
+    setLogoUrl(initialLogoUrl);
+  }, [initialLogoUrl]);
 
   const handleFileChange = (file: File | null) => {
     if (file && (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/gif")) {
@@ -113,21 +122,68 @@ export default function BusinessLogoUploader({ initialLogoUrl, initialName }: Bu
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !user?.uid || !storage || !auth?.currentUser) {
+      toast({ title: "Upload Failed", description: "Storage or session is missing.", variant: "destructive" });
+      return;
+    }
+    
     setIsLoading(true);
-    // Placeholder for actual upload logic to a storage service.
-    // In a real app, you would upload `selectedFile` here.
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    toast({ title: "Logo Updated", description: "Your new company logo has been saved." });
-    setSelectedFile(null); // Reset after upload
+
+    try {
+      const storageRef = ref(storage, `logos/${user.uid}/${Date.now()}.webp`);
+      const snapshot = await uploadBytes(storageRef, selectedFile);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      const idToken = await auth.currentUser.getIdToken();
+      
+      let payload: any = {};
+      if (user.role === 'founder') {
+        const companyId = (user.profile as any)?.companyId;
+        if (!companyId) throw new Error("No company associated with this profile.");
+        payload.startupData = {
+          id: companyId,
+          companyLogoUrl: downloadURL
+        };
+      } else if (user.role === 'investor') {
+        payload.profile = {
+          companyLogoUrl: downloadURL
+        };
+      } else {
+        throw new Error("Invalid role to upload business logo.");
+      }
+
+      const response = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to save logo URL.");
+      }
+
+      toast({ title: "Logo Updated", description: "Your new company logo has been saved." });
+      setLogoUrl(downloadURL);
+      setSelectedFile(null); // Reset after upload
+      refreshUser?.();
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-col items-center space-y-4">
       <div 
         className={cn(
-            "w-48 h-48 border-2 border-dashed rounded-full flex flex-col items-center justify-center text-muted-foreground cursor-pointer transition-colors",
+            "w-48 h-48 border-2 border-dashed rounded-full flex flex-col items-center justify-center text-muted-foreground cursor-pointer transition-colors relative overflow-hidden",
             isDragging ? "border-primary bg-accent" : "border-border"
         )}
         onDragOver={onDragOver}

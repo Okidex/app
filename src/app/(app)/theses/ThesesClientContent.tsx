@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { HandCoins, Lock, PlusCircle } from "lucide-react";
+import { HandCoins, Lock, PlusCircle, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { useOkiAgent } from "@/context/oki-agent-context";
 import { FounderProfile, InvestmentThesis, TalentProfile, FullUserProfile } from "@/lib/types";
 import Link from "next/link";
 import UserAvatar from "@/components/shared/user-avatar";
@@ -18,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import TalentInterestPrompt from "@/components/theses/talent-interest-prompt";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, getDocs, orderBy, addDoc, where } from "firebase/firestore";
+import { collection, query, getDocs, orderBy, addDoc, where, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUsersByIds } from "@/lib/actions";
 
@@ -35,6 +36,10 @@ export default function ThesesClientContent() {
   const [loading, setLoading] = useState(true);
   const [isPostThesisOpen, setIsPostThesisOpen] = useState(false);
   const [showTalentPrompt, setShowTalentPrompt] = useState(false);
+  const [expressedInterests, setExpressedInterests] = useState<Set<string>>(new Set());
+  const [submittingInterestId, setSubmittingInterestId] = useState<string | null>(null);
+  const [thesisSearchInput, setThesisSearchInput] = useState("");
+  const { openAgentWithQuery } = useOkiAgent();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -62,6 +67,26 @@ export default function ThesesClientContent() {
       };
       fetchAuthors();
   }, [thesesData, authLoading, thesesLoading]);
+
+  // Load existing interests for the current user to prevent duplicate submissions
+  useEffect(() => {
+      const fetchMyInterests = async () => {
+          if (!db || !currentUser?.id) return;
+          try {
+              const q = query(
+                  collection(db, 'interests'),
+                  where('userId', '==', currentUser.id),
+                  where('targetType', '==', 'thesis')
+              );
+              const snap = await getDocs(q);
+              const ids = new Set(snap.docs.map(d => d.data().targetId as string));
+              setExpressedInterests(ids);
+          } catch (e) {
+              console.error('[THESES] Failed to load existing interests:', e);
+          }
+      };
+      fetchMyInterests();
+  }, [db, currentUser?.id]);
   
   const [newThesis, setNewThesis] = useState({
     title: "",
@@ -94,16 +119,75 @@ export default function ThesesClientContent() {
     }
   };
 
-  const handleExpressInterest = (thesisTitle: string) => {
+  const handleExpressInterest = async (thesis: ThesisWithAuthor) => {
+    // Talent co-founders get a special prompt
     if (currentUser?.role === 'talent' && (currentUser.profile as TalentProfile).subRole === 'co-founder') {
         setShowTalentPrompt(true);
         return;
     }
-    
-    toast({
-        title: "Interest Expressed!",
-        description: `Your interest in "${thesisTitle}" has been sent to the investor.`
-    });
+
+    if (!currentUser || !db) return;
+
+    // Prevent duplicate interests
+    if (expressedInterests.has(thesis.id)) {
+        toast({ title: "Already sent", description: "You have already expressed interest in this thesis.", variant: "destructive" });
+        return;
+    }
+
+    setSubmittingInterestId(thesis.id);
+    try {
+        // 1. Write to the interests collection
+        await addDoc(collection(db, 'interests'), {
+            userId: currentUser.id,
+            targetId: thesis.id,
+            targetType: 'thesis',
+            timestamp: new Date().toISOString(),
+        });
+
+        // 2. Mark locally to update button state instantly
+        setExpressedInterests(prev => new Set([...prev, thesis.id]));
+
+        // 3. Notify the investor (only if not anonymous so we have their ID)
+        if (thesis.investorId) {
+            await addDoc(collection(db, 'notifications'), {
+                userId: thesis.investorId,
+                type: 'applicant',
+                text: `${currentUser.name} expressed interest in your thesis: "${thesis.title}"`,
+                isRead: false,
+                timestamp: serverTimestamp(),
+                senderId: currentUser.id,
+                link: '/applicants',
+            });
+        }
+
+        toast({
+            title: "Interest Expressed!",
+            description: `Your interest in "${thesis.title}" has been sent to the investor.`
+        });
+    } catch (e: any) {
+        console.error('[THESES] Failed to express interest:', e);
+        toast({ title: "Error", description: "Could not send your interest. Please try again.", variant: "destructive" });
+    } finally {
+        setSubmittingInterestId(null);
+    }
+  };
+
+  const handleCloseThesis = async (thesisId: string, thesisTitle: string) => {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, "theses", thesisId));
+      toast({
+        title: "Thesis Closed",
+        description: `Successfully closed the thesis "${thesisTitle}".`
+      });
+    } catch (error) {
+      console.error("Error closing thesis:", error);
+      toast({
+        title: "Error",
+        description: "Failed to close the thesis.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (authLoading || loading) {
@@ -172,7 +256,22 @@ export default function ThesesClientContent() {
       
        <Card>
           <CardContent className="p-4 flex flex-col md:flex-row gap-4">
-              <Input placeholder="Search by industry, stage, or keyword..." className="flex-1" />
+              <div className="flex-1 flex gap-2">
+                  <Input 
+                      placeholder="Search by industry, stage, or keyword..." 
+                      className="flex-1" 
+                      value={thesisSearchInput}
+                      onChange={(e) => setThesisSearchInput(e.target.value)}
+                  />
+                  <Button 
+                      variant="outline" 
+                      className="border-violet-500/30 text-violet-600 hover:bg-violet-600/5 hover:text-violet-700 font-semibold shrink-0"
+                      onClick={() => openAgentWithQuery(thesisSearchInput.trim() ? `Search investment theses for: ${thesisSearchInput}` : "Show me open investment theses")}
+                  >
+                      <Sparkles className="h-4 w-4 mr-1.5 text-violet-500" />
+                      Ask OkiAgent
+                  </Button>
+              </div>
               <div className="flex gap-4">
                    <Select>
                       <SelectTrigger className="w-full md:w-[180px]">
@@ -229,13 +328,34 @@ export default function ThesesClientContent() {
                 <p className="text-sm text-muted-foreground">{thesis.summary}</p>
             </CardContent>
             <CardContent>
-                <Button 
-                    className="w-full" 
-                    onClick={() => handleExpressInterest(thesis.title)}
-                    variant={isTalent ? "secondary" : "default"}
-                >
-                    Express Interest
-                </Button>
+                {thesis.investorId === currentUser.id ? (
+                    <Button 
+                        className="w-full" 
+                        onClick={() => handleCloseThesis(thesis.id, thesis.title)}
+                        variant="destructive"
+                    >
+                        Close Thesis
+                    </Button>
+                ) : (() => {
+                    const alreadySent = expressedInterests.has(thesis.id);
+                    const isSubmitting = submittingInterestId === thesis.id;
+                    return (
+                        <Button
+                            className="w-full gap-2"
+                            onClick={() => handleExpressInterest(thesis)}
+                            variant={alreadySent ? "outline" : isTalent ? "secondary" : "default"}
+                            disabled={alreadySent || isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+                            ) : alreadySent ? (
+                                <><CheckCircle2 className="h-4 w-4 text-green-500" /> Interest Sent</>
+                            ) : (
+                                'Express Interest'
+                            )}
+                        </Button>
+                    );
+                })()}
             </CardContent>
             </Card>
         )

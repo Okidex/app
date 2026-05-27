@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import TalentInterestPrompt from "@/components/theses/talent-interest-prompt";
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter } from "@/firebase";
-import { collection, query, getDocs, orderBy, addDoc, where } from "firebase/firestore";
+import { collection, query, getDocs, orderBy, addDoc, where, deleteDoc, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUsersByIds } from "@/lib/actions";
 
@@ -111,6 +111,24 @@ export default function ThesesPage() {
         title: "Interest Expressed!",
         description: `Your interest in "${thesisTitle}" has been sent to the investor.`
     });
+  };
+
+  const handleCloseThesis = async (thesisId: string, thesisTitle: string) => {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, "theses", thesisId));
+      toast({
+        title: "Thesis Closed",
+        description: `Successfully closed the thesis "${thesisTitle}".`
+      });
+    } catch (error) {
+      console.error("Error closing thesis:", error);
+      toast({
+        title: "Error",
+        description: "Failed to close the thesis.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (authLoading || loading) {
@@ -236,13 +254,23 @@ export default function ThesesPage() {
                 <p className="text-sm text-muted-foreground">{thesis.summary}</p>
             </CardContent>
             <CardContent>
-                <Button 
-                    className="w-full" 
-                    onClick={() => handleExpressInterest(thesis.title)}
-                    variant={isTalent ? "secondary" : "default"}
-                >
-                    Express Interest
-                </Button>
+                {thesis.investorId === currentUser.id ? (
+                    <Button 
+                        className="w-full" 
+                        onClick={() => handleCloseThesis(thesis.id, thesis.title)}
+                        variant="destructive"
+                    >
+                        Close Thesis
+                    </Button>
+                ) : (
+                    <Button 
+                        className="w-full" 
+                        onClick={() => handleExpressInterest(thesis.title)}
+                        variant={isTalent ? "secondary" : "default"}
+                    >
+                        Express Interest
+                    </Button>
+                )}
             </CardContent>
             </Card>
         )

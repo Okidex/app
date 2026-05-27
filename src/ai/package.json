@@ -12,9 +12,10 @@
     "deploy": "firebase deploy --only functions:ai-logic"
   },
   "dependencies": {
+    "@genkit-ai/google-genai": "1.28.0",
     "firebase-admin": "^13.0.1",
-    "firebase-functions": "^6.3.1",
+    "firebase-functions": "^7.2.5",
     "genkit": "1.28.0",
-    "@genkit-ai/google-genai": "1.28.0"
+    "stripe": "^17.0.0"
   }
 }

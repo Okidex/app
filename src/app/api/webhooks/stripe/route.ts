@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { stripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe/config';
-import { db } from '@/lib/firebase-server-init'; // Updated import path
+import { getDb } from '@/lib/firebase-server-init'; // Updated import path
 
 /**
  * Force this route to be dynamic to prevent Next.js from trying to
@@ -15,9 +15,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const timestamp = new Date().toISOString();
   console.log(`[DEBUG-API] [${timestamp}] POST /api/webhooks/stripe - Received webhook`);
-  
-  // Safety check for build time: if Firebase Admin failed to init, exit gracefully
-  if (!db) {
+  // Safety check for build time
+  if (!getDb()) {
     console.warn('[DEBUG-API] Firebase Admin not initialized. Skipping webhook processing during build.');
     return new Response('Service Unavailable', { status: 503 });
   }
@@ -45,7 +44,7 @@ export async function POST(req: Request) {
 
         if (userId && customerId && subscriptionId) {
           // Use optional chaining for extra safety
-          await db.collection('users').doc(userId).set({
+          await getDb().collection('users').doc(userId).set({
             profile: {
               isPremium: true,
               stripe: {
@@ -65,7 +64,7 @@ export async function POST(req: Request) {
           const subscription = event.data.object as Stripe.Subscription;
           const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
           
-          const usersRef = db.collection('users');
+          const usersRef = getDb().collection('users');
           const q = usersRef.where('profile.stripe.customerId', '==', customerId).limit(1);
           const snapshot = await q.get();
 

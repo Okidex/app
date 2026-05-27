@@ -38,9 +38,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { useOkiAgent } from '@/context/oki-agent-context';
+import { Sparkles } from 'lucide-react';
 
 const allMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'investor', 'talent'] },
+  { href: '/connections', label: 'Connections', icon: UsersIcon, roles: ['founder', 'investor', 'talent'] },
   { href: '/matches', label: 'Matches', icon: Smartphone, notificationType: 'match', roles: ['founder', 'investor', 'talent'] },
   { href: '/search', label: 'Search', icon: Search, roles: ['founder', 'investor', 'talent'] },
   { href: '/messages', label: 'Messages', icon: MessageSquare, notificationType: 'message', roles: ['founder', 'investor', 'talent'] },
@@ -56,6 +59,7 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
   const db = useFirestore();
   const { state: sidebarState } = useSidebar();
+  const { setIsAgentOpen } = useOkiAgent();
 
   React.useEffect(() => {
     if (!user?.id || !db) return;
@@ -181,6 +185,16 @@ export function AppSidebar() {
                 </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              onClick={() => setIsAgentOpen(true)}
+              tooltip="Ask OkiAgent"
+              className="text-violet-600 dark:text-violet-400 font-semibold hover:text-violet-700 hover:bg-violet-600/5"
+            >
+              <Sparkles className="shrink-0 text-violet-500 fill-violet-500/20" />
+              <span className="group-data-[state=collapsed]:hidden">Ask OkiAgent AI</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings" isActive={pathname === '/settings'}>
               <Link href="/settings">

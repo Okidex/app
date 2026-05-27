@@ -45,22 +45,22 @@ export default function RegisterForm() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="first-name">First Name</Label>
-          <Input id="first-name" name="first-name" placeholder="Ada" required />
+          <Input id="first-name" name="first-name" placeholder="Ada" autoComplete="given-name" required />
         </div>
         <div className="space-y-2">
           <Label htmlFor="last-name">Last Name</Label>
-          <Input id="last-name" name="last-name" placeholder="Lovelace" required />
+          <Input id="last-name" name="last-name" placeholder="Lovelace" autoComplete="family-name" required />
         </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" placeholder="ada@example.com" required />
+        <Input id="email" name="email" type="email" placeholder="ada@example.com" autoComplete="email" required />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" required />
+        <Input id="password" name="password" type="password" autoComplete="new-password" required />
       </div>
 
       <div className="space-y-3">
