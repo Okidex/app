@@ -194,7 +194,7 @@ export default function UserProfileClient({ initialUser }: { initialUser: FullUs
                             </ProfileSection>
                         )}
 
-                        {startup && (
+                        {startup && (isOwnProfile || (currentUser?.role === 'investor' && isConnected)) && (
                             <ProfileSection title="Legal & Incorporation" icon={Scale}>
                                 {startup.incorporationDetails?.isIncorporated ? (
                                     <div className="grid grid-cols-2 gap-4">
