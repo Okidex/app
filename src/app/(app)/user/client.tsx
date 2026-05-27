@@ -93,11 +93,11 @@ export default function UserProfileClient({ initialUser }: { initialUser: FullUs
     
     const { data: matches } = useCollection<Match>(connectionsQuery);
 
-    const connection = matches?.find(m => m.participantIds?.includes(initialUser.id));
-    const isConnected = (connection as any)?.status === 'connected';
-    const sentRequest = (connection as any)?.status === 'pending' && (connection as any).createdBy === currentUser?.id;
-    const receivedRequests = matches?.filter(m => (m as any).status === 'pending' && (m as any).createdBy === initialUser.id);
     const isOwnProfile = currentUser?.id === initialUser.id;
+    const connection = matches?.find(m => !isOwnProfile && m.participantIds?.includes(initialUser.id));
+    const isConnected = !isOwnProfile && (connection as any)?.status === 'connected';
+    const sentRequest = !isOwnProfile && (connection as any)?.status === 'pending' && (connection as any).createdBy === currentUser?.id;
+    const receivedRequests = !isOwnProfile ? matches?.filter(m => (m as any).status === 'pending' && (m as any).createdBy === initialUser.id) : [];
 
     const handleConnect = async () => {
         setIsConnecting(true);
@@ -438,7 +438,9 @@ export default function UserProfileClient({ initialUser }: { initialUser: FullUs
                             <div className="space-y-1 mb-2">
                                 <h1 className="text-3xl font-bold">{initialUser.name}</h1>
                                 <div className="flex gap-2 items-center flex-wrap">
-                                    <Badge variant="secondary" className="capitalize">{initialUser.role}</Badge>
+                                    {!(initialUser.role === 'founder' && (initialUser.profile as FounderProfile).title) && (
+                                        <Badge variant="secondary" className="capitalize">{initialUser.role}</Badge>
+                                    )}
                                     {(initialUser.role === 'founder' && (initialUser.profile as FounderProfile).title) && (
                                         <Badge variant="outline">{(initialUser.profile as FounderProfile).title}</Badge>
                                     )}
