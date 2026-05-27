@@ -18,6 +18,7 @@ import { Loader2, PlusCircle, Trash } from "lucide-react";
 import { Startup, Exit, InvestorProfile } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import OkiPlusPromoDialog from "@/components/shared/oki-plus-promo-dialog";
 
 function SkeletonLoader() {
     return (
@@ -35,6 +36,7 @@ export default function GeneralProfileEditPage() {
   const [startup, setStartup] = useState<Startup | null>(null);
   const [loadingStartup, setLoadingStartup] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPromoOpen, setIsPromoOpen] = useState(false);
   const { toast } = useToast();
 
   const isFounder = user?.role === 'founder';
@@ -278,8 +280,18 @@ export default function GeneralProfileEditPage() {
                 <CardContent className="grid grid-cols-2 gap-2">
                 {founderObjectives.map(obj => (
                     <div key={obj.id} className="flex items-center space-x-2">
-                    <Checkbox id={`obj-${obj.id}`} name={`obj-${obj.id}`} defaultChecked={(user.profile as any)?.objectives?.includes(obj.id)} />
-                    <Label htmlFor={`obj-${obj.id}`} className="font-normal">{obj.label}</Label>
+                     <Checkbox 
+                        id={`obj-${obj.id}`} 
+                        name={`obj-${obj.id}`} 
+                        defaultChecked={(user.profile as any)?.objectives?.includes(obj.id)} 
+                        onCheckedChange={(checked) => {
+                            const isPremiumFounder = user?.okiPlusActive || (user?.profile as any)?.isPremium;
+                            if (checked && obj.id === 'fundraising' && !isPremiumFounder) {
+                                setIsPromoOpen(true);
+                            }
+                        }}
+                     />
+                     <Label htmlFor={`obj-${obj.id}`} className="font-normal">{obj.label}</Label>
                     </div>
                 ))}
                 </CardContent>
@@ -425,6 +437,7 @@ export default function GeneralProfileEditPage() {
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
         </Button>
         </form>
+        <OkiPlusPromoDialog isOpen={isPromoOpen} onOpenChange={setIsPromoOpen} />
     </div>
   );
 }

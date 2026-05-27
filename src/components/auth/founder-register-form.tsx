@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { createSession } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import OkiPlusPromoDialog from "@/components/shared/oki-plus-promo-dialog";
 
 export default function FounderRegisterFormClient() {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function FounderRegisterFormClient() {
   const [website, setWebsite] = useState("");
   const [description, setDescription] = useState("");
   const [objectives, setObjectives] = useState<FounderObjective[]>([]);
+  const [isPromoOpen, setIsPromoOpen] = useState(false);
 
   // Step 2 Form States
   const [isIncorporated, setIsIncorporated] = useState(false);
@@ -548,6 +550,9 @@ export default function FounderRegisterFormClient() {
                         onCheckedChange={(checked) => {
                           if (checked) {
                             setObjectives(prev => [...prev, objective.id]);
+                            if (objective.id === 'fundraising') {
+                              setIsPromoOpen(true);
+                            }
                           } else {
                             setObjectives(prev => prev.filter(o => o !== objective.id));
                           }
@@ -944,6 +949,7 @@ export default function FounderRegisterFormClient() {
             </div>
           </div>
         )}
+        <OkiPlusPromoDialog isOpen={isPromoOpen} onOpenChange={setIsPromoOpen} />
       </div>
     </div>
   );
