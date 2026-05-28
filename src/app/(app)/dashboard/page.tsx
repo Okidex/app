@@ -24,6 +24,8 @@ export default function DashboardPage() {
     const { openAgentWithQuery } = useOkiAgent();
 
     const companyId = currentUser?.role === 'founder' ? (currentUser.profile as FounderProfile).companyId : undefined;
+    const isPremiumFounder = currentUser?.okiPlusActive || (currentUser?.profile as FounderProfile)?.isPremium === true;
+    const isFundraising = (currentUser?.profile as FounderProfile)?.objectives?.includes('fundraising');
     
     const startupDocRef = useMemoFirebase(() => {
       if (!db || !companyId) return null;
@@ -60,11 +62,11 @@ export default function DashboardPage() {
     const { data: founderMatches, isLoading: founderMatchesLoading } = useCollection<Match>(founderMatchesQuery);
     
     // Founder: New matches to display
-    const newFounderMatchesQuery = useMemoFirebase(() => 
-        currentUser?.role === 'founder' && db
-            ? query(collection(db, "users"), where("role", "in", ["investor", "talent"]), limit(3))
-            : null
-    , [currentUser, db]);
+    const newFounderMatchesQuery = useMemoFirebase(() => {
+        if (currentUser?.role !== 'founder' || !db) return null;
+        const roles = isPremiumFounder ? ["investor", "talent"] : ["talent"];
+        return query(collection(db, "users"), where("role", "in", roles), limit(3));
+    }, [currentUser, db, isPremiumFounder]);
     const { data: newFounderMatches, isLoading: newFounderMatchesLoading } = useCollection<FullUserProfile>(newFounderMatchesQuery);
 
 
@@ -165,8 +167,7 @@ export default function DashboardPage() {
         return null; // Auth wrapper will handle redirect
     }
 
-    const isFounder = currentUser.role === 'founder';
-    const isPremiumFounder = isFounder && (currentUser.profile as FounderProfile).isPremium;
+
 
     const renderFounderDashboard = () => (
         <>
@@ -208,7 +209,15 @@ export default function DashboardPage() {
                     <CardHeader>
                         <CardTitle>New Matches</CardTitle>
                         <CardDescription>
-                            New potential investors and talent.
+                            {isPremiumFounder ? (
+                                "New potential investors and talent."
+                            ) : isFundraising ? (
+                                <span>
+                                    New potential talent. <Link href="/settings/billing" className="text-violet-600 hover:underline font-semibold">Upgrade to Oki+</Link> to unlock active investor recommendations and matches.
+                                </span>
+                            ) : (
+                                "New potential talent."
+                            )}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
