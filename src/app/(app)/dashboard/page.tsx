@@ -318,17 +318,17 @@ export default function DashboardPage() {
         switch (role) {
             case 'founder':
                 return [
-                    { label: "🔍 Find Seed investors", query: "Can you recommend Seed investors focused on B2B SaaS?" },
-                    { label: "👥 Recruit fractional COO", query: "I want to hire a fractional COO with startup scaling experience." },
-                    { label: "💬 Draft response to investor", query: "Draft a professional reply to an investor named Charles who asked about our cap table." },
-                    { label: "🧭 Navigating Okidex", query: "How do I use this platform to raise capital?" }
+                    { label: "🧭 How can Okidex help me fundraise?", query: "How can Okidex help me to fundraise?" },
+                    { label: "📊 How do I promote my financials?", query: "How can I promote my startup's financials?" },
+                    { label: "💼 How do I post a job?", query: "How do I post a job?" },
+                    { label: "👥 Recruit fractional COO", query: "I want to hire a fractional COO with startup scaling experience." }
                 ];
             case 'investor':
                 return [
-                    { label: "🚀 Search AI startups", query: "Show me B2B SaaS or AI startups currently in Seed stage." },
-                    { label: "💼 Recruit portfolio talent", query: "Find me fractional product leaders or CTOs for my portfolio companies." },
-                    { label: "🔍 Match investment thesis", query: "Find startups that match an investment thesis of fintech/logistics." },
-                    { label: "🧭 Guide to platform", query: "What are the key pages and features of the Okidex platform?" }
+                    { label: "🧭 How do I review financials/cap table?", query: "How do I review a startup's financials/cap table?" },
+                    { label: "🤝 How to contact Thesis respondents?", query: "How do I get in touch with Thesis respondents?" },
+                    { label: "🚀 Search B2B SaaS startups", query: "Show me B2B SaaS or AI startups currently in Seed stage." },
+                    { label: "💼 Recruit portfolio talent", query: "Find me fractional product leaders or CTOs for my portfolio companies." }
                 ];
             case 'talent':
                 return [

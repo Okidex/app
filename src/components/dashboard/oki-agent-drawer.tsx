@@ -46,65 +46,45 @@ export default function OkiAgentDrawer({
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Keep a stable ref of the messages to prevent infinite render/effect loops
-    const messagesRef = useRef<Message[]>(messages);
-    useEffect(() => {
-        messagesRef.current = messages;
-    }, [messages]);
+    const hasOpenedRef = useRef(false);
 
-    // Initial system greeting when drawer opens or changes
+    // Consistently handle drawer open events without infinite render loops or race conditions
     useEffect(() => {
-        if (!isOpen) return;
-        if (messages.length === 0 && !initialQuery) {
-            setMessages([
-                {
-                    role: "model",
-                    text: getGreetingText(userRole)
-                }
-            ]);
+        if (!isOpen) {
+            hasOpenedRef.current = false;
+            return;
         }
-    }, [isOpen, userRole, messages.length, initialQuery, setMessages]);
 
-    // Handle initial query triggered from outside (e.g. dashboard search submit)
-    useEffect(() => {
-        if (!isOpen) return;
+        if (hasOpenedRef.current) return;
+        hasOpenedRef.current = true;
+
         if (initialQuery && initialQuery.trim()) {
             const queryToRun = initialQuery.trim();
-            // Clear the trigger immediately so it only executes once
+            // Clear the query from parent context immediately so closing/opening later doesn't re-trigger it
             setAgentInitialQuery("");
             
             const runInitialQuery = async () => {
                 setIsLoading(true);
-                const greetingMsg = {
-                    role: "model" as const,
+                const greetingMsg: Message = {
+                    role: "model",
                     text: getGreetingText(userRole)
                 };
-                const userMsg = {
-                    role: "user" as const,
+                const userMsg: Message = {
+                    role: "user",
                     text: queryToRun
                 };
                 
-                const currentHistory = messagesRef.current;
-                
-                // Append user message if history exists, otherwise start with greeting
-                if (currentHistory.length > 0) {
-                    setMessages(prev => [...prev, userMsg]);
-                } else {
-                    setMessages([greetingMsg, userMsg]);
-                }
+                // Set initial chat messages synchronously
+                setMessages([greetingMsg, userMsg]);
                 
                 try {
-                    const history = currentHistory.map(msg => ({
-                        role: msg.role,
-                        parts: [{ text: msg.text }]
-                    }));
-                    if (history.length === 0) {
-                        history.push({
+                    const history = [
+                        {
                             role: greetingMsg.role,
                             parts: [{ text: greetingMsg.text }]
-                        });
-                    }
-
+                        }
+                    ];
+                    
                     const result = await askOkiAgent(history, queryToRun);
                     
                     let cleanText = result.text;
@@ -115,8 +95,10 @@ export default function OkiAgentDrawer({
                         cleanText = result.text.replace(/\[REDIRECT:\s*[^\s\]]+\]/g, "").trim();
                     }
 
-                    setMessages(prev => [
-                        ...prev,
+                    // Directly construct final messages to avoid prev-state race conditions
+                    setMessages([
+                        greetingMsg,
+                        userMsg,
                         {
                             role: "model",
                             text: cleanText,
@@ -132,8 +114,9 @@ export default function OkiAgentDrawer({
                     }
                 } catch (e: any) {
                     console.error("[OKIAGENT-DRAWER-DEBUG] Error during initial query execution:", e);
-                    setMessages(prev => [
-                        ...prev,
+                    setMessages([
+                        greetingMsg,
+                        userMsg,
                         {
                             role: "model",
                             text: "Sorry, I had trouble processing that request. Please try again."
@@ -145,8 +128,16 @@ export default function OkiAgentDrawer({
             };
 
             runInitialQuery();
+        } else {
+            // Opened via floating button or other means without query
+            setMessages([
+                {
+                    role: "model",
+                    text: getGreetingText(userRole)
+                }
+            ]);
         }
-    }, [isOpen, initialQuery, userRole, setMessages, setIsLoading, setAgentInitialQuery]);
+    }, [isOpen, initialQuery, userRole, setMessages, setIsLoading, setAgentInitialQuery, router, onOpenChange]);
 
     // Auto-scroll to bottom of chat when messages change
     useEffect(() => {
@@ -170,17 +161,17 @@ export default function OkiAgentDrawer({
         switch (role) {
             case "founder":
                 return [
-                    { label: "🔍 Find Seed SaaS investors", query: "Can you recommend Seed investors focused on B2B SaaS?" },
-                    { label: "👥 Hire a fractional COO", query: "I want to hire a fractional COO with startup scaling experience." },
-                    { label: "💬 Draft response to investor", query: "Draft a professional reply to an investor named Charles who asked about our cap table." },
-                    { label: "🧭 How do I raise capital?", query: "How do I use this platform to raise capital?" }
+                    { label: "🧭 How can Okidex help me fundraise?", query: "How can Okidex help me to fundraise?" },
+                    { label: "📊 How do I promote my financials?", query: "How can I promote my startup's financials?" },
+                    { label: "💼 How do I post a job?", query: "How do I post a job?" },
+                    { label: "👥 Recruit a fractional COO", query: "I want to hire a fractional COO with startup scaling experience." }
                 ];
             case "investor":
                 return [
-                    { label: "🚀 Find AI startups in Seed stage", query: "Show me B2B SaaS or AI startups currently in Seed stage." },
-                    { label: "💼 Hire talent for portfolio", query: "Find me fractional product leaders or CTOs for my portfolio companies." },
-                    { label: "🔍 Match investment thesis", query: "Find startups that match an investment thesis of fintech/logistics." },
-                    { label: "🧭 Explore platform features", query: "What are the key pages and features of the Okidex platform?" }
+                    { label: "🧭 How do I review financials/cap table?", query: "How do I review a startup's financials/cap table?" },
+                    { label: "🤝 How to contact Thesis respondents?", query: "How do I get in touch with Thesis respondents?" },
+                    { label: "🚀 Search B2B SaaS startups", query: "Show me B2B SaaS or AI startups currently in Seed stage." },
+                    { label: "💼 Recruit portfolio talent", query: "Find me fractional product leaders or CTOs for my portfolio companies." }
                 ];
             case "talent":
                 return [
